@@ -38,11 +38,12 @@
             {% set day_int = day|int %}
             {% set year_int = year|int %}
             {% set hour_int = hour|int %}
-            
-            {% if format == 'date_only' %}
+              {% if format == 'date_only' %}
                 {{ months[month_int] }} {{ day_int }}, {{ year }}
             {% elif format == 'date_short' %}
                 {{ month_abbrev[month_int] }} {{ day_int }}, {{ year }}
+            {% elif format == 'month_year' %}
+                {{ month_abbrev[month_int] }} {{ year }}
             {% elif format == 'time_only' %}
                 {% if hour_int == 0 %}12{% elif hour_int > 12 %}{{ hour_int - 12 }}{% else %}{{ hour_int }}{% endif %}:{{ minute }} {% if hour_int < 12 %}AM{% else %}PM{% endif %}
             {% elif format == 'full' %}

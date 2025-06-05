@@ -1,7 +1,7 @@
 import warnings
 import re
 import logging
-from fastapi import APIRouter, Request, HTTPException, Response, Depends, status
+from fastapi import APIRouter, Request, HTTPException, Response, Depends, status, Form
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import RedirectResponse
 from datetime import datetime, timedelta
@@ -11,6 +11,7 @@ from models.registration import RegistrationForm
 from models.student import Student
 from models.attendance import AttendanceRecord
 from config.database import Database
+from bson import ObjectId
 from utils.template_context import get_template_context
 from utils.statistics import StatisticsManager
 from dependencies.auth import require_student_login, get_current_student
@@ -522,14 +523,15 @@ async def student_dashboard(request: Request):
     try:
         student = await get_current_student(request)
     except HTTPException:
-        return RedirectResponse(url="/client/login", status_code=302)
-      # Handle flash messages from URL parameters
+        return RedirectResponse(url="/client/login", status_code=302)    # Handle flash messages from URL parameters
     success_msg = request.query_params.get("success")
     error_msg = request.query_params.get("error")
     event_name = request.query_params.get("event_name", "Event")
     flash_messages = []
     if success_msg == "registration_cancelled":
         flash_messages.append(("success", f"Successfully cancelled registration for {event_name}"))
+    elif success_msg == "Profile updated successfully!" or success_msg == "profile_updated":
+        flash_messages.append(("success", "Profile updated successfully!"))
     elif error_msg == "not_registered":
         flash_messages.append(("error", "You are not registered for this event"))
     elif error_msg == "event_not_found":
@@ -552,8 +554,7 @@ async def student_dashboard(request: Request):
     # Get the student document from database to access event_participations
     student_doc = await DatabaseOperations.find_one("students", {"enrollment_no": student.enrollment_no})
     event_participations = student_doc.get("event_participations", {}) if student_doc else {}
-    
-    # Fetch event details for each registered event
+      # Fetch event details for each registered event
     for event_id, participation in event_participations.items():
         # Get event details (show all registered events regardless of published status)
         event = await DatabaseOperations.find_one("events", {"event_id": event_id})
@@ -574,16 +575,37 @@ async def student_dashboard(request: Request):
                 serialized_participation[key] = value.isoformat()
             else:
                 serialized_participation[key] = value
+        
+        # Explicitly set registration_type for ease of use in template
+        registration_type = participation.get('registration_type', 'individual')
+        serialized_participation['registration_type'] = registration_type
                 
         registrations.append({
             "event": serialized_event,
             "registration": serialized_participation,  # Use participation data instead of separate registration
             "event_id": event_id
-        })
-      # Convert student datetime fields to ISO format
+        })    # Convert student data to serializable format
     serialized_student = student.model_dump()
+
+    # Handle created_at date specifically
+    if "created_at" in serialized_student:
+        created_at = serialized_student["created_at"]
+        if isinstance(created_at, str):
+            try:
+                # Parse string to datetime if it's a string
+                # Remove any timezone info to ensure consistent formatting
+                created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                created_at = created_at.replace(tzinfo=None)  # Convert to naive datetime
+            except ValueError:
+                created_at = None
+        elif isinstance(created_at, datetime):
+            # If it's already a datetime, ensure it's naive
+            created_at = created_at.replace(tzinfo=None)
+        serialized_student["created_at"] = created_at
+
+    # Convert other datetime fields to ISO format for template
     for key, value in serialized_student.items():
-        if isinstance(value, datetime):
+        if key != "created_at" and isinstance(value, datetime):
             serialized_student[key] = value.isoformat()
     
     return templates.TemplateResponse(
@@ -596,6 +618,172 @@ async def student_dashboard(request: Request):
             "flash_messages": flash_messages
         }
     )
+
+# Student Profile Routes
+@router.get("/profile/edit")
+async def profile_edit_page(request: Request, student: Student = Depends(require_student_login)):
+    """Show profile edit page"""
+    # Convert datetime fields to strings for template
+    student_data = student.model_dump()
+    today = datetime.now().date().isoformat()
+    
+    return templates.TemplateResponse(
+        "client/profile_edit.html",
+        {
+            "request": request,
+            "student": student_data,
+            "today": today
+        }
+    )
+
+@router.post("/profile/edit")
+async def profile_edit(request: Request, student: Student = Depends(require_student_login)):
+    """Handle profile update"""
+    try:
+        form_data = await request.form()
+        logger.info(f"Profile edit form submitted for {student.enrollment_no}")
+        
+        # Extract form data
+        full_name = form_data.get("full_name", "").strip()
+        mobile_no = form_data.get("mobile_no", "").strip()
+        department = form_data.get("department", "").strip()
+        semester = form_data.get("semester")
+        gender = form_data.get("gender", "").strip()
+        date_of_birth = form_data.get("date_of_birth", "").strip()
+        new_password = form_data.get("new_password", "").strip()
+        confirm_new_password = form_data.get("confirm_new_password", "").strip()
+        
+        # Validation
+        errors = []
+        
+        if not full_name or len(full_name) < 2:
+            errors.append("Valid full name is required")
+            
+        if not mobile_no or len(mobile_no) != 10 or not mobile_no.isdigit():
+            errors.append("Valid 10-digit mobile number is required")
+        
+        # Password validation (only if user wants to change password)
+        if new_password or confirm_new_password:
+            if len(new_password) < 6:
+                errors.append("New password must be at least 6 characters long")
+            if new_password != confirm_new_password:
+                errors.append("New passwords do not match")
+        
+        if errors:
+            student_data = student.model_dump()
+            today = datetime.now().date().isoformat()
+            return templates.TemplateResponse(
+                "client/profile_edit.html",
+                {
+                    "request": request,
+                    "student": student_data,
+                    "today": today,
+                    "error": "; ".join(errors)
+                }
+            )
+          # Get email from form
+        email = form_data.get("email", "").strip().lower()
+        
+        # Validate email
+        if not email or "@" not in email:
+            errors.append("Valid email address is required")
+        
+        # Check if email is already taken by another student
+        if email != student.email:  # Only check if email is different
+            existing_student = await DatabaseOperations.find_one(
+                "students",
+                {
+                    "email": email,
+                    "enrollment_no": {"$ne": student.enrollment_no}  # Exclude current student
+                }
+            )
+            if existing_student:
+                errors.append("This email is already registered with another account")
+        
+        if errors:
+            student_data = student.model_dump()
+            today = datetime.now().date().isoformat()
+            return templates.TemplateResponse(
+                "client/profile_edit.html",
+                {
+                    "request": request,
+                    "student": student_data,
+                    "today": today,
+                    "error": "; ".join(errors)
+                }
+            )
+            
+        # Prepare update data
+        update_data = {
+            "full_name": full_name,
+            "email": email,
+            "mobile_no": mobile_no,
+        }
+        
+        # Add optional fields if provided
+        if department:
+            update_data["department"] = department
+        if semester:
+            update_data["semester"] = int(semester)
+        if gender:
+            update_data["gender"] = gender
+        if date_of_birth:
+            try:
+                update_data["date_of_birth"] = datetime.strptime(date_of_birth, "%Y-%m-%d")
+            except ValueError:
+                pass  # Skip invalid date
+        
+        # Add password hash if changing password
+        if new_password:
+            update_data["password_hash"] = Student.hash_password(new_password)
+          # Update student in database
+        result = await DatabaseOperations.update_one(
+            "students",
+            {"enrollment_no": student.enrollment_no},
+            {"$set": update_data}
+        )
+        
+        if result:
+            # Update the student object in session
+            updated_student = await DatabaseOperations.find_one(
+                "students", 
+                {"enrollment_no": student.enrollment_no}
+            )
+            
+            if updated_student:
+                # Update session
+                request.session["student_enrollment"] = student.enrollment_no
+                request.session["student"] = updated_student
+                
+                return RedirectResponse(
+                    url="/client/dashboard?success=Profile updated successfully!",
+                    status_code=302
+                )
+        student_data = student.model_dump()
+        today = datetime.now().date().isoformat()
+        return templates.TemplateResponse(
+            "client/profile_edit.html",
+            {
+                "request": request,
+                "student": student_data,
+                "today": today,
+                "error": "Failed to update profile. Please try again."
+            }
+        )
+        
+    except Exception as e:
+        print(f"Profile update error: {e}")
+        student_data = student.model_dump()
+        today = datetime.now().date().isoformat()
+        return templates.TemplateResponse(
+            "client/profile_edit.html",
+            {
+                "request": request,
+                "student": student_data,
+                "today": today,
+                "error": "An error occurred while updating your profile. Please try again."
+            }
+        )
 
 # Student Registration Routes
 @router.get("/register")

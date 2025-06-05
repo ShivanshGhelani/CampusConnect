@@ -529,7 +529,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // Validate enrollment format
-        const enrollmentPattern = /^\d{2}[A-Z]{2,4}\d{5}$/;        if (!enrollmentPattern.test(enrollmentNo.toUpperCase())) {
+        const enrollmentPattern = /^\d{2}[A-Z]{2,4}\d{5}$/;
+        if (!enrollmentPattern.test(enrollmentNo.toUpperCase())) {
             showFieldError(input, 'Invalid enrollment number format');
             if (statusElement) statusElement.innerHTML = '<span class="text-red-600">(Invalid format)</span>';
             return;
@@ -559,12 +560,22 @@ document.addEventListener('DOMContentLoaded', function() {
             
             console.log('Validation response:', data);
               if (data.success) {
+                // Always fill in the data regardless of department
                 if (nameInput) nameInput.value = data.student.full_name || '';
                 if (emailInput) emailInput.value = data.student.email || '';
                 if (mobileInput) mobileInput.value = data.student.mobile_no || '';
                 if (departmentInput) departmentInput.value = data.student.department || '';
                 if (semesterInput) semesterInput.value = data.student.semester || '';
                 if (statusElement) statusElement.innerHTML = '<span class="text-green-600">(✓ Valid)</span>';
+                
+                // Log successful data filling for debugging
+                console.log('Auto-filled participant data:', {
+                    name: data.student.full_name,
+                    email: data.student.email,
+                    mobile: data.student.mobile_no,
+                    department: data.student.department,
+                    semester: data.student.semester
+                });
                   // Check for registration conflicts
                 if (data.has_conflict && data.conflicts) {
                     if (statusElement) statusElement.innerHTML = '<span class="text-orange-600">(⚠ Already registered)</span>';

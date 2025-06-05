@@ -449,21 +449,15 @@ async def save_individual_registration(registration: RegistrationForm, event_id:
             "gender": registration.gender,
             "date_of_birth": registration.date_of_birth
         }
-    )    # Store registration in event-specific collection
-    event_collection = await Database.get_event_collection(event_id)
-    if not event_collection:
-        raise HTTPException(status_code=500, detail="Could not access event collection")
-
-    # Create registration document
-    registration_data = {
-        "registration_id": registration_id,
-        "enrollment_no": student.enrollment_no,
-        "registration_type": "individual",
-        "registration_datetime": registration.registration_datetime,
-        "attendance_id": attendance_id,
-        "feedback_id": feedback_id,
-        "certificate_id": certificate_id,
-        "student_data": {
+    )    # Create individual registration using proper relational mapping
+    individual_participation = EventParticipation(
+        registration_id=registration_id,
+        attendance_id=attendance_id,
+        feedback_id=feedback_id,
+        certificate_id=certificate_id,
+        registration_type="individual",
+        registration_datetime=registration.registration_datetime,
+        student_data={
             "full_name": registration.full_name,
             "email": registration.email,
             "mobile_no": registration.mobile_no,
@@ -471,12 +465,15 @@ async def save_individual_registration(registration: RegistrationForm, event_id:
             "semester": registration.semester,
             "gender": registration.gender,
             "date_of_birth": registration.date_of_birth
-        },
-        "payment_status": "pending"
-    }
+        }
+    )
 
-    # Save to event collection
-    await event_collection.insert_one(registration_data)    # Update event registrations count in events collection
+    # Store participation in student's event_participations
+    await DatabaseOperations.update_one(
+        "students",
+        {"enrollment_no": student.enrollment_no},
+        {"$set": {f"event_participations.{event_id}": individual_participation.model_dump()}}
+    )# Update event registrations count in events collection
     await DatabaseOperations.update_one(
         "events",
         {"event_id": event_id},
@@ -494,19 +491,15 @@ async def save_individual_registration(registration: RegistrationForm, event_id:
             "student_name": registration.full_name,
             "enrollment_no": registration.enrollment_no,
             "is_team_registration": False
-        })
-
-    # Send registration confirmation email for free events
+        })    # Send registration confirmation email for free events
     try:
         await email_service.send_registration_confirmation(
             student_email=registration.email,
             student_name=registration.full_name,
             event_title=event.get("event_name", event_id),
             event_date=event.get("start_date"),
-            event_time=event.get("start_time"),
-            event_location=event.get("location"),
-            registration_id=registration_id,
-            event_details=event.get("event_description", "")
+            event_venue=event.get("location"),
+            registration_id=registration_id
         )
     except Exception as e:
         print(f"Failed to send registration confirmation email: {str(e)}")
@@ -633,9 +626,7 @@ async def save_team_registration(team_registration: TeamRegistrationForm, event_
                 "leader_name": team_registration.full_name,
                 "leader_enrollment": team_registration.enrollment_no,
                 "participants": valid_participants
-            }        })
-
-    # Send registration confirmation emails for free team events
+            }        })    # Send registration confirmation emails for free team events
     try:
         # Send email to team leader
         await email_service.send_registration_confirmation(
@@ -643,16 +634,10 @@ async def save_team_registration(team_registration: TeamRegistrationForm, event_
             student_name=team_registration.full_name,
             event_title=event.get("event_name", event_id),
             event_date=event.get("start_date"),
-            event_time=event.get("start_time"),
-            event_location=event.get("location"),
-            registration_id=team_registration_id,
-            event_details=event.get("event_description", ""),
-            is_team_registration=True,
-            team_name=team_registration.team_name,
-            team_role="Team Leader"
+            event_venue=event.get("location"),
+            registration_id=team_registration_id
         )
-        
-        # Send emails to team participants
+          # Send emails to team participants
         for participant in team_registration.team_participants:
             if participant.email:  # Only send if email is available
                 await email_service.send_registration_confirmation(
@@ -660,13 +645,8 @@ async def save_team_registration(team_registration: TeamRegistrationForm, event_
                     student_name=participant.full_name,
                     event_title=event.get("event_name", event_id),
                     event_date=event.get("start_date"),
-                    event_time=event.get("start_time"),
-                    event_location=event.get("location"),
-                    registration_id=team_registration_id,
-                    event_details=event.get("event_description", ""),
-                    is_team_registration=True,
-                    team_name=team_registration.team_name,
-                    team_role="Team Member"
+                    event_venue=event.get("location"),
+                    registration_id=team_registration_id
                 )
     except Exception as e:
         print(f"Failed to send team registration confirmation emails: {str(e)}")
