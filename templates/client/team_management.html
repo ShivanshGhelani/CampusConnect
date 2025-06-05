@@ -112,129 +112,115 @@
                     </div>
                 </div>
             </div>
-            {% endif %}
-        </div>
+            {% endif %}        </div>
 
-        <!-- Current Team Members -->
-        <div class="bg-white rounded-xl shadow-xl border border-gray-100 p-8">
-            <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center">
-                <i class="fas fa-users text-blue-600 mr-3"></i>Current Team Members
-            </h2>
+        <!-- Main Content Area - Full Width Team Members -->
+        <div class="bg-white rounded-xl shadow-xl border border-gray-100 p-8">            <div class="flex items-center justify-between mb-6">                <h2 class="text-2xl font-bold text-gray-900 flex items-center">
+                    <i class="fas fa-users text-blue-600 mr-3"></i>Current Team Members
+                </h2>
+                {% set is_max_reached = (team_participants|length) + 1 >= (event.team_size_max or 5) %}
+                <button type="button" id="addParticipantBtn" 
+                        class="{% if is_max_reached %}bg-gray-400 cursor-not-allowed{% else %}bg-green-600 hover:bg-green-700{% endif %} text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center"
+                        {% if is_max_reached %}disabled{% endif %}>
+                    <i class="fas fa-user-plus mr-2"></i>{% if is_max_reached %}Add Member (Max Reached){% else %}Add Member{% endif %}
+                </button>
+            </div>
+            
+            <!-- Team Size Summary -->
+            <div class="bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-6">
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-blue-600">{{ (team_participants|length) + 1 }}</div>
+                            <div class="text-sm text-gray-600">Current Members</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-lg font-semibold text-gray-700">{{ event.team_size_min or 2 }} - {{ event.team_size_max or 5 }}</div>
+                            <div class="text-sm text-gray-600">Team Size Range</div>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        {% set current_size = (team_participants|length) + 1 %}
+                        {% set min_size = event.team_size_min or 2 %}
+                        {% set max_size = event.team_size_max or 5 %}
+                        {% if current_size >= max_size %}
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
+                                <i class="fas fa-exclamation-circle mr-1"></i>Max Size Reached
+                            </span>
+                        {% elif current_size >= min_size %}
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                                <i class="fas fa-check-circle mr-1"></i>Valid Size
+                            </span>
+                        {% else %}
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+                                <i class="fas fa-info-circle mr-1"></i>Needs More Members
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
             
             <!-- Team Leader Card -->
-            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-4">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center">
-                        <div class="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-lg mr-4">
+                        <div class="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xl mr-4">
                             <i class="fas fa-crown"></i>
                         </div>
                         <div>
-                            <h3 class="text-lg font-semibold text-gray-900">{{ student.full_name }}</h3>
+                            <h3 class="text-xl font-semibold text-gray-900">{{ student.full_name }}</h3>
                             <p class="text-sm text-gray-600">{{ student.enrollment_no }} | {{ student.department }} | Semester {{ student.semester }}</p>
                             <p class="text-sm text-gray-600">{{ student.email }} | {{ student.mobile_no or 'N/A' }}</p>
                         </div>
                     </div>
-                    <span class="bg-blue-100 text-blue-800 text-xs font-medium px-3 py-1 rounded-full">
-                        Team Leader
+                    <span class="bg-blue-100 text-blue-800 text-sm font-medium px-4 py-2 rounded-full">
+                        <i class="fas fa-crown mr-1"></i>Team Leader
                     </span>
                 </div>
             </div>
             
             <!-- Team Participants -->
             {% if team_participants %}
-            <div class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {% for participant in team_participants %}
-                <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                    <div class="flex items-center justify-between">
+                <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div class="flex items-start justify-between">
                         <div class="flex items-center">
-                            <div class="w-12 h-12 bg-gray-600 rounded-full flex items-center justify-center text-white font-bold text-lg mr-4">
+                            <div class="w-12 h-12 bg-gray-600 rounded-full flex items-center justify-center text-white font-bold text-lg mr-3">
                                 {{ participant.full_name[0].upper() if participant.full_name else participant.enrollment_no[0] }}
                             </div>
-                            <div>
-                                <h3 class="text-lg font-semibold text-gray-900">{{ participant.full_name or 'Name not available' }}</h3>
-                                <p class="text-sm text-gray-600">
-                                    {{ participant.enrollment_no }} 
-                                    {% if participant.department %}| {{ participant.department }}{% endif %}
-                                    {% if participant.semester %}| Semester {{ participant.semester }}{% endif %}
-                                </p>
-                                <p class="text-sm text-gray-600">
-                                    {{ participant.email or 'Email not available' }} 
-                                    {% if participant.mobile_no %}| {{ participant.mobile_no }}{% endif %}
-                                </p>
+                            <div class="flex-1">
+                                <h3 class="text-lg font-semibold text-gray-900 mb-1">{{ participant.full_name or 'Name not available' }}</h3>
+                                <p class="text-sm text-gray-600">{{ participant.enrollment_no }}</p>
+                                {% if participant.department %}<p class="text-xs text-gray-500">{{ participant.department }}</p>{% endif %}
+                                {% if participant.semester %}<p class="text-xs text-gray-500">Semester {{ participant.semester }}</p>{% endif %}
                             </div>
                         </div>
-                        <div class="flex space-x-2">
-                            <button type="button" class="edit-participant-btn bg-yellow-600 text-white px-3 py-1 rounded text-sm hover:bg-yellow-700 transition-colors"
-                                    data-enrollment="{{ participant.enrollment_no }}"
-                                    data-name="{{ participant.full_name or '' }}"
-                                    data-email="{{ participant.email or '' }}"
-                                    data-mobile="{{ participant.mobile_no or '' }}">
-                                <i class="fas fa-edit mr-1"></i>Edit
-                            </button>
-                            <button type="button" class="remove-participant-btn bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 transition-colors"
-                                    data-enrollment="{{ participant.enrollment_no }}"
-                                    data-name="{{ participant.full_name or participant.enrollment_no }}">
-                                <i class="fas fa-trash mr-1"></i>Remove
-                            </button>
-                        </div>
+                    </div>
+                    <div class="mt-3 flex space-x-2">
+                        <button type="button" class="edit-participant-btn bg-yellow-600 text-white px-3 py-1 rounded text-sm hover:bg-yellow-700 transition-colors flex-1"
+                                data-enrollment="{{ participant.enrollment_no }}"
+                                data-name="{{ participant.full_name or '' }}"
+                                data-email="{{ participant.email or '' }}"
+                                data-mobile="{{ participant.mobile_no or '' }}">
+                            <i class="fas fa-edit mr-1"></i>Edit
+                        </button>
+                        <button type="button" class="remove-participant-btn bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 transition-colors flex-1"
+                                data-enrollment="{{ participant.enrollment_no }}"
+                                data-name="{{ participant.full_name or participant.enrollment_no }}">
+                            <i class="fas fa-trash mr-1"></i>Remove
+                        </button>
                     </div>
                 </div>
                 {% endfor %}
             </div>
             {% else %}
-            <div class="text-center py-8">
-                <i class="fas fa-user-plus text-4xl text-gray-300 mb-4"></i>
-                <p class="text-gray-500">No team participants added yet</p>
+            <div class="text-center py-12">
+                <i class="fas fa-user-plus text-6xl text-gray-300 mb-4"></i>
+                <p class="text-xl text-gray-500 mb-2">No team participants added yet</p>
+                <p class="text-gray-400">Click "Add Member" to invite participants to your team</p>
             </div>
             {% endif %}
-        </div>
-
-        <!-- Add New Participant -->
-        <div class="bg-white rounded-xl shadow-xl border border-gray-100 p-8">
-            <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center">
-                <i class="fas fa-user-plus text-green-600 mr-3"></i>Add New Participant
-            </h2>
-              <form id="searchParticipantForm" class="space-y-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="md:col-span-2">
-                        <label for="participant_enrollment" class="block text-sm font-semibold text-gray-800 mb-2">
-                            Enrollment Number *
-                        </label>
-                        <div class="flex">
-                            <input type="text" id="participant_enrollment"
-                                   class="block w-full px-4 py-2 text-gray-900 border border-gray-300 rounded-l-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                   required placeholder="e.g., 21BECE40015" pattern="^\d{2}[A-Z]{2,4}\d{5}$">
-                            <button type="submit" id="searchButton" class="bg-blue-600 text-white px-4 py-2 rounded-r-md hover:bg-blue-700 transition-colors">
-                                <i class="fas fa-search mr-1"></i>Search
-                            </button>
-                        </div>
-                        <div id="enrollment-error" class="text-red-500 text-sm mt-1 hidden"></div>
-                        <div class="text-sm text-gray-600 mt-1">
-                            <i class="fas fa-info-circle mr-1"></i>Enter the enrollment number and click Search to find and validate the student.
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="flex justify-between items-center">
-                    <!-- Team size info -->
-                    <div class="text-sm text-gray-600">
-                        <span class="font-semibold">Current team size:</span> {{ (team_participants|length) + 1 }} / {{ event.team_size_max or 5 }} members
-                        <div class="flex space-x-2 mt-1">
-                            <div class="text-blue-600">
-                                <i class="fas fa-info-circle mr-1"></i>Min: {{ event.team_size_min or 2 }} members
-                            </div>
-                            <div class="text-blue-600">
-                                <i class="fas fa-info-circle mr-1"></i>Max: {{ event.team_size_max or 5 }} members
-                            </div>
-                        </div>
-                        {% if (team_participants|length) + 1 >= (event.team_size_max or 5) %}
-                        <div class="mt-1 text-yellow-600">
-                            <i class="fas fa-exclamation-circle mr-1"></i>Maximum team size reached
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </form>
         </div>
 
         <!-- Navigation -->
@@ -246,7 +232,75 @@
             <a href="/client/dashboard" 
                class="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors text-center flex items-center justify-center">
                 <i class="fas fa-tachometer-alt mr-2"></i>Go to Dashboard
-            </a>
+            </a>        </div>
+    </div>
+</div>
+
+<!-- Add New Participant Modal -->
+<div id="addParticipantModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-gray-900">Add New Team Member</h3>
+                <button type="button" id="closeAddModal" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <form id="searchParticipantForm" class="space-y-4">
+                <div>
+                    <label for="participant_enrollment" class="block text-sm font-medium text-gray-700 mb-1">
+                        Student Enrollment Number
+                    </label>
+                    <input type="text" name="participant_enrollment" id="participant_enrollment"
+                           placeholder="e.g., 21BECE40015" maxlength="12" 
+                           class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                           required>
+                    <div id="enrollment-error" class="hidden text-red-600 text-sm mt-1"></div>
+                    <div class="text-xs text-gray-500 mt-1">
+                        <i class="fas fa-info-circle mr-1"></i>Enter the enrollment number of the student you want to add to your team
+                    </div>
+                </div>
+                
+                <!-- Team size warning -->
+                {% set current_size = (team_participants|length) + 1 %}
+                {% set max_size = event.team_size_max or 5 %}
+                {% if current_size >= max_size %}
+                <div class="bg-red-50 border-l-4 border-red-400 p-3">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-exclamation-triangle text-red-600"></i>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-red-700 text-sm">Maximum team size of {{ max_size }} has been reached.</p>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="bg-blue-50 border-l-4 border-blue-400 p-3">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-info-circle text-blue-600"></i>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-blue-700 text-sm">Current team size: {{ current_size }}/{{ max_size }}. You can add {{ max_size - current_size }} more member(s).</p>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <div class="flex justify-end space-x-3 pt-4">
+                    <button type="button" id="cancelAddModal" 
+                            class="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" id="searchParticipantBtn"
+                            class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+                            {% if current_size >= max_size %}disabled class="bg-gray-400 cursor-not-allowed"{% endif %}>
+                        <i class="fas fa-search mr-1"></i>Search & Validate
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -383,6 +437,62 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM Content Loaded - Team Management'); // Debug log
+    
+    // Get modal elements
+    const addParticipantModal = document.getElementById('addParticipantModal');
+    const addParticipantBtn = document.getElementById('addParticipantBtn');
+    const closeAddModal = document.getElementById('closeAddModal');
+    const cancelAddModal = document.getElementById('cancelAddModal');
+    const confirmModal = document.getElementById('confirmModal');
+    const removeModal = document.getElementById('removeModal');
+    const editModal = document.getElementById('editModal');
+    
+    // Debug: Check if elements exist
+    console.log('Elements found:');
+    console.log('- Add Participant Modal:', !!addParticipantModal);
+    console.log('- Add Participant Button:', !!addParticipantBtn);
+    console.log('- Close Add Modal Button:', !!closeAddModal);
+    console.log('- Cancel Add Modal Button:', !!cancelAddModal);
+      // Add Participant Modal functionality
+    if (addParticipantBtn) {
+        console.log('Adding click event listener to Add Member button');
+        addParticipantBtn.addEventListener('click', function(e) {
+            console.log('Add Member button clicked!'); // Debug log
+            e.preventDefault(); // Prevent any default behavior
+            
+            // Check if button is disabled
+            if (this.disabled) {
+                console.log('Button is disabled, not opening modal');
+                return;
+            }
+            
+            if (addParticipantModal) {
+                console.log('Opening add participant modal');
+                addParticipantModal.classList.remove('hidden');
+                setTimeout(() => {
+                    const modalContent = addParticipantModal.querySelector('.relative');
+                    if (modalContent) {
+                        modalContent.classList.add('animate-bounce-in');
+                    }
+                }, 10);
+            } else {
+                console.error('Add participant modal not found');
+            }
+        });
+    } else {
+        console.error('Add participant button not found');
+    }
+    
+    [closeAddModal, cancelAddModal].forEach(button => {
+        button.addEventListener('click', function() {
+            addParticipantModal.classList.add('hidden');
+            // Clear form when closing
+            document.getElementById('searchParticipantForm').reset();
+            document.getElementById('enrollment-error').classList.add('hidden');
+        });
+    });
+    
     // Remove participant functionality
     const removeButtons = document.querySelectorAll('.remove-participant-btn');
     const removeModal = document.getElementById('removeModal');
@@ -432,17 +542,20 @@ document.addEventListener('DOMContentLoaded', function() {
         button.addEventListener('click', function() {
             editModal.classList.add('hidden');
         });
-    });
-      // Close modals when clicking outside
-    [removeModal, editModal, confirmModal].forEach(modal => {
+    });      // Close modals when clicking outside
+    [removeModal, editModal, confirmModal, addParticipantModal].forEach(modal => {
         modal.addEventListener('click', function(e) {
             if (e.target === modal) {
                 modal.classList.add('hidden');
+                // Clear add participant form when closing
+                if (modal === addParticipantModal) {
+                    document.getElementById('searchParticipantForm').reset();
+                    document.getElementById('enrollment-error').classList.add('hidden');
+                }
             }
         });
     });
-    
-    // Add participant form validation
+      // Add participant form validation
     const addForm = document.getElementById('addParticipantForm');
     const enrollmentInput = document.getElementById('participant_enrollment');
     
@@ -455,7 +568,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Validate enrollment format on blur
     enrollmentInput.addEventListener('blur', function() {
         const enrollment = this.value.trim();
-        const errorDiv = this.nextElementSibling;
+        const errorDiv = document.getElementById('enrollment-error');
         
         if (enrollment) {
             const enrollmentPattern = /^\d{2}[A-Z]{2,4}\d{5}$/;
@@ -465,11 +578,9 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 errorDiv.textContent = '';
                 errorDiv.classList.add('hidden');
-                // Validate if participant can be added
-                validateParticipant(enrollment);
             }
         }
-    });    // Add participant search and confirmation flow
+    });// Add participant search and confirmation flow
     const searchForm = document.getElementById('searchParticipantForm');
     const confirmModal = document.getElementById('confirmModal');
     const studentDetailsDiv = document.getElementById('studentDetails');
@@ -503,14 +614,15 @@ document.addEventListener('DOMContentLoaded', function() {
             errorDiv.classList.remove('hidden');
             return false;
         }
-        
-        // Show loading state in student details div
+          // Show loading state in student details div
         studentDetailsDiv.innerHTML = `
             <div class="flex justify-center items-center py-6 px-4 text-gray-500">
                 <i class="fas fa-spinner fa-spin mr-2"></i>Loading student information...
             </div>
         `;
-          // Open confirmation modal with animation
+          
+        // Close add participant modal and open confirmation modal with animation
+        addParticipantModal.classList.add('hidden');
         confirmModal.classList.remove('hidden');
         setTimeout(() => {
             const modalContent = confirmModal.querySelector('.relative');
@@ -589,15 +701,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('confirmAddBtn').disabled = true;
                 document.getElementById('confirmAddBtn').classList.add('bg-gray-400', 'cursor-not-allowed');
                 document.getElementById('confirmAddBtn').classList.remove('bg-green-600', 'hover:bg-green-700');
-                
-                // Show error in the original search form as well
+                  // Show error in the original search form as well
                 const errorDiv = document.getElementById('enrollment-error');
                 errorDiv.textContent = data.message || 'Student validation failed';
                 errorDiv.classList.remove('hidden');
                 
-                // Close modal after a delay to show the error message
+                // Close confirmation modal and reopen add participant modal to show error
                 setTimeout(() => {
                     confirmModal.classList.add('hidden');
+                    addParticipantModal.classList.remove('hidden');
                 }, 2500);
             }
         } catch (error) {
@@ -619,25 +731,32 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('confirmAddBtn').disabled = true;
             document.getElementById('confirmAddBtn').classList.add('bg-gray-400', 'cursor-not-allowed');
             document.getElementById('confirmAddBtn').classList.remove('bg-green-600', 'hover:bg-green-700');
-            
-            // Show error in the search form as well
+              // Show error in the search form as well
             const errorDiv = document.getElementById('enrollment-error');
             errorDiv.textContent = 'An error occurred while validating the student';
             errorDiv.classList.remove('hidden');
+            
+            // Close confirmation modal and reopen add participant modal
+            setTimeout(() => {
+                confirmModal.classList.add('hidden');
+                addParticipantModal.classList.remove('hidden');
+            }, 2000);
         }
-    });
-      // Close confirmation modal
+    });      // Close confirmation modal
     [cancelConfirm, cancelConfirmBtn].forEach(button => {
         button.addEventListener('click', function() {
             confirmModal.classList.add('hidden');
+            // Reopen the add participant modal when canceling confirmation
+            addParticipantModal.classList.remove('hidden');
         });
     });
-    
-    // Clear enrollment input after successful confirmation
+      // Clear enrollment input after successful confirmation
     addForm.addEventListener('submit', function() {
         // Clear the search input field for better UX after adding
         setTimeout(() => {
-            enrollmentInput.value = '';
+            document.getElementById('participant_enrollment').value = '';
+            document.getElementById('searchParticipantForm').reset();
+            document.getElementById('enrollment-error').classList.add('hidden');
         }, 500);
     });
       // Handle the confirmation form submission
