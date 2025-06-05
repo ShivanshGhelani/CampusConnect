@@ -61,10 +61,17 @@ class EmailService:
 
             # Create secure connection and send email
             context = ssl.create_default_context()
+            logger.info(f"Attempting to connect to SMTP server {self.smtp_server}:{self.smtp_port}")
+            logger.info(f"Using email credentials - User: {self.email_user}")
             
             with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
+                logger.info("SMTP connection established, starting TLS")
                 server.starttls(context=context)
+                
+                logger.info("TLS started, attempting login")
                 server.login(self.email_user, self.email_password)
+                
+                logger.info("Login successful, sending email")
                 server.sendmail(self.from_email, to_email, message.as_string())
             
             logger.info(f"Email sent successfully to {to_email}")
