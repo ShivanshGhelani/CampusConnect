@@ -498,12 +498,13 @@ async def student_login(request: Request):
         {"enrollment_no": enrollment_no},
         {"$set": {"last_login": datetime.utcnow()}}
     )
-    
-    # Convert student data to dict and serialize datetime objects
+      # Convert student data to dict and serialize datetime objects
     student_data = student.model_dump()
     for key, value in student_data.items():
         if isinstance(value, datetime):
             student_data[key] = value.isoformat()
+        elif isinstance(value, ObjectId):
+            student_data[key] = str(value)
     
     # Store student in session
     request.session["student"] = student_data
@@ -735,8 +736,7 @@ async def profile_edit(request: Request, student: Student = Depends(require_stud
         
         # Add password hash if changing password
         if new_password:
-            update_data["password_hash"] = Student.hash_password(new_password)
-          # Update student in database
+            update_data["password_hash"] = Student.hash_password(new_password)        # Update student in database
         result = await DatabaseOperations.update_one(
             "students",
             {"enrollment_no": student.enrollment_no},
@@ -751,9 +751,25 @@ async def profile_edit(request: Request, student: Student = Depends(require_stud
             )
             
             if updated_student:
-                # Update session
+                # Remove ObjectId field before creating Student model
+                if '_id' in updated_student:
+                    del updated_student['_id']
+                
+                # Convert updated student data to serializable format
+                from models.student import Student as StudentModel
+                student_instance = StudentModel(**updated_student)
+                student_data = student_instance.model_dump()
+                
+                # Serialize datetime objects and ObjectId to ISO strings
+                for key, value in student_data.items():
+                    if isinstance(value, datetime):
+                        student_data[key] = value.isoformat()
+                    elif isinstance(value, ObjectId):
+                        student_data[key] = str(value)
+                
+                # Update session with serialized data
                 request.session["student_enrollment"] = student.enrollment_no
-                request.session["student"] = updated_student
+                request.session["student"] = student_data
                 
                 return RedirectResponse(
                     url="/client/dashboard?success=Profile updated successfully!",

@@ -668,47 +668,76 @@ async def save_team_registration(team_registration: TeamRegistrationForm, event_
     })
 
 @router.get("/api/validate-participant")
-async def validate_participant_api(enrollment: str):
+async def validate_participant_api(enrollment: str, event_id: str = None, team_id: str = None):
     """API endpoint to validate a team participant by enrollment number"""
     try:
         if not enrollment or not enrollment.strip():
             return {"success": False, "message": "Enrollment number is required"}
         
         enrollment = enrollment.strip().upper()
-        
-        # Validate enrollment format
+          # Validate enrollment format with improved pattern and better error message
         enrollment_pattern = r'^\d{2}[A-Z]{2,4}\d{5}$'
         if not re.match(enrollment_pattern, enrollment):
-            return {"success": False, "message": "Invalid enrollment number format"}
-        
-        # Find student in database
+            return {"success": False, "message": "Invalid enrollment number format. Expected format: 22BEIT30043"}
+          # Find student in database
         student_data = await DatabaseOperations.find_one("students", {"enrollment_no": enrollment})
-        
         if not student_data:
-            return {"success": False, "message": "Student not found in system"}          # The conflict check for team participants now only checks for the current event, not all events
-        # Students should be allowed to register for multiple different events
-        conflicts = {"has_conflicts": False, "individual_registrations": [], "team_registrations": []}
+            return {"success": False, "message": "Student not found in system. Please verify the enrollment number."}
+            
+        # If event_id and team_id are provided, check team size limits
+        if event_id and team_id:
+            # Get event details to check team size limits
+            event = await DatabaseOperations.find_one("events", {"event_id": event_id})
+            if not event:
+                return {"success": False, "message": "Event not found"}
+                
+            # Get current team details
+            team_details = event.get('team_registrations', {}).get(team_id, {})
+            if not team_details:
+                return {"success": False, "message": "Team not found"}
+                
+            # Check team size limit
+            current_team_size = len(team_details.get('participants', [])) + 1  # +1 for team leader
+            max_team_size = event.get('team_size_max', 5)
+            
+            if current_team_size >= max_team_size:
+                return {"success": False, "message": f"Team size cannot exceed the maximum limit of {max_team_size} participants"}
+            
+            # Check if student is already part of this team
+            if enrollment in team_details.get('participants', []) or enrollment == team_details.get('team_leader_enrollment'):
+                return {"success": False, "message": "This student is already part of your team"}
+                
+        # Check if student is already registered for this specific event
+        if event_id:
+            event_participations = student_data.get('event_participations', {})
+            if event_id in event_participations:
+                return {"success": False, "message": "This student is already registered for this event"}
         
-        # Return student data without any multi-event conflict checks
+        # Get student details for display
+        formatted_student = {
+            "full_name": student_data.get("full_name", ""),
+            "enrollment_no": student_data.get("enrollment_no", ""),
+            "email": student_data.get("email", ""),
+            "mobile_no": student_data.get("mobile_no", ""),
+            "department": student_data.get("department", ""),
+            "semester": str(student_data.get("semester", "")),
+            "gender": student_data.get("gender", ""),
+            "profile_image": student_data.get("profile_image", "")
+        }
+        
+        # Return detailed student data for confirmation
         response_data = {
             "success": True,
-            "student": {
-                "full_name": student_data.get("full_name", ""),
-                "enrollment_no": student_data.get("enrollment_no", ""),
-                "email": student_data.get("email", ""),
-                "mobile_no": student_data.get("mobile_no", ""),
-                "department": student_data.get("department", ""),
-                "semester": str(student_data.get("semester", ""))
-            },
-            "has_conflict": conflicts["has_conflicts"],
-            "conflicts": conflicts
+            "student": formatted_student,
+            "can_add": True,
+            "message": "Student details retrieved successfully. Please review and confirm to add to your team."
         }
         
         return response_data
         
     except Exception as e:
         print(f"Error in validate_participant_api: {str(e)}")
-        return {"success": False, "message": "Internal server error"}
+        return {"success": False, "message": f"Internal server error: {str(e)}"}
 
 @router.post("/events/{event_id}/payment/confirm")
 async def confirm_payment(request: Request, event_id: str, student: Student = Depends(require_student_login)):
@@ -1006,6 +1035,9 @@ async def cancel_entire_team(event_id: str, team_registration_id: str):
 async def manage_team_get(request: Request, event_id: str, student: Student = Depends(require_student_login)):
     """Display team management interface for team leaders during registration phase"""
     try:
+        from bson import ObjectId, json_util
+        import json
+        
         # Get student data
         student_data = await DatabaseOperations.find_one("students", {"enrollment_no": student.enrollment_no})
         if not student_data:
@@ -1028,9 +1060,8 @@ async def manage_team_get(request: Request, event_id: str, student: Student = De
         event = await DatabaseOperations.find_one("events", {"event_id": event_id})
         if not event:
             raise HTTPException(status_code=404, detail="Event not found")
-        
-        # Check if event is in registration phase
-        if event.get('status') != 'registration':
+          # Check if event is in registration phase (upcoming with registration_open sub_status)
+        if event.get('status') != 'upcoming' or event.get('sub_status') != 'registration_open':
             return templates.TemplateResponse("client/team_management.html", {
                 "request": request,
                 "event": event,
@@ -1060,10 +1091,17 @@ async def manage_team_get(request: Request, event_id: str, student: Student = De
                             "department": participant_data.get('department', ''),
                             "semester": participant_data.get('semester', '')
                         })
+          # Serialize ObjectIDs in event data to avoid JSON serialization issues
+        serialized_event = {}
+        for key, value in event.items():
+            if isinstance(value, ObjectId):
+                serialized_event[key] = str(value)
+            else:
+                serialized_event[key] = value
         
         return templates.TemplateResponse("client/team_management.html", {
             "request": request,
-            "event": event,
+            "event": serialized_event,
             "student": student,
             "team_details": team_details,
             "team_participants": team_participants,
@@ -1082,6 +1120,9 @@ async def manage_team_get(request: Request, event_id: str, student: Student = De
 async def manage_team_post(request: Request, event_id: str, student: Student = Depends(require_student_login)):
     """Handle team management actions (add/remove/update participants)"""
     try:
+        from bson import ObjectId, json_util
+        import json
+        
         form_data = await request.form()
         action = form_data.get("action")
         
@@ -1099,10 +1140,9 @@ async def manage_team_post(request: Request, event_id: str, student: Student = D
         participation = event_participations[event_id]
         if participation.get('registration_type') != 'team_leader':
             raise HTTPException(status_code=403, detail="Only team leaders can manage teams")
-        
-        # Get event details
+          # Get event details
         event = await DatabaseOperations.find_one("events", {"event_id": event_id})
-        if not event or event.get('status') != 'registration':
+        if not event or event.get('status') != 'upcoming' or event.get('sub_status') != 'registration_open':
             raise HTTPException(status_code=400, detail="Team management is only available during registration phase")
         
         team_registration_id = participation.get('team_registration_id')
@@ -1127,7 +1167,10 @@ async def manage_team_post(request: Request, event_id: str, student: Student = D
         raise HTTPException(status_code=500, detail="Error updating team")
 
 async def add_team_participant(event_id: str, team_registration_id: str, form_data: dict):
-    """Add a participant to the team registration"""
+    """Add a participant to the team registration after validation and confirmation"""
+    from bson import ObjectId, json_util
+    import json
+    
     enrollment_no = form_data.get("participant_enrollment").strip()
     
     # Validate enrollment number
@@ -1138,6 +1181,24 @@ async def add_team_participant(event_id: str, team_registration_id: str, form_da
     existing_participant = await DatabaseOperations.find_one("students", {"enrollment_no": enrollment_no})
     if not existing_participant:
         raise HTTPException(status_code=404, detail="Participant not found")
+        
+    # Get event details to check team size limits
+    event = await DatabaseOperations.find_one("events", {"event_id": event_id})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+        
+    # Get current team details
+    team_details = event.get('team_registrations', {}).get(team_registration_id, {})
+    current_team_size = len(team_details.get('participants', [])) + 1  # +1 for team leader
+    max_team_size = event.get('team_size_max', 5)
+    
+    # Check team size limit
+    if current_team_size >= max_team_size:
+        raise HTTPException(status_code=400, detail=f"Team size cannot exceed the maximum limit of {max_team_size} participants")
+    
+    # Check if student is already part of this team
+    if enrollment_no in team_details.get('participants', []) or enrollment_no == team_details.get('team_leader_enrollment'):
+        raise HTTPException(status_code=400, detail="This student is already part of the team")
     
     # Check if already registered for this event
     event_participations = existing_participant.get('event_participations', {})
@@ -1193,11 +1254,28 @@ async def add_team_participant(event_id: str, team_registration_id: str, form_da
 
 async def remove_team_participant(event_id: str, team_registration_id: str, form_data: dict):
     """Remove a participant from the team registration"""
+    from bson import ObjectId, json_util
+    import json
+    
     enrollment_no = form_data.get("participant_enrollment").strip()
     
     # Validate enrollment number
     if not enrollment_no:
         raise HTTPException(status_code=400, detail="Enrollment number is required")
+        
+    # Get event details to check team size limits
+    event = await DatabaseOperations.find_one("events", {"event_id": event_id})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+        
+    # Get current team details
+    team_details = event.get('team_registrations', {}).get(team_registration_id, {})
+    current_team_size = len(team_details.get('participants', [])) + 1  # +1 for team leader
+    min_team_size = event.get('team_size_min', 2)
+    
+    # Check minimum team size
+    if current_team_size <= min_team_size:
+        raise HTTPException(status_code=400, detail=f"Team size cannot be less than the minimum of {min_team_size} participants")
     
     # Remove from student's event participations
     await DatabaseOperations.update_one(

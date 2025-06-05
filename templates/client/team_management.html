@@ -4,6 +4,18 @@
 
 {% block head %}
 <script src="/static/js/registration.js"></script>
+<style>
+    @keyframes bounceIn {
+        0% { transform: scale(0.3); opacity: 0; }
+        40% { transform: scale(1.05); }
+        60% { transform: scale(0.95); }
+        80% { transform: scale(1.01); }
+        100% { transform: scale(1); opacity: 1; }
+    }
+    .animate-bounce-in {
+        animation: bounceIn 0.6s ease forwards;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -16,30 +28,89 @@
             </div>
             <h1 class="text-3xl font-bold text-gray-900 mb-2">Team Management</h1>
             <p class="text-lg text-gray-600 mb-4">{{ event.event_name }}</p>
-            
-            <!-- Team Leader Info -->
+              <!-- Team Leader Info -->
             <div class="bg-blue-50 border-l-4 border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
                 <i class="fas fa-user-tie mr-2"></i>Team Leader: <strong>{{ student.full_name }}</strong> ({{ student.enrollment_no }})
             </div>
-            
-            <!-- Team Info -->
+              <!-- Team Info Card - Consolidated horizontal layout -->
             {% if team_details %}
-            <div class="bg-green-50 border-l-4 border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-                <i class="fas fa-users mr-2"></i>Team: <strong>{{ team_details.team_name }}</strong> | 
-                <span class="font-semibold">{{ (team_participants|length) + 1 }} members</span>
+            <div class="bg-white rounded-lg shadow-md border border-gray-200 p-6 mb-6">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-16 h-16 bg-gradient-to-r from-green-500 to-blue-600 rounded-full flex items-center justify-center">
+                            <i class="fas fa-users text-white text-2xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-900">{{ team_details.team_name }}</h3>
+                            <p class="text-gray-600">Team Registration ID: {{ team_registration_id }}</p>
+                        </div>
+                    </div>
+                    <div class="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-6">
+                        <div class="text-center md:text-left">
+                            <div class="text-2xl font-bold text-green-600">{{ (team_participants|length) + 1 }}</div>
+                            <div class="text-sm text-gray-500">Total Members</div>
+                        </div>
+                        <div class="text-center md:text-left">
+                            <div class="text-lg font-semibold text-blue-600">{{ event.team_size_min or 2 }} - {{ event.team_size_max or 5 }}</div>
+                            <div class="text-sm text-gray-500">Size Range</div>
+                        </div>
+                        {% if (team_participants|length) + 1 >= (event.team_size_max or 5) %}
+                        <div class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium">
+                            <i class="fas fa-exclamation-circle mr-1"></i>Max Size Reached
+                        </div>
+                        {% elif (team_participants|length) + 1 < (event.team_size_min or 2) %}
+                        <div class="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-medium">
+                            <i class="fas fa-users-slash mr-1"></i>Needs More Members
+                        </div>
+                        {% else %}
+                        <div class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                            <i class="fas fa-check-circle mr-1"></i>Valid Size
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
             {% endif %}
-            
-            <!-- Messages -->
+              <!-- Enhanced Messages with better styling -->
             {% if success %}
-            <div class="mb-4 bg-green-50 border-l-4 border-green-400 text-green-700 px-4 py-3 rounded">
-                <i class="fas fa-check-circle mr-2"></i>{{ success }}
+            <div class="mb-6 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4 shadow-sm">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                            <i class="fas fa-check text-white text-sm"></i>
+                        </div>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-green-800">Success!</h3>
+                        <div class="text-sm text-green-700 mt-1">
+                            {% if success == 'team_updated' %}
+                                Team has been successfully updated. All changes have been saved.
+                            {% elif success == 'participant_added' %}
+                                New participant has been added to your team successfully.
+                            {% elif success == 'participant_removed' %}
+                                Participant has been removed from your team.
+                            {% else %}
+                                {{ success }}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
             </div>
             {% endif %}
             
             {% if error %}
-            <div class="mb-4 bg-red-50 border-l-4 border-red-400 text-red-700 px-4 py-3 rounded">
-                <i class="fas fa-exclamation-triangle mr-2"></i>{{ error }}
+            <div class="mb-6 bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 rounded-lg p-4 shadow-sm">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
+                            <i class="fas fa-exclamation-triangle text-white text-sm"></i>
+                        </div>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-red-800">Error</h3>
+                        <div class="text-sm text-red-700 mt-1">{{ error }}</div>
+                    </div>
+                </div>
             </div>
             {% endif %}
         </div>
@@ -123,29 +194,45 @@
             <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center">
                 <i class="fas fa-user-plus text-green-600 mr-3"></i>Add New Participant
             </h2>
-            
-            <form id="addParticipantForm" action="/client/events/{{ event.event_id }}/manage-team" method="POST" class="space-y-6">
-                <input type="hidden" name="action" value="add_participant">
-                
+              <form id="searchParticipantForm" class="space-y-6">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="md:col-span-2">
                         <label for="participant_enrollment" class="block text-sm font-semibold text-gray-800 mb-2">
                             Enrollment Number *
                         </label>
-                        <input type="text" name="participant_enrollment" id="participant_enrollment"
-                               class="block w-full px-4 py-2 text-gray-900 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                               required placeholder="e.g., 21BECE40015" pattern="^\d{2}[A-Z]{2,4}\d{5}$">
-                        <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
+                        <div class="flex">
+                            <input type="text" id="participant_enrollment"
+                                   class="block w-full px-4 py-2 text-gray-900 border border-gray-300 rounded-l-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                   required placeholder="e.g., 21BECE40015" pattern="^\d{2}[A-Z]{2,4}\d{5}$">
+                            <button type="submit" id="searchButton" class="bg-blue-600 text-white px-4 py-2 rounded-r-md hover:bg-blue-700 transition-colors">
+                                <i class="fas fa-search mr-1"></i>Search
+                            </button>
+                        </div>
+                        <div id="enrollment-error" class="text-red-500 text-sm mt-1 hidden"></div>
                         <div class="text-sm text-gray-600 mt-1">
-                            <i class="fas fa-info-circle mr-1"></i>Enter the enrollment number. Student details will be validated automatically.
+                            <i class="fas fa-info-circle mr-1"></i>Enter the enrollment number and click Search to find and validate the student.
                         </div>
                     </div>
                 </div>
                 
-                <div class="flex justify-end">
-                    <button type="submit" class="bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors flex items-center">
-                        <i class="fas fa-plus mr-2"></i>Add Participant
-                    </button>
+                <div class="flex justify-between items-center">
+                    <!-- Team size info -->
+                    <div class="text-sm text-gray-600">
+                        <span class="font-semibold">Current team size:</span> {{ (team_participants|length) + 1 }} / {{ event.team_size_max or 5 }} members
+                        <div class="flex space-x-2 mt-1">
+                            <div class="text-blue-600">
+                                <i class="fas fa-info-circle mr-1"></i>Min: {{ event.team_size_min or 2 }} members
+                            </div>
+                            <div class="text-blue-600">
+                                <i class="fas fa-info-circle mr-1"></i>Max: {{ event.team_size_max or 5 }} members
+                            </div>
+                        </div>
+                        {% if (team_participants|length) + 1 >= (event.team_size_max or 5) %}
+                        <div class="mt-1 text-yellow-600">
+                            <i class="fas fa-exclamation-circle mr-1"></i>Maximum team size reached
+                        </div>
+                        {% endif %}
+                    </div>
                 </div>
             </form>
         </div>
@@ -178,15 +265,61 @@
             <form id="removeParticipantForm" action="/client/events/{{ event.event_id }}/manage-team" method="POST">
                 <input type="hidden" name="action" value="remove_participant">
                 <input type="hidden" name="participant_enrollment" id="remove-participant-enrollment">
+                  <div class="flex flex-col">
+                    <!-- Min team size warning -->
+                    {% if (team_participants|length) + 1 <= (event.team_size_min or 2) %}
+                    <div class="mb-3 text-sm text-yellow-600 bg-yellow-50 p-2 rounded">
+                        <i class="fas fa-exclamation-triangle mr-1"></i>Cannot remove - minimum team size is {{ event.team_size_min or 2 }}
+                    </div>
+                    {% endif %}
+                    
+                    <div class="flex justify-center space-x-4">
+                        <button type="button" id="cancelRemove" 
+                                class="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 transition-colors">
+                            Cancel
+                        </button>
+                        <button type="submit" 
+                                class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors"
+                                {% if (team_participants|length) + 1 <= (event.team_size_min or 2) %}disabled="disabled" class="bg-gray-400 cursor-not-allowed"{% endif %}>
+                            Remove
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Add Participant Confirmation Modal -->
+<div id="confirmModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-gray-900">Confirm Adding Participant</h3>
+                <button type="button" id="cancelConfirm" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div id="studentDetails" class="mb-6 bg-gray-50 p-4 rounded-lg">
+                <!-- Student details will be displayed here -->
+                <div class="flex justify-center items-center py-6 px-4 text-gray-500">
+                    <i class="fas fa-spinner fa-spin mr-2"></i>Loading student information...
+                </div>
+            </div>
+            
+            <form id="addParticipantForm" action="/client/events/{{ event.event_id }}/manage-team" method="POST" class="space-y-4">
+                <input type="hidden" name="action" value="add_participant">
+                <input type="hidden" name="participant_enrollment" id="confirm-participant-enrollment">
                 
-                <div class="flex justify-center space-x-4">
-                    <button type="button" id="cancelRemove" 
+                <div class="flex justify-end space-x-3 pt-4">
+                    <button type="button" id="cancelConfirmBtn" 
                             class="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 transition-colors">
                         Cancel
                     </button>
-                    <button type="submit" 
-                            class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors">
-                        Remove
+                    <button type="submit" id="confirmAddBtn"
+                            class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors">
+                        <i class="fas fa-check mr-1"></i>Confirm & Add
                     </button>
                 </div>
             </form>
@@ -300,9 +433,8 @@ document.addEventListener('DOMContentLoaded', function() {
             editModal.classList.add('hidden');
         });
     });
-    
-    // Close modals when clicking outside
-    [removeModal, editModal].forEach(modal => {
+      // Close modals when clicking outside
+    [removeModal, editModal, confirmModal].forEach(modal => {
         modal.addEventListener('click', function(e) {
             if (e.target === modal) {
                 modal.classList.add('hidden');
@@ -337,66 +469,248 @@ document.addEventListener('DOMContentLoaded', function() {
                 validateParticipant(enrollment);
             }
         }
-    });
+    });    // Add participant search and confirmation flow
+    const searchForm = document.getElementById('searchParticipantForm');
+    const confirmModal = document.getElementById('confirmModal');
+    const studentDetailsDiv = document.getElementById('studentDetails');
+    const addForm = document.getElementById('addParticipantForm');
+    const cancelConfirm = document.getElementById('cancelConfirm');
+    const cancelConfirmBtn = document.getElementById('cancelConfirmBtn');
     
-    // Function to validate participant
-    async function validateParticipant(enrollment) {
-        try {
-            const response = await fetch(`/client/api/validate-participant?enrollment=${encodeURIComponent(enrollment)}`);
-            const data = await response.json();
-            
-            const errorDiv = enrollmentInput.nextElementSibling;
-            
-            if (data.success) {
-                if (data.has_conflict && data.conflicts) {
-                    let conflictMessage = 'This student is already registered for other events or this team.';
-                    errorDiv.textContent = conflictMessage;
-                    errorDiv.classList.remove('hidden');
-                } else {
-                    errorDiv.textContent = '';
-                    errorDiv.classList.add('hidden');
-                }
-            } else {
-                errorDiv.textContent = data.message || 'Student not found';
-                errorDiv.classList.remove('hidden');
-            }
-        } catch (error) {
-            console.error('Validation error:', error);
-        }
-    }
-    
-    // Form submission validation
-    addForm.addEventListener('submit', function(e) {
+    // Search form submission
+    searchForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
         const enrollment = enrollmentInput.value.trim();
         const enrollmentPattern = /^\d{2}[A-Z]{2,4}\d{5}$/;
+        const currentTeamSize = {{ (team_participants|length) + 1 }};
+        const maxTeamSize = {{ event.team_size_max or 5 }};
+        const errorDiv = document.getElementById('enrollment-error');
         
+        // Clear previous errors
+        errorDiv.textContent = '';
+        errorDiv.classList.add('hidden');
+        
+        // Basic validation
         if (!enrollment || !enrollmentPattern.test(enrollment)) {
-            e.preventDefault();
-            showAlert('Please enter a valid enrollment number', 'error');
+            errorDiv.textContent = 'Please enter a valid enrollment number (e.g., 21BECE40015)';
+            errorDiv.classList.remove('hidden');
             enrollmentInput.focus();
             return false;
         }
+        
+        if (currentTeamSize >= maxTeamSize) {
+            errorDiv.textContent = `Maximum team size of ${maxTeamSize} reached`;
+            errorDiv.classList.remove('hidden');
+            return false;
+        }
+        
+        // Show loading state in student details div
+        studentDetailsDiv.innerHTML = `
+            <div class="flex justify-center items-center py-6 px-4 text-gray-500">
+                <i class="fas fa-spinner fa-spin mr-2"></i>Loading student information...
+            </div>
+        `;
+          // Open confirmation modal with animation
+        confirmModal.classList.remove('hidden');
+        setTimeout(() => {
+            const modalContent = confirmModal.querySelector('.relative');
+            modalContent.classList.add('animate-bounce-in');
+        }, 10);
+        
+        // Fetch student details
+        try {
+            const eventId = '{{ event.event_id }}';
+            const teamId = '{{ team_registration_id }}';
+            const response = await fetch(`/client/api/validate-participant?enrollment=${encodeURIComponent(enrollment)}&event_id=${eventId}&team_id=${teamId}`);
+            const data = await response.json();
+            
+            // Process response
+            if (data.success && data.can_add) {
+                // Populate student details for confirmation
+                const student = data.student;
+                document.getElementById('confirm-participant-enrollment').value = student.enrollment_no;
+                
+                // Create student profile card
+                studentDetailsDiv.innerHTML = `
+                    <div class="bg-white rounded-lg border border-gray-200 shadow-sm">
+                        <div class="p-4 border-b border-gray-200 flex items-center">
+                            <div class="w-16 h-16 bg-gray-600 rounded-full flex items-center justify-center text-white font-bold text-xl mr-4">
+                                ${student.full_name ? student.full_name[0].toUpperCase() : 'S'}
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-semibold text-gray-900">${student.full_name}</h3>
+                                <p class="text-gray-600">${student.enrollment_no}</p>
+                            </div>
+                        </div>
+                        <div class="p-4 space-y-2">
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">Department:</span>
+                                <span class="font-semibold">${student.department || 'N/A'}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">Semester:</span>
+                                <span class="font-semibold">${student.semester || 'N/A'}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">Email:</span>
+                                <span class="font-semibold">${student.email || 'N/A'}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">Mobile:</span>
+                                <span class="font-semibold">${student.mobile_no || 'N/A'}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">Gender:</span>
+                                <span class="font-semibold">${student.gender || 'N/A'}</span>
+                            </div>
+                        </div>
+                        <div class="bg-green-50 p-3 text-green-700 text-sm text-center border-t border-green-100">
+                            <i class="fas fa-check-circle mr-1"></i>Student validated successfully. Please confirm to add to your team.
+                        </div>
+                    </div>
+                `;
+                
+                // Enable the confirm button
+                document.getElementById('confirmAddBtn').disabled = false;
+            } else {
+                // Show error
+                studentDetailsDiv.innerHTML = `
+                    <div class="bg-red-50 border-l-4 border-red-400 p-4">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-exclamation-triangle text-red-600"></i>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-red-700">${data.message || 'Unable to validate student'}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;                    // Disable the confirm button
+                document.getElementById('confirmAddBtn').disabled = true;
+                document.getElementById('confirmAddBtn').classList.add('bg-gray-400', 'cursor-not-allowed');
+                document.getElementById('confirmAddBtn').classList.remove('bg-green-600', 'hover:bg-green-700');
+                
+                // Show error in the original search form as well
+                const errorDiv = document.getElementById('enrollment-error');
+                errorDiv.textContent = data.message || 'Student validation failed';
+                errorDiv.classList.remove('hidden');
+                
+                // Close modal after a delay to show the error message
+                setTimeout(() => {
+                    confirmModal.classList.add('hidden');
+                }, 2500);
+            }
+        } catch (error) {
+            console.error('Validation error:', error);
+            studentDetailsDiv.innerHTML = `
+                <div class="bg-red-50 border-l-4 border-red-400 p-4">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-exclamation-triangle text-red-600"></i>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-red-700">An error occurred while validating the student.</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Disable the confirm button
+            document.getElementById('confirmAddBtn').disabled = true;
+            document.getElementById('confirmAddBtn').classList.add('bg-gray-400', 'cursor-not-allowed');
+            document.getElementById('confirmAddBtn').classList.remove('bg-green-600', 'hover:bg-green-700');
+            
+            // Show error in the search form as well
+            const errorDiv = document.getElementById('enrollment-error');
+            errorDiv.textContent = 'An error occurred while validating the student';
+            errorDiv.classList.remove('hidden');
+        }
+    });
+      // Close confirmation modal
+    [cancelConfirm, cancelConfirmBtn].forEach(button => {
+        button.addEventListener('click', function() {
+            confirmModal.classList.add('hidden');
+        });
     });
     
-    // Alert function
+    // Clear enrollment input after successful confirmation
+    addForm.addEventListener('submit', function() {
+        // Clear the search input field for better UX after adding
+        setTimeout(() => {
+            enrollmentInput.value = '';
+        }, 500);
+    });
+      // Handle the confirmation form submission
+    addForm.addEventListener('submit', function(e) {
+        const enrollment = document.getElementById('confirm-participant-enrollment').value.trim();
+        const currentTeamSize = {{ (team_participants|length) + 1 }};
+        const maxTeamSize = {{ event.team_size_max or 5 }};
+        
+        if (!enrollment) {
+            e.preventDefault();
+            showAlert('Participant enrollment number is missing', 'error');
+            return false;
+        }
+        
+        if (currentTeamSize >= maxTeamSize) {
+            e.preventDefault();
+            showAlert(`Maximum team size of ${maxTeamSize} reached`, 'error');
+            return false;
+        }
+        
+        // Show loading state
+        const confirmBtn = document.getElementById('confirmAddBtn');
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Adding...';
+        confirmBtn.classList.add('bg-green-500');
+        
+        // Show a message that the form is being submitted
+        showAlert('Adding participant to team...', 'info');
+        
+        // Allow form submission to proceed
+        return true;
+    });
+      // Alert function
     function showAlert(message, type) {
         const alertDiv = document.createElement('div');
-        alertDiv.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${
-            type === 'error' ? 'bg-red-100 border-red-400 text-red-700' : 
-            'bg-green-100 border-green-400 text-green-700'
-        }`;
+        
+        // Set styling based on alert type
+        let styling, icon;
+        switch(type) {
+            case 'error':
+                styling = 'bg-red-100 border-red-400 text-red-700';
+                icon = 'exclamation-triangle';
+                break;
+            case 'info':
+                styling = 'bg-blue-100 border-blue-400 text-blue-700';
+                icon = 'info-circle';
+                break;
+            case 'warning':
+                styling = 'bg-yellow-100 border-yellow-400 text-yellow-700';
+                icon = 'exclamation-circle';
+                break;
+            case 'success':
+            default:
+                styling = 'bg-green-100 border-green-400 text-green-700';
+                icon = 'check-circle';
+                break;
+        }
+        
+        alertDiv.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${styling}`;
         alertDiv.innerHTML = `
             <div class="flex items-center">
-                <i class="fas fa-${type === 'error' ? 'exclamation-triangle' : 'check-circle'} mr-2"></i>
+                <i class="fas fa-${icon} mr-2"></i>
                 ${message}
             </div>
         `;
         
         document.body.appendChild(alertDiv);
         
+        // Remove the alert after a timeout
         setTimeout(() => {
-            alertDiv.remove();
-        }, 5000);
+            alertDiv.classList.add('opacity-0', 'transition-opacity', 'duration-500');
+            setTimeout(() => alertDiv.remove(), 500);
+        }, 4000);
     }
 });
 </script>
