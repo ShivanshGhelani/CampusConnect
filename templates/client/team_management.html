@@ -1,0 +1,404 @@
+{% extends "base.html" %}
+
+{% block title %}Team Management - {{ event.event_name }}{% endblock %}
+
+{% block head %}
+<script src="/static/js/registration.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-blue-50 to-green-100 py-10 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-4xl w-full mx-auto space-y-8">
+        <!-- Header -->
+        <div class="text-center">
+            <div class="mx-auto h-20 w-20 flex items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-green-500 shadow-lg mb-8">
+                <i class="fas fa-users text-white text-3xl"></i>
+            </div>
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">Team Management</h1>
+            <p class="text-lg text-gray-600 mb-4">{{ event.event_name }}</p>
+            
+            <!-- Team Leader Info -->
+            <div class="bg-blue-50 border-l-4 border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
+                <i class="fas fa-user-tie mr-2"></i>Team Leader: <strong>{{ student.full_name }}</strong> ({{ student.enrollment_no }})
+            </div>
+            
+            <!-- Team Info -->
+            {% if team_details %}
+            <div class="bg-green-50 border-l-4 border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+                <i class="fas fa-users mr-2"></i>Team: <strong>{{ team_details.team_name }}</strong> | 
+                <span class="font-semibold">{{ (team_participants|length) + 1 }} members</span>
+            </div>
+            {% endif %}
+            
+            <!-- Messages -->
+            {% if success %}
+            <div class="mb-4 bg-green-50 border-l-4 border-green-400 text-green-700 px-4 py-3 rounded">
+                <i class="fas fa-check-circle mr-2"></i>{{ success }}
+            </div>
+            {% endif %}
+            
+            {% if error %}
+            <div class="mb-4 bg-red-50 border-l-4 border-red-400 text-red-700 px-4 py-3 rounded">
+                <i class="fas fa-exclamation-triangle mr-2"></i>{{ error }}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Current Team Members -->
+        <div class="bg-white rounded-xl shadow-xl border border-gray-100 p-8">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+                <i class="fas fa-users text-blue-600 mr-3"></i>Current Team Members
+            </h2>
+            
+            <!-- Team Leader Card -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-lg mr-4">
+                            <i class="fas fa-crown"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900">{{ student.full_name }}</h3>
+                            <p class="text-sm text-gray-600">{{ student.enrollment_no }} | {{ student.department }} | Semester {{ student.semester }}</p>
+                            <p class="text-sm text-gray-600">{{ student.email }} | {{ student.mobile_no or 'N/A' }}</p>
+                        </div>
+                    </div>
+                    <span class="bg-blue-100 text-blue-800 text-xs font-medium px-3 py-1 rounded-full">
+                        Team Leader
+                    </span>
+                </div>
+            </div>
+            
+            <!-- Team Participants -->
+            {% if team_participants %}
+            <div class="space-y-4">
+                {% for participant in team_participants %}
+                <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <div class="w-12 h-12 bg-gray-600 rounded-full flex items-center justify-center text-white font-bold text-lg mr-4">
+                                {{ participant.full_name[0].upper() if participant.full_name else participant.enrollment_no[0] }}
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-semibold text-gray-900">{{ participant.full_name or 'Name not available' }}</h3>
+                                <p class="text-sm text-gray-600">
+                                    {{ participant.enrollment_no }} 
+                                    {% if participant.department %}| {{ participant.department }}{% endif %}
+                                    {% if participant.semester %}| Semester {{ participant.semester }}{% endif %}
+                                </p>
+                                <p class="text-sm text-gray-600">
+                                    {{ participant.email or 'Email not available' }} 
+                                    {% if participant.mobile_no %}| {{ participant.mobile_no }}{% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button type="button" class="edit-participant-btn bg-yellow-600 text-white px-3 py-1 rounded text-sm hover:bg-yellow-700 transition-colors"
+                                    data-enrollment="{{ participant.enrollment_no }}"
+                                    data-name="{{ participant.full_name or '' }}"
+                                    data-email="{{ participant.email or '' }}"
+                                    data-mobile="{{ participant.mobile_no or '' }}">
+                                <i class="fas fa-edit mr-1"></i>Edit
+                            </button>
+                            <button type="button" class="remove-participant-btn bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 transition-colors"
+                                    data-enrollment="{{ participant.enrollment_no }}"
+                                    data-name="{{ participant.full_name or participant.enrollment_no }}">
+                                <i class="fas fa-trash mr-1"></i>Remove
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-8">
+                <i class="fas fa-user-plus text-4xl text-gray-300 mb-4"></i>
+                <p class="text-gray-500">No team participants added yet</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Add New Participant -->
+        <div class="bg-white rounded-xl shadow-xl border border-gray-100 p-8">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+                <i class="fas fa-user-plus text-green-600 mr-3"></i>Add New Participant
+            </h2>
+            
+            <form id="addParticipantForm" action="/client/events/{{ event.event_id }}/manage-team" method="POST" class="space-y-6">
+                <input type="hidden" name="action" value="add_participant">
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="md:col-span-2">
+                        <label for="participant_enrollment" class="block text-sm font-semibold text-gray-800 mb-2">
+                            Enrollment Number *
+                        </label>
+                        <input type="text" name="participant_enrollment" id="participant_enrollment"
+                               class="block w-full px-4 py-2 text-gray-900 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                               required placeholder="e.g., 21BECE40015" pattern="^\d{2}[A-Z]{2,4}\d{5}$">
+                        <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
+                        <div class="text-sm text-gray-600 mt-1">
+                            <i class="fas fa-info-circle mr-1"></i>Enter the enrollment number. Student details will be validated automatically.
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end">
+                    <button type="submit" class="bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors flex items-center">
+                        <i class="fas fa-plus mr-2"></i>Add Participant
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Navigation -->
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+            <a href="/client/events/{{ event.event_id }}" 
+               class="bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors text-center flex items-center justify-center">
+                <i class="fas fa-arrow-left mr-2"></i>Back to Event Details
+            </a>
+            <a href="/client/dashboard" 
+               class="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors text-center flex items-center justify-center">
+                <i class="fas fa-tachometer-alt mr-2"></i>Go to Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Remove Participant Modal -->
+<div id="removeModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3 text-center">
+            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                <i class="fas fa-exclamation-triangle text-red-600"></i>
+            </div>
+            <h3 class="text-lg font-medium text-gray-900 mb-2">Remove Team Member</h3>
+            <p class="text-sm text-gray-500 mb-4">
+                Are you sure you want to remove <span id="remove-participant-name" class="font-semibold"></span> from your team?
+            </p>
+            <form id="removeParticipantForm" action="/client/events/{{ event.event_id }}/manage-team" method="POST">
+                <input type="hidden" name="action" value="remove_participant">
+                <input type="hidden" name="participant_enrollment" id="remove-participant-enrollment">
+                
+                <div class="flex justify-center space-x-4">
+                    <button type="button" id="cancelRemove" 
+                            class="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" 
+                            class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors">
+                        Remove
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Participant Modal -->
+<div id="editModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-medium text-gray-900">Edit Participant Details</h3>
+                <button type="button" id="cancelEdit" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <form id="editParticipantForm" action="/client/events/{{ event.event_id }}/manage-team" method="POST" class="space-y-4">
+                <input type="hidden" name="action" value="update_participant">
+                <input type="hidden" name="participant_enrollment" id="edit-participant-enrollment">
+                
+                <div>
+                    <label for="edit_participant_name" class="block text-sm font-medium text-gray-700 mb-1">
+                        Full Name
+                    </label>
+                    <input type="text" name="participant_name" id="edit_participant_name"
+                           class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+                
+                <div>
+                    <label for="edit_participant_email" class="block text-sm font-medium text-gray-700 mb-1">
+                        Email
+                    </label>
+                    <input type="email" name="participant_email" id="edit_participant_email"
+                           class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+                
+                <div>
+                    <label for="edit_participant_mobile" class="block text-sm font-medium text-gray-700 mb-1">
+                        Mobile Number
+                    </label>
+                    <input type="tel" name="participant_mobile" id="edit_participant_mobile"
+                           class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+                
+                <div class="flex justify-end space-x-3 pt-4">
+                    <button type="button" id="cancelEditBtn" 
+                            class="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" 
+                            class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors">
+                        <i class="fas fa-save mr-1"></i>Update
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Remove participant functionality
+    const removeButtons = document.querySelectorAll('.remove-participant-btn');
+    const removeModal = document.getElementById('removeModal');
+    const removeForm = document.getElementById('removeParticipantForm');
+    const cancelRemove = document.getElementById('cancelRemove');
+    
+    removeButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const enrollment = this.getAttribute('data-enrollment');
+            const name = this.getAttribute('data-name');
+            
+            document.getElementById('remove-participant-name').textContent = name;
+            document.getElementById('remove-participant-enrollment').value = enrollment;
+            
+            removeModal.classList.remove('hidden');
+        });
+    });
+    
+    cancelRemove.addEventListener('click', function() {
+        removeModal.classList.add('hidden');
+    });
+    
+    // Edit participant functionality
+    const editButtons = document.querySelectorAll('.edit-participant-btn');
+    const editModal = document.getElementById('editModal');
+    const editForm = document.getElementById('editParticipantForm');
+    const cancelEdit = document.getElementById('cancelEdit');
+    const cancelEditBtn = document.getElementById('cancelEditBtn');
+    
+    editButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const enrollment = this.getAttribute('data-enrollment');
+            const name = this.getAttribute('data-name');
+            const email = this.getAttribute('data-email');
+            const mobile = this.getAttribute('data-mobile');
+            
+            document.getElementById('edit-participant-enrollment').value = enrollment;
+            document.getElementById('edit_participant_name').value = name;
+            document.getElementById('edit_participant_email').value = email;
+            document.getElementById('edit_participant_mobile').value = mobile;
+            
+            editModal.classList.remove('hidden');
+        });
+    });
+    
+    [cancelEdit, cancelEditBtn].forEach(button => {
+        button.addEventListener('click', function() {
+            editModal.classList.add('hidden');
+        });
+    });
+    
+    // Close modals when clicking outside
+    [removeModal, editModal].forEach(modal => {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                modal.classList.add('hidden');
+            }
+        });
+    });
+    
+    // Add participant form validation
+    const addForm = document.getElementById('addParticipantForm');
+    const enrollmentInput = document.getElementById('participant_enrollment');
+    
+    // Format enrollment input
+    enrollmentInput.addEventListener('input', function() {
+        let value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        this.value = value;
+    });
+    
+    // Validate enrollment format on blur
+    enrollmentInput.addEventListener('blur', function() {
+        const enrollment = this.value.trim();
+        const errorDiv = this.nextElementSibling;
+        
+        if (enrollment) {
+            const enrollmentPattern = /^\d{2}[A-Z]{2,4}\d{5}$/;
+            if (!enrollmentPattern.test(enrollment)) {
+                errorDiv.textContent = 'Invalid enrollment number format (e.g., 21BECE40015)';
+                errorDiv.classList.remove('hidden');
+            } else {
+                errorDiv.textContent = '';
+                errorDiv.classList.add('hidden');
+                // Validate if participant can be added
+                validateParticipant(enrollment);
+            }
+        }
+    });
+    
+    // Function to validate participant
+    async function validateParticipant(enrollment) {
+        try {
+            const response = await fetch(`/client/api/validate-participant?enrollment=${encodeURIComponent(enrollment)}`);
+            const data = await response.json();
+            
+            const errorDiv = enrollmentInput.nextElementSibling;
+            
+            if (data.success) {
+                if (data.has_conflict && data.conflicts) {
+                    let conflictMessage = 'This student is already registered for other events or this team.';
+                    errorDiv.textContent = conflictMessage;
+                    errorDiv.classList.remove('hidden');
+                } else {
+                    errorDiv.textContent = '';
+                    errorDiv.classList.add('hidden');
+                }
+            } else {
+                errorDiv.textContent = data.message || 'Student not found';
+                errorDiv.classList.remove('hidden');
+            }
+        } catch (error) {
+            console.error('Validation error:', error);
+        }
+    }
+    
+    // Form submission validation
+    addForm.addEventListener('submit', function(e) {
+        const enrollment = enrollmentInput.value.trim();
+        const enrollmentPattern = /^\d{2}[A-Z]{2,4}\d{5}$/;
+        
+        if (!enrollment || !enrollmentPattern.test(enrollment)) {
+            e.preventDefault();
+            showAlert('Please enter a valid enrollment number', 'error');
+            enrollmentInput.focus();
+            return false;
+        }
+    });
+    
+    // Alert function
+    function showAlert(message, type) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${
+            type === 'error' ? 'bg-red-100 border-red-400 text-red-700' : 
+            'bg-green-100 border-green-400 text-green-700'
+        }`;
+        alertDiv.innerHTML = `
+            <div class="flex items-center">
+                <i class="fas fa-${type === 'error' ? 'exclamation-triangle' : 'check-circle'} mr-2"></i>
+                ${message}
+            </div>
+        `;
+        
+        document.body.appendChild(alertDiv);
+        
+        setTimeout(() => {
+            alertDiv.remove();
+        }, 5000);
+    }
+});
+</script>
+
+{% endblock %}

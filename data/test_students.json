@@ -1,0 +1,81 @@
+{
+    "student_registration": [
+        {
+            "full_name": "Arjun Mehta",
+            "enrollment_no": "22BECE30050",
+            "email": "arjun.mehta@ldrp.ac.in",
+            "mobile_no": "9876543250",
+            "department": "Computer Engineering",
+            "semester": 6,
+            "gender": "male",
+            "date_of_birth": "2003-03-15",
+            "password": "Arjun@2003"
+        },
+        {
+            "full_name": "Sneha Sharma",
+            "enrollment_no": "22BEIT30051",
+            "email": "sneha.sharma@ldrp.ac.in",
+            "mobile_no": "9876543251",
+            "department": "Information Technology",
+            "semester": 6,
+            "gender": "female",
+            "date_of_birth": "2003-05-22",
+            "password": "Sneha@2003"
+        },
+        {
+            "full_name": "Rohan Gupta",
+            "enrollment_no": "22BEEE30052",
+            "email": "rohan.gupta@ldrp.ac.in",
+            "mobile_no": "9876543252",
+            "department": "Electrical Engineering",
+            "semester": 6,
+            "gender": "male",
+            "date_of_birth": "2003-08-10",
+            "password": "Rohan@2003"
+        },
+        {
+            "full_name": "Anisha Patel",
+            "enrollment_no": "22BEEL30053",
+            "email": "anisha.patel@ldrp.ac.in",
+            "mobile_no": "9876543253",
+            "department": "Electronics & Communication",
+            "semester": 6,
+            "gender": "female",
+            "date_of_birth": "2003-12-08",
+            "password": "Anisha@2003"
+        },
+        {
+            "full_name": "Karthik Nair",
+            "enrollment_no": "22BEME30054",
+            "email": "karthik.nair@ldrp.ac.in",
+            "mobile_no": "9876543254",
+            "department": "Mechanical Engineering",
+            "semester": 6,
+            "gender": "male",
+            "date_of_birth": "2003-07-18",
+            "password": "Karthik@2003"
+        }
+    ],
+    "student_login": [
+        {
+            "enrollment_no": "22BECE30050",
+            "password": "Arjun@2003"
+        },
+        {
+            "enrollment_no": "22BEIT30051",
+            "password": "Sneha@2003"
+        },
+        {
+            "enrollment_no": "22BEEE30052",
+            "password": "Rohan@2003"
+        },
+        {
+            "enrollment_no": "22BEEL30053",
+            "password": "Anisha@2003"
+        },
+        {
+            "enrollment_no": "22BEME30054",
+            "password": "Karthik@2003"
+        }
+    ]
+}

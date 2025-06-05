@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+{% macro format_datetime(datetime_str, format='full') %}
+    {% if datetime_str %}
+        {% set datetime_str = datetime_str|string %}
+        
+        {# Handle both ISO format (2025-05-31T18:52:00) and space format (2025-05-31 18:52:00) #}
+        {% if '-' in datetime_str and ('T' in datetime_str or ' ' in datetime_str) %}
+            {% if 'T' in datetime_str %}
+                {% set date_part = datetime_str.split('T')[0] %}
+                {% set time_part = datetime_str.split('T')[1][:8] %}
+            {% else %}
+                {% set parts = datetime_str.split(' ') %}
+                {% set date_part = parts[0] %}
+                {% set time_part = parts[1][:8] if parts|length > 1 else '00:00:00' %}
+            {% endif %}
+        {% elif '-' in datetime_str %}
+            {% set date_part = datetime_str %}
+            {% set time_part = '00:00:00' %}
+        {% else %}
+            {% set date_part = '2024-01-01' %}
+            {% set time_part = '00:00:00' %}
+        {% endif %}
+        
+        {% set date_parts = date_part.split('-') %}
+        {% set time_parts = time_part.split(':') %}
+        {% if date_parts|length >= 3 and time_parts|length >= 3 %}
+            {% set year = date_parts[0] %}
+            {% set month = date_parts[1] %}
+            {% set day = date_parts[2] %}
+            {% set hour = time_parts[0] %}
+            {% set minute = time_parts[1] %}
+            {% set second = time_parts[2] %}
+            
+            {% set months = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'] %}
+            {% set month_abbrev = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] %}
+            
+            {% set month_int = month|int %}
+            {% set day_int = day|int %}
+            {% set year_int = year|int %}
+            {% set hour_int = hour|int %}
+            
+            {% if format == 'date_only' %}
+                {{ months[month_int] }} {{ day_int }}, {{ year }}
+            {% elif format == 'date_short' %}
+                {{ month_abbrev[month_int] }} {{ day_int }}, {{ year }}
+            {% elif format == 'time_only' %}
+                {% if hour_int == 0 %}12{% elif hour_int > 12 %}{{ hour_int - 12 }}{% else %}{{ hour_int }}{% endif %}:{{ minute }} {% if hour_int < 12 %}AM{% else %}PM{% endif %}
+            {% elif format == 'full' %}
+                {{ months[month_int] }} {{ day_int }}, {{ year }} at {% if hour_int == 0 %}12{% elif hour_int > 12 %}{{ hour_int - 12 }}{% else %}{{ hour_int }}{% endif %}:{{ minute }} {% if hour_int < 12 %}AM{% else %}PM{% endif %}
+            {% elif format == 'input_date' %}
+                {{ year }}-{{ month }}-{{ day }}
+            {% elif format == 'weekday' %}
+                {% set y = year_int %}
+                {% set m = month_int %}
+                {% set d = day_int %}
+                {% if m < 3 %}
+                    {% set m = m + 12 %}
+                    {% set y = y - 1 %}
+                {% endif %}
+                {% set weekday_num = (d + ((13 * (m + 1)) // 5) + y + (y // 4) - (y // 100) + (y // 400)) % 7 %}
+                {% set weekdays = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'] %}
+                {{ weekdays[weekday_num] }}
+            {% endif %}        {% endif %}
+    {% endif %}
+{% endmacro %}
+
+{% macro format_venue(venue_str) %}
+    {% if venue_str %}
+        {% set venue_str = venue_str|string %}
+        {{ venue_str }}
+    {% else %}
+        <span class="text-gray-500">To be determined</span>
+    {% endif %}
+{% endmacro %}
+
+<html lang="en">
+<head>    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}CampusConnect{% endblock %}</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#14b8a6',
+                        success: '#22c55e',
+                        danger: '#ef4444',
+                        warning: '#f59e0b',
+                        info: '#a855f7',
+                        // Cool Light Color Palette
+                        'seafoam': {
+                            50: '#f0fdfa',
+                            100: '#ccfbf1',
+                            200: '#99f6e4',
+                            300: '#5eead4',
+                            400: '#2dd4bf',
+                            500: '#14b8a6',
+                            600: '#0d9488',
+                            700: '#0f766e',
+                            800: '#115e59',
+                            900: '#134e4a'
+                        },
+                        'lavender': {
+                            50: '#faf5ff',
+                            100: '#f3e8ff',
+                            200: '#e9d5ff',
+                            300: '#d8b4fe',
+                            400: '#c084fc',
+                            500: '#a855f7',
+                            600: '#9333ea',
+                            700: '#7c3aed',
+                            800: '#6b21a8',
+                            900: '#581c87'
+                        },
+                        'sky': {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            200: '#bae6fd',
+                            300: '#7dd3fc',
+                            400: '#38bdf8',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e'
+                        },
+                        'mint': {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            200: '#bbf7d0',
+                            300: '#86efac',
+                            400: '#4ade80',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            800: '#166534',
+                            900: '#14532d'
+                        },
+                        'cool-gray': {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            300: '#cbd5e1',
+                            400: '#94a3b8',
+                            500: '#64748b',
+                            600: '#475569',
+                            700: '#334155',
+                            800: '#1e293b',
+                            900: '#0f172a'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }        .animate-float {
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        /* Flash message styles */
+        .alert-success {
+            background-color: #f0fdf4;
+            border-color: #bbf7d0;
+            color: #15803d;
+        }
+        .alert-error {
+            background-color: #fef2f2;
+            border-color: #fecaca;
+            color: #dc2626;
+        }
+        .alert-warning {
+            background-color: #fffbeb;
+            border-color: #fed7aa;
+            color: #d97706;
+        }
+        .alert-info {
+            background-color: #f0f9ff;
+            border-color: #bae6fd;
+            color: #0369a1;
+        }
+          :root {
+            --primary-color: #14b8a6;
+            --success-color: #22c55e;
+            --danger-color: #ef4444;
+            --warning-color: #f59e0b;
+            --info-color: #a855f7;
+            --seafoam-50: #f0fdfa;
+            --seafoam-500: #14b8a6;
+            --seafoam-600: #0d9488;
+            --sky-50: #f0f9ff;
+            --sky-500: #0ea5e9;
+            --sky-600: #0284c7;
+            --lavender-50: #faf5ff;
+            --lavender-500: #a855f7;
+            --lavender-600: #9333ea;
+            --mint-50: #f0fdf4;
+            --mint-500: #22c55e;
+            --mint-600: #16a34a;
+            --cool-gray-50: #f8fafc;
+            --cool-gray-100: #f1f5f9;
+            --cool-gray-600: #475569;
+            --cool-gray-800: #1e293b;
+            --border-color: #ccfbf1;
+            --text-muted: #6b7280;
+        }    </style>
+</head>
+<body class="bg-gradient-to-br from-seafoam-50 to-sky-50 min-h-screen flex flex-col">
+    <!-- Top Banner -->
+    <div class="bg-gradient-to-r from-seafoam-800 to-sky-900 text-white py-2">
+        <div class="max-w-7xl mx-auto px-4 text-center text-sm">
+            <i class="fas fa-bullhorn mr-2"></i>
+            Stay updated with the latest campus events and activities!
+            <a href="/client/events?filter=upcoming" class="underline hover:text-seafoam-200 ml-2">Check upcoming events</a>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="bg-gradient-to-r from-seafoam-50 to-sky-50 shadow-lg sticky top-0 z-50 border-b border-seafoam-200">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <a href="/" class="flex items-center space-x-3 group">
+                        <i class="fas fa-university text-seafoam-600 text-3xl group-hover:animate-float"></i>
+                        <h1 class="text-2xl font-bold text-cool-gray-800 group-hover:text-seafoam-600 transition-colors">CampusConnect</h1>
+                    </a>
+                </div>
+                <div class="flex items-center space-x-8">
+                    {% block navigation %}{% endblock %}
+                </div>
+            </div>
+        </div>    </nav>
+
+    <!-- Flash Messages -->
+    {% if flash_messages %}
+        <div class="max-w-7xl mx-auto px-4 mt-4">
+            {% for category, message in flash_messages %}
+                <div class="alert-{{ category }} p-4 mb-4 rounded-lg border shadow-md" id="flash-message">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            {% if category == 'success' %}
+                                <i class="fas fa-check-circle text-green-500 mr-3"></i>
+                            {% elif category == 'error' %}
+                                <i class="fas fa-exclamation-circle text-red-500 mr-3"></i>
+                            {% elif category == 'warning' %}
+                                <i class="fas fa-exclamation-triangle text-yellow-500 mr-3"></i>
+                            {% elif category == 'info' %}
+                                <i class="fas fa-info-circle text-blue-500 mr-3"></i>
+                            {% endif %}
+                            <span class="text-sm font-medium">{{ message }}</span>
+                        </div>
+                        <button onclick="this.parentElement.parentElement.style.display='none'" 
+                                class="text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Main Content -->
+    {% block content %}{% endblock %}<!-- Scroll to Top Button -->
+    <button onclick="window.scrollTo({top: 0, behavior: 'smooth'})" 
+            class="fixed bottom-8 right-8 bg-gradient-to-r from-seafoam-500 to-sky-500 text-white p-3 rounded-full shadow-lg hover:from-seafoam-600 hover:to-sky-600 transition-all duration-200">
+        <i class="fas fa-arrow-up"></i>
+    </button>
+</body>
+</html>

@@ -1,0 +1,27 @@
+SAMPLE ASSET FILE 1
+===================
+
+This is a sample text file that represents an asset for event creation.
+In a real scenario, this would be replaced with actual image files, documents, or other media.
+
+Asset Type: Text File
+Purpose: Demonstration for automation script
+File Format: .txt
+
+Instructions:
+- Replace this file with your actual event assets
+- Supported formats typically include: .jpg, .png, .gif, .pdf, .doc, .docx
+- Ensure file paths are correct in the JSON configuration
+- Test file upload functionality before running automation
+
+Event Asset Categories:
+1. Event banners and posters
+2. Speaker photos and bios
+3. Venue images
+4. Sponsor logos
+5. Event schedules and programs
+6. Registration forms
+7. Additional documentation
+
+Note: This sample file can be used for testing the file upload functionality
+of the event creation automation script.
