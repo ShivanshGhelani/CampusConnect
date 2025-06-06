@@ -207,13 +207,27 @@
             --mint-600: #16a34a;
             --cool-gray-50: #f8fafc;
             --cool-gray-100: #f1f5f9;
-            --cool-gray-600: #475569;
-            --cool-gray-800: #1e293b;
+            --cool-gray-600: #475569;            --cool-gray-800: #1e293b;
             --border-color: #ccfbf1;
             --text-muted: #6b7280;
-        }    </style>
+        }          /* Universal Back Button Styles */
+        #universal-back-button-container {
+            z-index: 30;
+        }
+        
+        #universal-back-button {
+            transition: all 0.2s ease;
+        }
+        
+        #universal-back-button:hover {
+            transform: translateY(-1px);
+        }</style>
+    
+    <!-- Universal Back Button System -->
+    <script src="/static/js/universal-back-button.js"></script>
 </head>
 <body class="bg-gradient-to-br from-seafoam-50 to-sky-50 min-h-screen flex flex-col">
+    {% block top_banner %}
     <!-- Top Banner -->
     <div class="bg-gradient-to-r from-seafoam-800 to-sky-900 text-white py-2">
         <div class="max-w-7xl mx-auto px-4 text-center text-sm">
@@ -222,7 +236,9 @@
             <a href="/client/events?filter=upcoming" class="underline hover:text-seafoam-200 ml-2">Check upcoming events</a>
         </div>
     </div>
+    {% endblock %}
 
+    {% block navigation_section %}
     <!-- Navigation -->
     <nav class="bg-gradient-to-r from-seafoam-50 to-sky-50 shadow-lg sticky top-0 z-50 border-b border-seafoam-200">
         <div class="max-w-7xl mx-auto px-4">
@@ -237,7 +253,9 @@
                     {% block navigation %}{% endblock %}
                 </div>
             </div>
-        </div>    </nav>
+        </div>
+    </nav>
+    {% endblock %}
 
     <!-- Flash Messages -->
     {% if flash_messages %}

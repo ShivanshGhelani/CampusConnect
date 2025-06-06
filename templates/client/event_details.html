@@ -170,8 +170,7 @@
     width: 2.5rem;
     height: 2.5rem;
   }
-  
-  @media (min-width: 768px) {
+    @media (min-width: 768px) {
     .hero-section {
       padding: 3rem 1rem;
     }
@@ -188,6 +187,64 @@
     .section-icon {
       width: 3rem;
       height: 3rem;
+    }
+  }
+
+  /* Read More Functionality Styles */
+  .read-more-content {
+    transition: all 0.3s ease-in-out;
+    overflow: hidden;
+  }
+  
+  .read-more-content.collapsed {
+    max-height: 200px;
+    position: relative;
+  }
+  
+  .read-more-content.collapsed::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 40px;
+    background: linear-gradient(transparent, rgba(255, 255, 255, 0.9));
+    pointer-events: none;
+  }
+    .read-more-link {
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-top: 0.5rem;
+  }
+  
+  .read-more-link:hover {
+    text-decoration: underline;
+  }
+  
+  .read-more-link svg {
+    width: 0.75rem;
+    height: 0.75rem;
+    transition: transform 0.2s ease;
+  }
+
+  /* Enhance the existing card styles */
+  .bg-white\/90 {
+    backdrop-filter: blur(10px);
+  }
+
+  /* Additional responsive adjustments */
+  @media (max-width: 768px) {
+    .read-more-content.collapsed {
+      max-height: 150px;
+    }
+    
+    .read-more-content.collapsed::after {
+      height: 30px;
     }
   }
 </style>
@@ -332,19 +389,10 @@
                   <span class="text-lg font-bold text-yellow-300">{{ registration_time_remaining }}</span>
                 </div>
               {% endif %}
-              
-              <a href="/client/events/{{ event.event_id if event.event_id else event.id }}/register" 
+                <a href="/client/events/{{ event.event_id if event.event_id else event.id }}/register" 
                  class="block w-full bg-gradient-to-r from-white to-blue-50 text-blue-600 hover:from-blue-50 hover:to-white px-6 py-3 rounded-xl font-bold transition-all duration-300 hover:shadow-xl hover:scale-105 transform">
                 🚀 Register Now
               </a>
-              
-              {% if registration_stats and registration_stats.total_registrations is defined and registration_stats.total_registrations > 0 %}
-                <div class="bg-white/10 rounded-xl p-3 border border-white/20">
-                  <div class="text-blue-100 text-xs">Already Joined</div>
-                  <div class="text-lg font-bold">{{ registration_stats.total_registrations }}</div>
-                  <div class="text-blue-200 text-xs">participant{{ 's' if registration_stats.total_registrations != 1 else '' }}</div>
-                </div>
-              {% endif %}
             </div>
           {% elif event.sub_status == 'event_started' %}
             <div class="text-center space-y-4">
@@ -556,8 +604,7 @@
 <div class="container mx-auto max-w-5xl px-4 py-8">
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
       <!-- Left Column - Event Description and Target Goals -->
-    <div class="space-y-6">
-      <!-- Event Description Card -->
+    <div class="space-y-6">      <!-- Event Description Card -->
       <div class="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-blue-100 p-6 h-fit">
         <div class="flex items-center mb-4">
           <div class="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center mr-3">
@@ -569,31 +616,56 @@
         </div>
         
         <div class="prose prose-gray max-w-none">
-          {% if event.description %}
-            <div class="text-gray-700 leading-relaxed whitespace-pre-line">{{ event.description }}</div>
-          {% elif event.detailed_description %}
-            <div class="text-gray-700 leading-relaxed">{{ event.detailed_description }}</div>
+          {% if event.description %}            <div class="read-more-wrapper" data-word-limit="50">
+              <div class="read-more-content text-gray-700 leading-relaxed whitespace-pre-line">{{ event.description }}</div>
+              <span class="read-more-link hidden text-blue-500 hover:text-blue-600">
+                <span class="link-text">Read more</span>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="12" height="12">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+              </span>
+            </div>
+          {% elif event.detailed_description %}            <div class="read-more-wrapper" data-word-limit="50">
+              <div class="read-more-content text-gray-700 leading-relaxed">{{ event.detailed_description }}</div>              <span class="read-more-link hidden text-blue-500 hover:text-blue-600">
+                <span class="link-text">Read more</span>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="12" height="12">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+              </span>
+            </div>
           {% else %}
             <div class="text-gray-500 italic">No description available for this event.</div>
           {% endif %}
         </div>
         
         {% if event.objectives or event.agenda %}
-          <div class="mt-6 pt-6 border-t border-gray-200">
-            {% if event.objectives %}
-              <h3 class="text-lg font-semibold text-gray-800 mb-3">Objectives</h3>
-              <div class="text-gray-700 leading-relaxed mb-4 whitespace-pre-line">{{ event.objectives }}</div>
+          <div class="mt-6 pt-6 border-t border-gray-200">            {% if event.objectives %}
+              <h3 class="text-lg font-semibold text-gray-800 mb-3">Objectives</h3>              <div class="read-more-wrapper" data-word-limit="40">
+                <div class="read-more-content text-gray-700 leading-relaxed mb-4 whitespace-pre-line">{{ event.objectives }}</div>
+                <span class="read-more-link hidden text-gray-500 hover:text-gray-600">
+                  <span class="link-text">Read more</span>
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="12" height="12">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                  </svg>
+                </span>
+              </div>
             {% endif %}
-            
-            {% if event.agenda %}
-              <h3 class="text-lg font-semibold text-gray-800 mb-3">Agenda</h3>
-              <div class="text-gray-700 leading-relaxed whitespace-pre-line">{{ event.agenda }}</div>
+              {% if event.agenda %}
+              <h3 class="text-lg font-semibold text-gray-800 mb-3">Agenda</h3>              <div class="read-more-wrapper" data-word-limit="40">
+                <div class="read-more-content text-gray-700 leading-relaxed whitespace-pre-line">{{ event.agenda }}</div>
+                <span class="read-more-link hidden text-gray-500 hover:text-gray-600">
+                  <span class="link-text">Read more</span>
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="12" height="12">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                  </svg>
+                </span>
+              </div>
             {% endif %}
           </div>
         {% endif %}
-      </div>
-        <!-- Smart Content Formatting Macro -->      {% macro format_smart_content(content, color, section_title, icon_type='check') %}
-        <div class="bg-{{ color }}-50 p-4 rounded-lg border border-{{ color }}-200">
+      </div>        <!-- Smart Content Formatting Macro -->      {% macro format_smart_content(content, color, section_title, icon_type='check', word_limit=40) %}
+        <div class="read-more-wrapper" data-word-limit="{{ word_limit }}">
+          <div class="read-more-content bg-{{ color }}-50 p-4 rounded-lg border border-{{ color }}-200">
             {% if content %}
               {% set content_lines = content.strip().split('\n') %}
               {% set has_structured_bullets = false %}
@@ -703,7 +775,13 @@
                 {% endif %}
               {% endif %}
             {% endif %}
-          </div>
+          </div>          <span class="read-more-link hidden text-{{ color }}-500 hover:text-{{ color }}-600">
+            <span class="link-text">Read more</span>
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="12" height="12">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+          </span>
+        </div>
       {% endmacro %}<!-- Target Goals & Outcomes Cards -->
       {% if event.target_goals or event.target_outcomes or event.expected_outcomes or event.learning_outcomes or event.success_metrics %}
         
@@ -720,8 +798,7 @@
           {{ format_smart_content(event.target_goals, 'amber', '', '') }}
         </div>
         {% endif %}
-        
-        {% if event.target_outcomes %}
+          {% if event.target_outcomes %}
         <div class="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-orange-100 p-6 h-fit">
           <div class="flex items-center mb-4">
             <div class="w-8 h-8 bg-orange-500/20 rounded-full flex items-center justify-center mr-3">
@@ -731,7 +808,7 @@
             </div>
             <h2 class="text-xl font-bold text-gray-800">Target Outcomes</h2>
           </div>
-          {{ format_smart_content(event.target_outcomes, 'orange', '', '') }}
+          {{ format_smart_content(event.target_outcomes, 'orange', '', '', 35) }}
         </div>
         {% endif %}
         
@@ -775,8 +852,7 @@
           {{ format_smart_content(event.success_metrics, 'purple', '', '') }}
         </div>
         {% endif %}
-        
-        <!-- What to Bring -->
+          <!-- What to Bring -->
         {% if event.what_to_bring %}
         <div class="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-cyan-100 p-6 h-fit">
           <div class="flex items-center mb-4">
@@ -787,9 +863,9 @@
             </div>
             <h2 class="text-xl font-bold text-gray-800">What to Bring</h2>
           </div>
-          {{ format_smart_content(event.what_to_bring, 'cyan', '', 'package') }}
+          {{ format_smart_content(event.what_to_bring, 'cyan', '', 'package', 30) }}
         </div>
-        {% endif %}        
+        {% endif %}
       {% else %}
         <!-- Default Target Goals Card when no specific goals are defined -->
         <div class="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-amber-100 p-6 h-fit">
@@ -1155,8 +1231,118 @@
         </div>
       </div>
       {% endif %}
-      
-    </div>
+        </div>
   </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize read-more functionality for all wrappers
+    const readMoreWrappers = document.querySelectorAll('.read-more-wrapper');
+    
+    readMoreWrappers.forEach(wrapper => {
+        const content = wrapper.querySelector('.read-more-content');
+        const link = wrapper.querySelector('.read-more-link');
+        const wordLimit = parseInt(wrapper.dataset.wordLimit) || 40;
+        
+        if (!content || !link) return;
+        
+        // Get the original content text
+        const originalText = content.textContent || content.innerText;
+        const words = originalText.trim().split(/\s+/);
+        
+        // Only show read-more if content exceeds word limit
+        if (words.length > wordLimit) {
+            // Create truncated version
+            const truncatedWords = words.slice(0, wordLimit);
+            const truncatedText = truncatedWords.join(' ') + '...';
+            
+            // Store original HTML content
+            const originalHTML = content.innerHTML;
+            
+            // Create truncated HTML by replacing text content while preserving structure
+            let truncatedHTML = originalHTML;
+            
+            // For simple text content, replace directly
+            if (content.children.length === 0) {
+                truncatedHTML = truncatedText;
+            } else {
+                // For complex HTML content, we need to be more careful
+                const textNodes = getTextNodes(content);
+                let wordCount = 0;
+                let shouldTruncate = false;
+                
+                textNodes.forEach(node => {
+                    const nodeWords = (node.textContent || '').trim().split(/\s+/);
+                    if (wordCount + nodeWords.length > wordLimit && !shouldTruncate) {
+                        const remainingWords = wordLimit - wordCount;
+                        if (remainingWords > 0) {
+                            node.textContent = nodeWords.slice(0, remainingWords).join(' ') + '...';
+                        } else {
+                            node.textContent = '...';
+                        }
+                        shouldTruncate = true;
+                    } else if (shouldTruncate) {
+                        node.textContent = '';
+                    }
+                    wordCount += nodeWords.length;
+                });
+                
+                truncatedHTML = content.innerHTML;
+                content.innerHTML = originalHTML; // Restore original
+            }
+            
+            // Set initial state to collapsed
+            content.innerHTML = truncatedHTML;
+            content.classList.add('collapsed');
+            link.classList.remove('hidden');
+            
+            // Add click event listener
+            link.addEventListener('click', function() {
+                const isCollapsed = content.classList.contains('collapsed');
+                const linkText = link.querySelector('.link-text');
+                const chevron = link.querySelector('svg');
+                
+                if (isCollapsed) {
+                    // Expand
+                    content.innerHTML = originalHTML;
+                    content.classList.remove('collapsed');
+                    linkText.textContent = 'Read less';
+                    chevron.style.transform = 'rotate(180deg)';
+                } else {
+                    // Collapse
+                    content.innerHTML = truncatedHTML;
+                    content.classList.add('collapsed');
+                    linkText.textContent = 'Read more';
+                    chevron.style.transform = 'rotate(0deg)';
+                }
+            });
+        } else {
+            // Content doesn't exceed limit, hide the link
+            link.classList.add('hidden');
+        }
+    });
+    
+    // Helper function to get all text nodes
+    function getTextNodes(element) {
+        const textNodes = [];
+        const walker = document.createTreeWalker(
+            element,
+            NodeFilter.SHOW_TEXT,
+            null,
+            false
+        );
+        
+        let node;
+        while (node = walker.nextNode()) {
+            if (node.textContent.trim()) {
+                textNodes.push(node);
+            }
+        }
+        
+        return textNodes;
+    }
+});
+</script>
+
 {% endblock %}
