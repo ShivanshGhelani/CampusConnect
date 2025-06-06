@@ -52,4 +52,9 @@ logs/
 .DS_Store
 Thumbs.db
 
+# Scripts folder (local development only)
 scripts/
+
+# Temporary files and testing artifacts
+temp/
+*.tmp
