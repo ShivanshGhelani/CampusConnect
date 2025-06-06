@@ -108,7 +108,7 @@ class EmailService:
         student_name: str, 
         event_title: str, 
         event_date: str, 
-        event_venue: str,
+        venue: str,
         registration_id: Optional[str] = None
     ) -> bool:
         """Send registration confirmation email"""
@@ -120,7 +120,7 @@ class EmailService:
                 student_name=student_name,
                 event_title=event_title,
                 event_date=event_date,
-                event_venue=event_venue,
+                event_venue=venue,
                 registration_id=registration_id
             )
             

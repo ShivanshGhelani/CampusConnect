@@ -3,57 +3,56 @@
         "username": "NIL299",
         "password": "nilam@299t"
     },
-    "event_data": {
-        "event_id": "CLOUD_SECURITY_WEBINAR_2025",
-        "event_name": "Cloud Security Essentials Webinar 2025",
-        "event_type": "webinar",
-        "short_description": "Free comprehensive 2-day individual workshop covering advanced digital marketing strategies, social media optimization, and data-driven marketing techniques.",
-        "detailed_description": "Master the art of digital marketing in the modern era! This comprehensive 2-day individual workshop is designed for marketing enthusiasts, business professionals, entrepreneurs, and students who want to excel in digital marketing and online brand building. Participants will dive deep into cutting-edge digital marketing strategies including search engine optimization (SEO), social media marketing, content creation, email marketing automation, pay-per-click advertising, and conversion optimization. The workshop covers multiple marketing channels including Google Ads, Facebook Advertising, Instagram Marketing, LinkedIn Business Development, YouTube Content Strategy, and emerging platforms like TikTok and Clubhouse. Attendees will learn hands-on techniques for audience research, competitor analysis, brand positioning, and marketing funnel development. Expert instructors will guide participants through real-world case studies, live campaign creation, and practical exercises using industry-standard tools like Google Analytics, Facebook Business Manager, Hootsuite, Mailchimp, and Canva. The program includes advanced topics such as marketing automation, chatbot development, influencer collaboration strategies, affiliate marketing, and performance tracking methodologies. Participants will work on individual projects to develop comprehensive digital marketing strategies for their own businesses or hypothetical brands. The workshop features interactive sessions on content planning, visual design principles, copywriting techniques, and brand storytelling. Attendees will learn to create compelling social media campaigns, design effective landing pages, and optimize websites for search engines. The program includes networking sessions with digital marketing professionals, agency owners, and successful online entrepreneurs. Participants will gain insights into career opportunities in digital marketing, freelancing strategies, and building personal brands online. The workshop emphasizes practical application with hands-on exercises in campaign creation, analytics interpretation, and ROI measurement. All attendees will leave with a personalized digital marketing action plan, access to exclusive marketing templates and resources, and ongoing community support for continued learning and networking.",
-        "organizing_department": "Department of Marketing & Digital Communications",
+    "event_data": {        "event_id": "TECH_STARTUP_BOOTCAMP_2025",
+        "event_name": "Tech Startup Bootcamp 2025",
+        "event_type": "workshop",
+        "short_description": "An intensive 5-day paid team-based bootcamp for aspiring entrepreneurs to build, validate, and launch their tech startup ideas with expert mentorship.",
+        "detailed_description": "Transform your innovative ideas into successful tech startups! This comprehensive 5-day Tech Startup Bootcamp is designed for ambitious teams ready to turn their entrepreneurial dreams into reality. Teams will work together through the complete startup journey from ideation to product launch, guided by successful entrepreneurs, venture capitalists, and industry experts. The bootcamp covers essential startup fundamentals including market research and validation, customer discovery interviews, business model development, financial planning and fundraising strategies, technical product development, and go-to-market planning. Participants will learn lean startup methodologies, agile development practices, and rapid prototyping techniques using cutting-edge tools and platforms. Teams will develop minimum viable products (MVPs), conduct user testing sessions, and refine their solutions based on real market feedback. The program includes intensive workshops on pitch deck creation, investor presentations, legal considerations for startups, intellectual property protection, and scaling strategies. Expert mentors include successful tech founders, venture capital partners, angel investors, product managers from leading tech companies, and startup accelerator directors. Teams will have access to premium development tools, cloud computing credits, design software, market research databases, and prototype development resources. The bootcamp features mock investor pitch sessions, peer feedback rounds, and networking events with the startup ecosystem. Participants will learn about different funding stages, equity distribution, team building, and hiring strategies for growing startups. The program culminates in a Demo Day where teams present their validated startup concepts to a panel of real investors and industry leaders. Outstanding teams receive follow-up meetings with venture capital firms, connections to startup accelerators, and ongoing mentorship opportunities.",
+        "organizing_department": "Department of Entrepreneurship & Business Innovation",
         "organizers": [
-            "Prof. Neha Agarwal - Digital Marketing Strategy Head",
-            "Mr. Rahul Sharma - Social Media Marketing Expert",
-            "Ms. Priyanka Joshi - Content Marketing Specialist",
-            "Dr. Vikash Kumar - Marketing Analytics Professor",
-            "Ms. Anjali Verma - Brand Development Consultant"
+            "Dr. Rajesh Gupta - Startup Accelerator Director",
+            "Ms. Priya Malhotra - Venture Capital Partner",
+            "Prof. Vikash Sharma - Entrepreneurship Chair",
+            "Mr. Arjun Kapoor - Tech Startup Mentor",
+            "Dr. Neha Agarwal - Business Strategy Professor"
         ],
         "contacts": [
             {
-                "name": "Prof. Neha Agarwal",
-                "contact": "neha.agarwal@marketing.edu"
+                "name": "Dr. Rajesh Gupta",
+                "contact": "rajesh.gupta@startup.edu"
             },
             {
-                "name": "Workshop Coordinator - Ms. Priyanka Joshi",
-                "contact": "+91-98765-67890"
+                "name": "Bootcamp Director - Ms. Priya Malhotra",
+                "contact": "+91-98876-54321"
             },
             {
-                "name": "Digital Marketing Support Team",
-                "contact": "support@digitalmarketing.edu"
+                "name": "Startup Bootcamp Support",
+                "contact": "support@techstartup.edu"
             }
         ],
-        "start_date": "2025-08-15",
+        "start_date": "2025-09-15",
         "start_time": "09:00",
-        "end_date": "2025-08-16",
-        "end_time": "17:00",
-        "registration_start_date": "2025-07-01",
+        "end_date": "2025-09-19",
+        "end_time": "18:00",
+        "registration_start_date": "2025-08-01",
         "registration_start_time": "00:01",
-        "registration_end_date": "2025-08-08",
+        "registration_end_date": "2025-09-10",
         "registration_end_time": "23:59",
-        "certificate_end_date": "2025-09-30",
+        "certificate_end_date": "2025-10-31",
         "certificate_end_time": "23:59",
-        "mode": "offline",
-        "venue": "Digital Innovation Center - Marketing Lab, Content Creation Studio, Analytics Workshop Room, and Networking Lounge",
-        "target_outcomes": "By the end of this digital marketing workshop, participants will be able to:\n• Develop comprehensive digital marketing strategies for various business types and industries\n• Create and optimize social media campaigns across multiple platforms and channels\n• Implement search engine optimization (SEO) techniques to improve website visibility\n• Design and execute effective email marketing campaigns with automation workflows\n• Analyze marketing performance using Google Analytics and other measurement tools\n• Create compelling content for blogs, social media, and marketing campaigns\n• Set up and manage pay-per-click advertising campaigns on Google and social platforms\n• Build personal or business brands using digital marketing best practices\n• Understand customer journey mapping and conversion funnel optimization\n• Apply data-driven decision making to improve marketing ROI and effectiveness\n• Network with marketing professionals and build valuable industry connections\n• Develop freelancing skills and explore career opportunities in digital marketing",
-        "prerequisites": "Basic computer literacy and familiarity with social media platforms. Interest in marketing, branding, or business development. No prior marketing experience required. Willingness to learn new digital tools and platforms. Creative mindset and analytical thinking skills are beneficial.",
-        "what_to_bring": "Laptop or tablet for hands-on exercises and campaign creation, smartphone for social media platform testing, notepads for strategy planning and note-taking, creative mindset for content development and campaign ideation, business ideas or projects to work on during practical sessions, willingness to share and receive feedback on marketing strategies, professional attitude for networking with industry experts, and commitment to implementing learned strategies after the workshop",
-        "registration_type": "team",
-        "registration_mode": "individual",
-        "registration_fee": 0.0,
-        "fee_description": "This digital marketing workshop is completely FREE for all individual participants. The program includes access to premium marketing tools and software during the workshop, comprehensive digital marketing resource library and templates, hands-on training with industry-standard platforms and analytics tools, networking opportunities with marketing professionals and successful entrepreneurs, personalized feedback sessions on individual marketing strategies and campaigns, certificates of completion for all participants, digital marketing toolkit with templates, checklists, and planning guides, refreshments and meals throughout the 2-day workshop, and access to exclusive online community for continued learning and support. Outstanding participants also receive mentorship opportunities with experienced digital marketers, potential internship connections with marketing agencies, and access to advanced marketing courses and certifications.",
-        "max_participants": 80,
-        "min_participants": 20,
-        "team_size_min": 1,
-        "team_size_max": 1,
+        "mode": "hybrid",
+        "venue": "Entrepreneurship Hub - Innovation Labs, Pitch Rooms, Collaboration Spaces, and Virtual Meeting Rooms",
+        "target_outcomes": "By the end of this Tech Startup Bootcamp, participants will be able to:\n• Validate business ideas using lean startup methodologies and customer discovery techniques\n• Develop comprehensive business models and financial projections for tech startups\n• Build minimum viable products (MVPs) using modern development tools and frameworks\n• Create compelling pitch decks and deliver persuasive investor presentations\n• Understand funding landscapes including angel investment, venture capital, and alternative financing\n• Navigate legal and regulatory considerations for starting and scaling tech companies\n• Implement go-to-market strategies and customer acquisition tactics\n• Build and manage diverse teams with complementary skills and expertise\n• Network with investors, mentors, and fellow entrepreneurs in the startup ecosystem\n• Apply agile development and rapid prototyping methodologies to product development\n• Understand intellectual property protection and competitive analysis strategies\n• Develop sustainable business operations and scaling plans for growth",
+        "prerequisites": "Basic business acumen and entrepreneurial mindset. Some technical background helpful but not mandatory as teams should include diverse skill sets. Previous startup experience beneficial but not required. Strong communication and collaboration skills essential. Commitment to intensive 5-day program and post-bootcamp implementation.",
+        "what_to_bring": "Laptop with development tools and design software, business idea or problem statement to work on, notebook for strategy planning and note-taking, professional attire for pitch presentations, willingness to receive and provide constructive feedback, commitment to team collaboration and intensive work sessions, and openness to pivoting ideas based on market validation feedback",
+        "registration_type": "paid",
+        "registration_mode": "team",
+        "registration_fee": 15000.0,
+        "fee_description": "The registration fee of ₹15,000 per team (₹3,000 per participant for 5-member teams) covers all five days of intensive startup training and resources. The fee includes access to premium business development tools and software licenses, comprehensive startup resource library including templates, frameworks, and guides, mentorship sessions with successful entrepreneurs and venture capital partners, mock investor pitch sessions with real feedback from industry experts, certificates of completion and startup readiness validation, exclusive startup toolkit with legal templates, financial models, and business plan frameworks, all meals and refreshments throughout the 5-day intensive program, networking dinner with investors, successful founders, and startup ecosystem leaders, cloud computing credits and development resources for MVP building, and three months of post-bootcamp mentorship and support. Teams also receive priority access to startup accelerator programs, potential investor introductions and follow-up meetings, and lifetime access to exclusive entrepreneur alumni network. Early bird discount of 25% available for registrations before August 15th. Additional team member discounts available for teams larger than 5 members.",
+        "max_participants": 100,
+        "min_participants": 15,
+        "team_size_min": 3,
+        "team_size_max": 6,
         "certificate_template_path": "s:\\Projects\\UCG_v2\\Admin\\data\\sample_certificate_template.html",
         "asset_files": [
             "s:\\Projects\\UCG_v2\\Admin\\data\\sample_asset1.txt"

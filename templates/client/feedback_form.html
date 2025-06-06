@@ -11,8 +11,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
             </svg>
             Back to Events
-        </a>
-    </nav>    <!-- Header -->
+        </a>    </nav>    <!-- Header -->
     <div class="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl shadow-2xl text-white p-8 mb-8">
         <h1 class="text-3xl font-bold mb-4">Event Feedback</h1>
         <h2 class="text-xl font-semibold mb-2">{{ event.event_name }}</h2>
@@ -526,73 +525,71 @@
 </div>
 
 <script>
-// Step Navigation Variables
-let currentStep = 1;
-const totalSteps = document.querySelectorAll('.form-step').length;
+// Step Navigation Variables with Sequential Display Mapping
+let currentActualStep = 1;
 
-// Calculate step mapping for conditional steps
-function getNextStepNumber(currentStepNum) {
-    if (currentStepNum === 4) {
-        // After step 4, check if we have team step (5)
-        if (document.getElementById('step-5')) {
-            return 5;
-        }
-        // If no team step, check if we have paid step (6)
-        if (document.getElementById('step-6')) {
-            return 6;
-        }
-        // If neither, go to final step (7)
-        return 7;
-    } else if (currentStepNum === 5) {
-        // After team step (5), check if we have paid step (6)
-        if (document.getElementById('step-6')) {
-            return 6;
-        }
-        // If no paid step, go to final step (7)
-        return 7;
-    } else if (currentStepNum === 6) {
-        // After paid step (6), always go to final step (7)
-        return 7;
-    } else if (currentStepNum < 4) {
-        // For steps 1-3, just increment
-        return currentStepNum + 1;
-    }
-    
-    // If we're at step 7 or beyond, can't go further
-    return currentStepNum;
+// Get list of visible steps based on event type
+function getVisibleSteps() {
+    const steps = [1, 2, 3, 4]; // Always visible steps
+    if (document.getElementById('step-5')) steps.push(5); // Team step
+    if (document.getElementById('step-6')) steps.push(6); // Paid step
+    steps.push(7); // Final step always last
+    return steps;
 }
 
-function getPrevStepNumber(currentStepNum) {
-    if (currentStepNum === 7) {
-        // From final step (7), go back to last available step
-        if (document.getElementById('step-6')) {
-            return 6;
-        }
-        if (document.getElementById('step-5')) {
-            return 5;
-        }
-        return 4;
-    } else if (currentStepNum === 6) {
-        // From paid step (6), check if we have team step (5)
-        if (document.getElementById('step-5')) {
-            return 5;
-        }
-        // If no team step, go back to step 4
-        return 4;
-    } else if (currentStepNum === 5) {
-        // From team step (5), always go back to step 4
-        return 4;
-    } else if (currentStepNum > 1) {
-        // For steps 2-4, just decrement
-        return currentStepNum - 1;
+// Create mapping between actual steps and display step numbers
+function createStepMapping() {
+    const visibleSteps = getVisibleSteps();
+    const actualToDisplay = {};
+    const displayToActual = {};
+    
+    visibleSteps.forEach((actualStep, index) => {
+        const displayStep = index + 1;
+        actualToDisplay[actualStep] = displayStep;
+        displayToActual[displayStep] = actualStep;
+    });
+    
+    return { actualToDisplay, displayToActual, totalSteps: visibleSteps.length };
+}
+
+// Get the mapping
+const stepMapping = createStepMapping();
+
+// Get display step number for current actual step
+function getCurrentDisplayStep() {
+    return stepMapping.actualToDisplay[currentActualStep] || 1;
+}
+
+// Calculate step mapping for conditional steps
+function getNextStepNumber(currentActualStepNum) {
+    const visibleSteps = getVisibleSteps();
+    const currentIndex = visibleSteps.indexOf(currentActualStepNum);
+    
+    if (currentIndex !== -1 && currentIndex < visibleSteps.length - 1) {
+        return visibleSteps[currentIndex + 1];
     }
     
-    // If we're at step 1, can't go back
-    return currentStepNum;
+    return currentActualStepNum; // Can't go further
+}
+
+function getPrevStepNumber(currentActualStepNum) {
+    const visibleSteps = getVisibleSteps();
+    const currentIndex = visibleSteps.indexOf(currentActualStepNum);
+    
+    if (currentIndex > 0) {
+        return visibleSteps[currentIndex - 1];
+    }
+    
+    return currentActualStepNum; // Can't go back
 }
 
 // Initialize form
 document.addEventListener('DOMContentLoaded', function() {
+    // Recalculate step mapping based on actual visible steps in the DOM
+    const stepMapping = createStepMapping();
+    
+    // Update UI based on initial step
+    updateStepCounter();
     updateProgressBar();
     updateStepDots();
     
@@ -601,6 +598,38 @@ document.addEventListener('DOMContentLoaded', function() {
         radio.closest('label').classList.add('bg-blue-50', 'border-blue-200');
     });
 });
+
+function updateStepCounter() {
+    const counter = document.getElementById('step-counter');
+    if (counter) {
+        const displayStep = getCurrentDisplayStep();
+        counter.textContent = `Step ${displayStep} of ${stepMapping.totalSteps}`;
+        
+        // Update step title
+        const currentStepElement = document.getElementById(`step-${currentActualStep}`);
+        if (currentStepElement) {
+            const titleElement = currentStepElement.querySelector('h3');
+            if (titleElement) {
+                // Extract the title text after "Step X: " and update with the new display step number
+                const titleText = titleElement.textContent.trim();
+                const colonIndex = titleText.indexOf(':');
+                if (colonIndex !== -1) {
+                    const titleWithoutStepNumber = titleText.substring(colonIndex + 1).trim();
+                    titleElement.textContent = `Step ${displayStep}: ${titleWithoutStepNumber}`;
+                }
+            }
+        }
+    }
+}
+
+function updateProgressBar() {
+    const progressBar = document.getElementById('progress-bar');
+    if (progressBar) {
+        const displayStep = getCurrentDisplayStep();
+        const percentage = Math.min((displayStep / stepMapping.totalSteps) * 100, 100);
+        progressBar.style.width = percentage + '%';
+    }
+}
 
 // Step Navigation Functions
 function showStep(stepNumber) {
@@ -615,56 +644,76 @@ function showStep(stepNumber) {
     if (targetStep) {
         targetStep.classList.remove('hidden');
         targetStep.classList.add('active');
-        currentStep = stepNumber;
+        currentActualStep = stepNumber;
+        
+        // Update UI elements
+        updateStepCounter();
         updateProgressBar();
         updateStepDots();
-        updateStepCounter();
         
         // Scroll to top of form
         targetStep.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 }
 
-function updateProgressBar() {
-    const progressBar = document.getElementById('progress-bar');
-    const progressPercentage = (currentStep / totalSteps) * 100;
-    progressBar.style.width = `${progressPercentage}%`;
-}
-
 function updateStepDots() {
+    const visibleSteps = getVisibleSteps();
+    const currentDisplayStep = getCurrentDisplayStep();
+    
+    // First, hide all dots
     document.querySelectorAll('.step-dot').forEach(dot => {
-        const stepNum = parseInt(dot.getAttribute('data-step'));
-        if (stepNum <= currentStep) {
-            dot.classList.add('bg-blue-600');
-            dot.classList.remove('bg-gray-300');
-        } else {
-            dot.classList.add('bg-gray-300');
-            dot.classList.remove('bg-blue-600');
+        dot.style.display = 'none';
+    });
+    
+    // Then show only the dots we need, with proper sequential numbering
+    visibleSteps.forEach((actualStepNum, index) => {
+        const dot = document.querySelector(`.step-dot[data-step="${actualStepNum}"]`);
+        if (dot) {
+            dot.style.display = 'block';
+            
+            // Mark as active if at or before current display step
+            const displayStep = index + 1;
+            if (displayStep <= currentDisplayStep) {
+                dot.classList.add('bg-blue-600');
+                dot.classList.remove('bg-gray-300');
+            } else {
+                dot.classList.add('bg-gray-300');
+                dot.classList.remove('bg-blue-600');
+            }
+            
+            // Update the data-step attribute to match the display step
+            dot.setAttribute('data-display-step', displayStep);
         }
     });
 }
 
-function updateStepCounter() {
-    const stepCounter = document.getElementById('step-counter');
-    stepCounter.textContent = `Step ${currentStep} of ${totalSteps}`;
-}
+// updateStepCounter function moved to earlier in script
 
 function validateCurrentStep() {
-    const currentStepElement = document.getElementById(`step-${currentStep}`);
+    // Remove existing step errors
+    document.querySelectorAll('.step-error').forEach(el => el.remove());
+    
+    const currentStepElement = document.getElementById(`step-${currentActualStep}`);
     const requiredFields = currentStepElement.querySelectorAll('input[required], textarea[required], select[required]');
     const errors = [];
+    const processedRadioGroups = new Set();
     
     requiredFields.forEach(field => {
         if (field.type === 'radio') {
-            const radioGroup = currentStepElement.querySelectorAll(`input[name="${field.name}"]`);
-            const checked = Array.from(radioGroup).some(radio => radio.checked);
-            if (!checked) {
-                errors.push(`Please select an option for ${field.name.replace(/_/g, ' ')}`);
+            // Avoid duplicate checks for the same radio group
+            if (!processedRadioGroups.has(field.name)) {
+                processedRadioGroups.add(field.name);
+                const radioGroup = currentStepElement.querySelectorAll(`input[name="${field.name}"]`);
+                const checked = Array.from(radioGroup).some(radio => radio.checked);
+                if (!checked) {
+                    const fieldLabel = field.name.replace(/_/g, ' ').toLowerCase();
+                    errors.push(`Please share your thoughts on ${fieldLabel}`);
+                }
             }
         } else if (!field.value.trim()) {
             const label = field.closest('div').querySelector('label');
-            const fieldName = label ? label.textContent.replace(' *', '') : field.name.replace(/_/g, ' ');
-            errors.push(`Please fill in ${fieldName}`);
+            const fieldName = label ? label.textContent.replace(' *', '').replace('*', '').trim() : field.name.replace(/_/g, ' ');
+            errors.push(`We'd love to hear about: ${fieldName}`);
         }
     });
     
@@ -688,7 +737,7 @@ function showValidationError(errors) {
                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
             </svg>
             <div>
-                <h4 class="font-medium mb-1">Please complete the following:</h4>
+                <h4 class="font-medium mb-1">Help us improve - just a few more details:</h4>
                 <ul class="list-disc list-inside text-sm">
                     ${errors.map(error => `<li>${error}</li>`).join('')}
                 </ul>
@@ -696,7 +745,7 @@ function showValidationError(errors) {
         </div>
     `;
     
-    const currentStepElement = document.getElementById(`step-${currentStep}`);
+    const currentStepElement = document.getElementById(`step-${currentActualStep}`);
     currentStepElement.insertBefore(errorDiv, currentStepElement.firstChild);
     
     // Auto-remove after 5 seconds
@@ -709,8 +758,8 @@ document.addEventListener('click', function(e) {
         e.preventDefault();
         
         if (validateCurrentStep()) {
-            const nextStep = getNextStepNumber(currentStep);
-            if (nextStep > currentStep) {
+            const nextStep = getNextStepNumber(currentActualStep);
+            if (nextStep > currentActualStep) {
                 showStep(nextStep);
             }
         }
@@ -719,15 +768,19 @@ document.addEventListener('click', function(e) {
     if (e.target.classList.contains('prev-btn')) {
         e.preventDefault();
         
-        const prevStep = getPrevStepNumber(currentStep);
-        if (prevStep < currentStep) {
+        const prevStep = getPrevStepNumber(currentActualStep);
+        if (prevStep < currentActualStep) {
             showStep(prevStep);
         }
     }
 });
 
 // Form Submission Handler
-document.querySelector('form').addEventListener('submit', function(e) {    // Step-wise validation for comprehensive feedback form
+document.querySelector('form').addEventListener('submit', function(e) {
+    // Remove any existing error messages first
+    document.querySelectorAll('.step-error, .form-error').forEach(el => el.remove());
+    
+    // Step-wise validation for comprehensive feedback form
     const requiredFields = [
         // Step 1 - Participant Details (registration_type is auto-set, others optional)
         
@@ -763,64 +816,70 @@ document.querySelector('form').addEventListener('submit', function(e) {    // St
     // Paid event specific validations  
     const paidFields = ['value_for_money', 'payment_process'];
     requiredFields.push(...paidFields);
-    {% endif %}
-
-    let errors = [];
-      // Check each required field
+    {% endif %}    let errors = [];
+    const processedFields = new Set();
+    
+    // Check each required field
     requiredFields.forEach(field => {
+        // Skip if we've already processed this field
+        if (processedFields.has(field)) {
+            return;
+        }
+        processedFields.add(field);
+        
         const isTextArea = ['favorite_part', 'future_improvements', 'outstanding_sessions', 'future_suggestions', 'event_requests', 'additional_comments', 'payment_issues'].includes(field);
         const isInput = ['participant_name', 'participant_email', 'department', 'year_of_study', 'team_size'].includes(field);
         const isHiddenInput = ['registration_type'].includes(field);
-        
-        if (isTextArea) {
+          if (isTextArea) {
             // Check textarea fields
             const elem = document.querySelector(`textarea[name="${field}"]`);
             if (elem && elem.hasAttribute('required') && !elem.value.trim()) {
-                errors.push(`Please fill in "${field.replace(/_/g, ' ')}"`);
-            }
-        } else if (isInput || isHiddenInput) {
+                const fieldLabel = field.replace(/_/g, ' ').toLowerCase();
+                errors.push(`We'd appreciate your thoughts on ${fieldLabel}`);
+            }        } else if (isInput || isHiddenInput) {
             // Check input fields (including hidden inputs)
             const elem = document.querySelector(`input[name="${field}"]`);
             if (elem && elem.hasAttribute('required') && !elem.value.trim()) {
-                errors.push(`Please fill in "${field.replace(/_/g, ' ')}"`);
+                const fieldLabel = field.replace(/_/g, ' ').toLowerCase();
+                errors.push(`Could you help us with ${fieldLabel}?`);
             }
             // For hidden inputs like registration_type, they should always have a value
             if (isHiddenInput && elem && !elem.value.trim()) {
-                errors.push(`Please select an option for "${field.replace(/_/g, ' ')}"`);
-            }
-        } else {
+                const fieldLabel = field.replace(/_/g, ' ').toLowerCase();
+                errors.push(`Please let us know about ${fieldLabel}`);
+            }        } else {
             // Check radio button fields
+            const radioButtons = document.querySelectorAll(`input[name="${field}"]`);
             const selected = document.querySelector(`input[name="${field}"]:checked`);
-            if (!selected) {
-                errors.push(`Please select an option for "${field.replace(/_/g, ' ')}"`);
+            if (radioButtons.length > 0 && !selected) {
+                const fieldLabel = field.replace(/_/g, ' ').toLowerCase();
+                errors.push(`We'd love your feedback on ${fieldLabel}`);
             }
         }
-    });
-
-    // Special validation for team size if team event
+    });    // Special validation for team size if team event
     {% if event.is_team_based %}
     const teamSizeInput = document.querySelector('input[name="team_size"]');
     if (teamSizeInput && teamSizeInput.value && (parseInt(teamSizeInput.value) < 1 || parseInt(teamSizeInput.value) > 20)) {
-        errors.push('Team size must be between 1 and 20 members');
+        errors.push('Team size should be between 1 and 20 members');
     }
-    {% endif %}
-
-    // Show errors if any
+    {% endif %}// Show errors if any
     if (errors.length > 0) {
         e.preventDefault();
         
+        // Remove any existing error messages first
+        document.querySelectorAll('.form-error').forEach(el => el.remove());
+        
         // Create a more user-friendly error display
         const errorDiv = document.createElement('div');
-        errorDiv.className = 'fixed top-4 right-4 bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-lg shadow-lg z-50 max-w-md';
+        errorDiv.className = 'form-error fixed top-4 right-4 bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-lg shadow-lg z-50 max-w-md';
         errorDiv.innerHTML = `
             <div class="flex items-start">
                 <div class="flex-shrink-0">
                     <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
                     </svg>
-                </div>
-                <div class="ml-3">
-                    <h3 class="text-sm font-medium">Please complete the following:</h3>
+                </div>                <div class="ml-3">
+                    <h3 class="text-sm font-medium">We'd love to hear more from you:</h3>
                     <ul class="mt-2 text-sm list-disc list-inside">
                         ${errors.map(error => `<li>${error}</li>`).join('')}
                     </ul>
@@ -842,18 +901,37 @@ document.querySelector('form').addEventListener('submit', function(e) {    // St
                 errorDiv.remove();
             }
         }, 8000);
-        
-        // Scroll to first error field
+          // Scroll to first error field
         const firstErrorField = requiredFields.find(field => {
-            const elem = document.querySelector(`input[name="${field}"], textarea[name="${field}"]`);
-            return elem && !elem.value && elem.hasAttribute('required');
+            const isTextArea = ['favorite_part', 'future_improvements', 'outstanding_sessions', 'future_suggestions', 'event_requests', 'additional_comments', 'payment_issues'].includes(field);
+            const isInput = ['participant_name', 'participant_email', 'department', 'year_of_study', 'team_size'].includes(field);
+            
+            if (isTextArea || isInput) {
+                const elem = document.querySelector(`input[name="${field}"], textarea[name="${field}"]`);
+                return elem && !elem.value.trim() && elem.hasAttribute('required');
+            } else {
+                // Radio button field
+                const selected = document.querySelector(`input[name="${field}"]:checked`);
+                return !selected;
+            }
         });
         
         if (firstErrorField) {
             const elem = document.querySelector(`input[name="${firstErrorField}"], textarea[name="${firstErrorField}"]`);
             if (elem) {
-                elem.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                elem.focus();
+                // Find the step containing this field and navigate to it
+                const stepElement = elem.closest('.form-step');
+                if (stepElement) {
+                    const stepNumber = parseInt(stepElement.getAttribute('data-step'));
+                    if (stepNumber !== currentActualStep) {
+                        showStep(stepNumber);
+                    }
+                }
+                
+                setTimeout(() => {
+                    elem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    if (elem.focus) elem.focus();
+                }, 300);
             }
         }
         

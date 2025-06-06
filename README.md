@@ -15,13 +15,23 @@ This is the administration system for UCG v2, providing functionality for event 
 ## Project Structure
 
 ```
-├── config/          # Configuration files
+├── admin/          # Virtual environment
+├── config/         # Configuration files
 ├── data/           # Data files and templates
+├── dependencies/   # Core dependencies and middlewares
 ├── docs/           # Documentation
+├── logs/           # Application logs
 ├── models/         # Database models
 ├── routes/         # Route handlers
+│   ├── admin/      # Admin routes
+│   └── client/     # Client-facing routes
 ├── scripts/        # Utility scripts
+│   ├── automation/ # Automation scripts
+│   ├── debug/      # Debugging and verification tools
+│   ├── testing/    # Test scripts
+│   └── data_migration/ # Data migration scripts
 ├── static/         # Static files
+├── temp/           # Temporary test HTML templates
 ├── templates/      # HTML templates
 └── utils/          # Utility functions
 ```
@@ -76,10 +86,24 @@ Run the tests using:
 python -m pytest
 ```
 
+For specific component testing:
+```bash
+python scripts/testing/test_specific_component.py
+```
+
+## Debugging
+
+Debug tools are available in the `scripts/debug/` directory:
+
+```bash
+python scripts/debug/check_events.py
+```
+
 ## Documentation
 
 Detailed documentation can be found in the `docs/` directory:
 - [Certificate Implementation](docs/CERTIFICATE_BUTTON_IMPLEMENTATION.md)
 - [Email Integration](docs/EMAIL_TEMPLATE_ENHANCEMENT_SUMMARY.md)
 - [Implementation Summary](docs/IMPLEMENTATION_SUMMARY.md)
+- [Feedback Form Fixes](docs/FEEDBACK_FORM_FIXES_FINAL.md)
 - [Logging](docs/logging.md)

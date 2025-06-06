@@ -382,7 +382,7 @@ document.getElementById('email').addEventListener('input', function(e) {
     const emailInput = e.target;
     
     if (email && !email.includes('@')) {
-        emailError.innerHTML = '<i class="fas fa-times text-red-400 mr-1"></i><span class="text-red-600">Please enter a valid email address</span>';
+        emailError.innerHTML = '<i class="fas fa-times text-red-400 mr-1"></i><span class="text-red-600">Could you double-check your email address?</span>';
         emailInput.classList.add('border-red-400');
         emailInput.classList.remove('border-gray-200', 'focus:border-green-500');
     } else {
@@ -518,7 +518,7 @@ document.querySelector('form').addEventListener('submit', function(e) {
     
     // Email validation
     if (!email.includes('@')) {
-        errors.push('Please enter a valid email address');
+        errors.push('Could you double-check your email address?');
     }
     
     // Mobile number validation
@@ -559,7 +559,7 @@ document.querySelector('form').addEventListener('submit', function(e) {
         }
         
         if (age > 100) {
-            errors.push('Please enter a valid date of birth');
+            errors.push('Could you check your date of birth?');
         }
     }
     

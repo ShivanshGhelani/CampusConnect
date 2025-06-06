@@ -1015,15 +1015,16 @@ async def registration_not_started(request: Request):
     )
 
 @router.get("/events/{event_id}/certificate")
-async def download_certificate(request: Request, event_id: str, feedback_submitted: bool = False, student: Student = Depends(require_student_login)):
+async def download_certificate(request: Request, event_id: str, student: Student = Depends(require_student_login)):
+    """Download certificate for completed events - requires student login and feedback submission"""
+    # Get feedback_submitted from query parameters
+    feedback_submitted = request.query_params.get("feedback_submitted", "").lower() == "true"
     """Download certificate for completed events - requires student login and feedback submission"""
     try:
         from utils.event_status_manager import EventStatusManager
         from models.event import Event, EventSubStatus
         from fastapi.responses import FileResponse
-        from pathlib import Path
-
-        # Get event details with updated status from EventStatusManager
+        from pathlib import Path        # Get event details with updated status from EventStatusManager
         event = await EventStatusManager.get_event_by_id(event_id)
         if not event:
             raise HTTPException(status_code=404, detail="Event not found")
@@ -1034,70 +1035,96 @@ async def download_certificate(request: Request, event_id: str, feedback_submitt
                 status_code=400, 
                 detail="Certificates are not available for this event at this time"
             )
-
-        # Get student's registration and check feedback submission
-        event_collection = await Database.get_event_collection(event_id)
-        if event_collection is not None:
-            registration = await event_collection.find_one({
-                "enrollment_no": student.enrollment_no,
-                "type": "registration"
-            })
-            
-            if not registration:
-                raise HTTPException(
-                    status_code=400, 
-                    detail="You must be registered for this event to download a certificate"
-                )
-
-            # Check if feedback is submitted
-            if not feedback_submitted:
-                feedback = await event_collection.find_one({
-                    "registration_id": registration.get("registrar_id"),
-                    "type": "feedback"
-                })
-
-                if not feedback:
-                    # Redirect to feedback form if not submitted
-                    return RedirectResponse(
-                        url=f"/client/events/{event_id}/feedback",
-                        status_code=303
-                    )
+          # Check if student is registered for this event and has attended using the new data structure
+        student_data = await DatabaseOperations.find_one("students", {"enrollment_no": student.enrollment_no})
+        if not student_data:
+            return templates.TemplateResponse(
+                "client/certificate_download.html",
+                {
+                    "request": request,
+                    "event": event,
+                    "student": student,
+                    "error": "Student data not found"
+                }
+            )
         
-        # Check if student is registered for this event and has attended
-        db = await Database.get_database(event_id)
-        if db is not None:
-            registration = await db["registrations"].find_one({
-                "enrollment_no": student.enrollment_no
-            })
-            
-            if not registration:
-                return templates.TemplateResponse(
-                    "client/certificate_download.html",
-                    {
-                        "request": request,
-                        "event": event,
-                        "student": student,
-                        "error": "You must be registered for this event to download a certificate"
-                    }
-                )
+        # Check event participation in the student record
+        event_participations = student_data.get('event_participations', {})
+        participation = event_participations.get(event_id)
+        if not participation:
+            return templates.TemplateResponse(
+                "client/certificate_download.html",
+                {
+                    "request": request,
+                    "event": event,
+                    "student": student,
+                    "error": "You must be registered for this event to download a certificate"
+                }
+            )
+        
+        # Check for attendance - must have attendance record
+        if not participation.get('attendance_id'):
+            return templates.TemplateResponse(
+                "client/certificate_download.html",
+                {
+                    "request": request,
+                    "event": event,
+                    "student": student,
+                    "error": "You must have attended this event to download a certificate"
+                }
+            )
+        
+        # Check for feedback submission - must have feedback record
+        if not participation.get('feedback_id') and not feedback_submitted:
+            return RedirectResponse(
+                url=f"/client/events/{event_id}/feedback",
+                status_code=303,
+            )
             
             # In a full implementation, you would also check if they attended the event
             # if not registration.get('attended'):
-            #     return error about not attending
-
-        # For now, return a temporary message since actual certificate generation is not implemented
-        # In a full implementation, this would:
-        # 1. Verify user registration for the event
-        # 2. Generate a personalized certificate
-        # 3. Return the certificate file
+            #     return error about not attending        # Check if certificate already exists
+        certificate_id = participation.get('certificate_id')
         
+        # If no certificate yet, generate one
+        if not certificate_id:
+            from utils.id_generator import generate_certificate_id
+            
+            # Generate a new certificate ID
+            certificate_id = generate_certificate_id(student.enrollment_no, event_id, student_data.get("full_name", ""))
+            
+            # Update student's event participation with the certificate ID
+            await DatabaseOperations.update_one(
+                "students",
+                {"enrollment_no": student.enrollment_no},
+                {"$set": {f"event_participations.{event_id}.certificate_id": certificate_id}}
+            )
+            
+            # Also update event's certificates record
+            await DatabaseOperations.update_one(
+                "events",
+                {"event_id": event_id},
+                {"$set": {f"certificates.{certificate_id}": student.enrollment_no}}
+            )
+        
+        # Create certificate data for the template
+        certificate = {
+            "certificate_id": certificate_id,
+            "full_name": student_data.get("full_name", ""),
+            "event_name": event.get("event_name", ""),
+            "issue_date": datetime.now().strftime("%d %B %Y"),
+            "event_date": event.get("start_date", "").strftime("%d %B %Y") if event.get("start_date") else ""
+        }
+        
+        # Return certificate download page
         return templates.TemplateResponse(
             "client/certificate_download.html",
             {
                 "request": request,
                 "event": event,
                 "student": student,
-                "message": "Certificate download functionality is under development. Certificates will be available soon!"
+                "certificate": certificate,
+                "message": "Your certificate is ready for download!"
             }
         )
         
@@ -1149,17 +1176,17 @@ async def mark_attendance_get(request: Request, event_id: str, student: Student 
                     "error": "Student data not found"
                 }
             )
-        
-        # Check event_participations for this event
+          # Check event_participations for this event
         event_participations = student_data.get('event_participations', {})
         if event_id not in event_participations:
+            # Redirect to user-friendly not registered page
             return templates.TemplateResponse(
-                "client/mark_attendance.html",
+                "client/not_registered.html",
                 {
                     "request": request,
                     "event": event,
                     "student": student,
-                    "error": "You must be registered for this event to mark attendance"
+                    "page_context": "attendance"
                 }
             )
         
@@ -1300,19 +1327,17 @@ async def mark_attendance_post(request: Request, event_id: str, student: Student
                     "error": "Student data not found",
                     "form_data": {"student_name": student_name, "registration_id": registration_id}
                 }
-            )
-        
-        # Check if student is registered for this event
+            )        # Check if student is registered for this event
         event_participations = student_data.get('event_participations', {})
         if event_id not in event_participations:
+            # Redirect to user-friendly not registered page
             return templates.TemplateResponse(
-                "client/mark_attendance.html",
+                "client/not_registered.html",
                 {
                     "request": request,
                     "event": event,
                     "student": student,
-                    "error": "You must be registered for this event to mark attendance",
-                    "form_data": {"student_name": student_name, "registration_id": registration_id}
+                    "page_context": "attendance"
                 }
             )
         

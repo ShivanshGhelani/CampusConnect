@@ -148,6 +148,28 @@ async def submit_feedback(enrollment_no: str, event_id: str, feedback_data: dict
         # Generate feedback ID
         feedback_id = generate_feedback_id(enrollment_no, event_id)
         
+        # Prepare comprehensive feedback data with metadata
+        complete_feedback_data = {
+            "feedback_id": feedback_id,
+            "registration_id": registration_id,
+            "attendance_id": attendance_id,
+            "event_id": event_id,
+            "enrollment_no": enrollment_no,
+            "submitted_at": datetime.now(timezone.utc),
+            **feedback_data  # Include all form data
+        }
+        
+        # Store feedback in dedicated collection for the event
+        feedback_collection_name = f"{event_id}_feedbacks"
+        await DatabaseOperations.insert_one(feedback_collection_name, complete_feedback_data)
+        
+        # Update main event document for tracking
+        await DatabaseOperations.update_one(
+            "events",
+            {"event_id": event_id},
+            {"$set": {f"feedbacks.{feedback_id}": enrollment_no}}
+        )
+        
         # Update student record with feedback ID
         await DatabaseOperations.update_one(
             "students",
@@ -155,18 +177,10 @@ async def submit_feedback(enrollment_no: str, event_id: str, feedback_data: dict
             {"$set": {f"event_participations.{event_id}.feedback_id": feedback_id}}
         )
         
-        # Here you would also save the actual feedback data to a feedback collection
-        # await DatabaseOperations.insert_one("feedback", {
-        #     "feedback_id": feedback_id,
-        #     "enrollment_no": enrollment_no,
-        #     "event_id": event_id,
-        #     "feedback_data": feedback_data,
-        #     "submitted_at": datetime.utcnow()
-        # })
-        
         return True, feedback_id, "Feedback submitted successfully"
         
     except Exception as e:
+        print(f"Error submitting feedback: {str(e)}")
         return False, None, f"Error submitting feedback: {str(e)}"
 
 async def generate_certificate(enrollment_no: str, event_id: str):

@@ -501,7 +501,8 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             removeParticipantBtn.classList.remove('opacity-50', 'cursor-not-allowed');
         }
-    }    async function validateParticipantEnrollment(input) {
+    }
+        async function validateParticipantEnrollment(input) {
         const participantId = input.getAttribute('data-participant-id');
         const enrollmentNo = input.value.trim();
         
@@ -703,7 +704,7 @@ document.addEventListener('DOMContentLoaded', function() {
         for (let field of requiredFields) {
             if (!field.value.trim()) {
                 e.preventDefault();
-                showAlert('Please fill all required fields', 'error');
+                showAlert('Could you help us complete all required details?', 'error');
                 field.focus();
                 return false;
             }

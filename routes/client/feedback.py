@@ -33,57 +33,39 @@ async def show_feedback_form(request: Request, event_id: str, student: Student =
                 detail="Feedback collection is not available for this event at this time"
             )
         
-        # Check if student is registered and attended
-        event_collection = await Database.get_event_collection(event_id)
-        if event_collection is not None:
-            registration = await event_collection.find_one({
-                "enrollment_no": student.enrollment_no
-            })
-            if not registration:
-                # Show not registered error page
-                return templates.TemplateResponse(
-                    "client/not_registered.html",
-                    {
-                        "request": request,
-                        "event": event,
-                        "student": student
-                    }
-                )
-
-            # Check if student already submitted feedback
-            feedback = await event_collection.find_one({
-                "registration_id": registration.get("registrar_id")
-            })
-
-            if feedback:
-                # Show confirmation page with existing feedback
-                return templates.TemplateResponse(
-                    "client/feedback_confirmation.html",
-                    {
-                        "request": request,
-                        "event": event,
-                        "student": student,
-                        "registration": registration,
-                        "feedback": feedback
-                    }
-                )
-
-            # Check attendance record
-            attendance = await event_collection.find_one({
-                "registration_id": registration.get("registrar_id")
-            })
-
-            if not attendance:
-                return templates.TemplateResponse(
-                    "client/feedback_form.html",
-                    {
-                        "request": request,
-                        "event": event,
-                        "student": student,
-                        "error": "Event attendance record not found"
-                    }
-                )
-
+        # Get student data and check event participation
+        student_data = await DatabaseOperations.find_one("students", {"enrollment_no": student.enrollment_no})
+        if not student_data:
+            raise HTTPException(status_code=404, detail="Student data not found")
+        
+        # Check if student is registered for this event using event_participations
+        event_participations = student_data.get('event_participations', {})
+        if event_id not in event_participations:
+            return templates.TemplateResponse(
+                "client/not_registered.html",
+                {
+                    "request": request,
+                    "event": event,
+                    "student": student,
+                    "error": "You must be registered for this event to provide feedback"
+                }
+            )
+        
+        participation = event_participations[event_id]
+        registration_id = participation.get('registration_id')
+        attendance_id = participation.get('attendance_id')
+        
+        # Verify registration_id is not null
+        if not registration_id:            # Create registration object to avoid template rendering issues
+            registration = {
+                "registrar_id": "",
+                "enrollment_no": student.enrollment_no,
+                "full_name": student_data.get("full_name", ""),
+                "email": student_data.get("email", ""),
+                "department": student_data.get("department", ""),
+                "semester": student_data.get("semester", "")
+            }
+            
             return templates.TemplateResponse(
                 "client/feedback_form.html",
                 {
@@ -91,9 +73,64 @@ async def show_feedback_form(request: Request, event_id: str, student: Student =
                     "event": event,
                     "student": student,
                     "registration": registration,
-                    "attendance": attendance
+                    "error": "Invalid registration - registration ID not found"
                 }
             )
+          # Verify attendance_id is not null (student must have attended)
+        if not attendance_id:
+            # Create registration object to avoid template rendering issues
+            registration = {
+                "registrar_id": registration_id,
+                "enrollment_no": student.enrollment_no,
+                "full_name": student_data.get("full_name", ""),
+                "email": student_data.get("email", ""),
+                "department": student_data.get("department", ""),
+                "semester": student_data.get("semester", "")
+            }
+            
+            return templates.TemplateResponse(
+                "client/feedback_form.html",
+                {
+                    "request": request,
+                    "event": event,
+                    "student": student,
+                    "registration": registration,
+                    "error": "You must have attended this event to provide feedback"
+                }
+            )
+          # Check if student already submitted feedback
+        existing_feedback_id = participation.get('feedback_id')
+        if existing_feedback_id:
+            # Redirect to certificate download page with feedback_submitted=True
+            return RedirectResponse(
+                url=f"/client/events/{event_id}/certificate?feedback_submitted=True",
+                status_code=303
+            )        # Create registration object for template compatibility
+        registration = {
+            "registrar_id": registration_id,
+            "enrollment_no": student.enrollment_no,
+            "full_name": student_data.get("full_name", ""),
+            "email": student_data.get("email", ""),
+            "mobile_no": student_data.get("mobile_no", ""),
+            "department": student_data.get("department", ""),
+            "semester": student_data.get("semester", ""),
+            "registration_type": participation.get("registration_type", "individual")
+        }
+
+        # Add conditional properties for template based on event data
+        event['is_team_based'] = event.get('registration_mode') == 'team'
+        event['is_paid'] = (event.get('registration_type') == 'paid' and 
+                           event.get('registration_fee', 0) > 0)
+
+        return templates.TemplateResponse(
+            "client/feedback_form.html",
+            {
+                "request": request,
+                "event": event,
+                "student": student,
+                "registration": registration
+            }
+        )
 
     except HTTPException as he:
         if he.status_code == status.HTTP_401_UNAUTHORIZED:
@@ -117,98 +154,224 @@ async def submit_feedback(request: Request, event_id: str, student: Student = De
         event = await EventStatusManager.get_event_by_id(event_id)
         if not event:
             raise HTTPException(status_code=404, detail="Event not found")
+            
+        # Add conditional properties for template based on event data
+        event['is_team_based'] = event.get('registration_mode') == 'team'
+        event['is_paid'] = (event.get('registration_type') == 'paid' and 
+                           event.get('registration_fee', 0) > 0)
         
-        event_collection = await Database.get_event_collection(event_id)
-        if event_collection is None:
-            raise HTTPException(status_code=500, detail="Event collection not found")
-
-        # Get registration record
-        registration = await event_collection.find_one({
-            "enrollment_no": student.enrollment_no
-        })
-        if not registration:
-            # Show not registered error page for POST requests as well
+        # Get student data and check event participation
+        student_data = await DatabaseOperations.find_one("students", {"enrollment_no": student.enrollment_no})
+        if not student_data:
+            raise HTTPException(status_code=404, detail="Student data not found")
+        
+        # Check if student is registered for this event using event_participations
+        event_participations = student_data.get('event_participations', {})
+        if event_id not in event_participations:
             return templates.TemplateResponse(
                 "client/not_registered.html",
                 {
                     "request": request,
                     "event": event,
-                    "student": student
+                    "student": student,
+                    "error": "You must be registered for this event to provide feedback"
                 },
                 status_code=400
-            )        # Generate feedback ID using the utility function
-        feedback_id = generate_feedback_id(student.enrollment_no, event_id)
-
-        # Create feedback record
-        feedback_data = {
-            "feedback_id": feedback_id,
-            "registration_id": registration.get("registrar_id"),
-            "event_id": event_id,
-            "enrollment_no": student.enrollment_no,
-            "name": registration.get("full_name"),
-            "email": registration.get("email"),
-            "overall_satisfaction": int(form_data.get("overall_satisfaction", 0)),
-            "event_organization": int(form_data.get("event_organization", 0)),
-            "venue_facilities": int(form_data.get("venue_facilities", 0)),
-            "speaker_quality": int(form_data.get("speaker_quality", 0)),
-            "time_management": int(form_data.get("time_management", 0)),
-            "met_expectations": form_data.get("met_expectations") == "yes",
-            "event_usefulness": int(form_data.get("event_usefulness", 0)),
-            "would_recommend": form_data.get("would_recommend") == "yes",
-            "liked_most": form_data.get("liked_most", ""),
-            "areas_for_improvement": form_data.get("areas_for_improvement", ""),
-            "additional_comments": form_data.get("additional_comments", ""),
-            "submitted_at": datetime.now()
-        }        # Save feedback
-        result = await event_collection.insert_one(feedback_data)
-        
-        if result.inserted_id:
-            # Update student's event participation record with feedback_id
-            await DatabaseOperations.update_one(
-                "students",
-                {"enrollment_no": student.enrollment_no},
-                {"$set": {f"event_participations.{event_id}.feedback_id": feedback_id}}
             )
-              # Send feedback confirmation email
-            try:
-                await email_service.send_feedback_confirmation(
-                    student_email=registration.get("email"),
-                    student_name=registration.get("full_name"),
-                    event_title=event.get("event_name", event_id),
-                    event_date=event.get("start_date")
-                )
-            except Exception as e:
-                print(f"Failed to send feedback confirmation email: {str(e)}")
-                # Continue even if email fails
+        
+        participation = event_participations[event_id]
+        registration_id = participation.get('registration_id')
+        attendance_id = participation.get('attendance_id')
+          # Verify registration_id and attendance_id exist
+        if not registration_id:
+            # Create registration object to avoid template rendering issues
+            registration = {
+                "registrar_id": "",
+                "enrollment_no": student.enrollment_no,
+                "full_name": student_data.get("full_name", ""),
+                "email": student_data.get("email", ""),
+                "department": student_data.get("department", ""),
+                "semester": student_data.get("semester", "")
+            }
             
-            # Show success page
             return templates.TemplateResponse(
-                "client/feedback_success.html",
+                "client/feedback_form.html",
                 {
                     "request": request,
                     "event": event,
                     "student": student,
                     "registration": registration,
-                    "feedback": feedback_data
+                    "error": "Invalid registration - registration ID not found"
+                },
+                status_code=400
+            )
+        if not attendance_id:
+            # Create registration object to avoid template rendering issues
+            registration = {
+                "registrar_id": registration_id,
+                "enrollment_no": student.enrollment_no,
+                "full_name": student_data.get("full_name", ""),
+                "email": student_data.get("email", ""),
+                "department": student_data.get("department", ""),
+                "semester": student_data.get("semester", "")
+            }
+            
+            return templates.TemplateResponse(
+                "client/feedback_form.html",
+                {
+                    "request": request,
+                    "event": event,
+                    "student": student,
+                    "registration": registration,
+                    "error": "You must have attended this event to provide feedback"
+                },
+                status_code=400
+            )
+        
+        # Check if feedback already submitted
+        existing_feedback_id = participation.get('feedback_id')
+        if existing_feedback_id:
+            return templates.TemplateResponse(
+                "client/feedback_confirmation.html",
+                {
+                    "request": request,
+                    "event": event,
+                    "student": student,
+                    "registration_id": registration_id,
+                    "feedback_id": existing_feedback_id,
+                    "message": "You have already submitted feedback for this event"
                 }
             )
-        else:
-            raise HTTPException(status_code=500, detail="Failed to save feedback")
+
+        # Generate feedback ID using the utility function
+        feedback_id = generate_feedback_id(student.enrollment_no, event_id)
+
+        # Create comprehensive feedback record
+        feedback_data = {
+            "feedback_id": feedback_id,
+            "registration_id": registration_id,
+            "attendance_id": attendance_id,
+            "event_id": event_id,
+            "enrollment_no": student.enrollment_no,
+            "name": student_data.get("full_name", ""),
+            "email": student_data.get("email", ""),
+            
+            # Step 1: Participant Details
+            "participant_name": form_data.get("participant_name", ""),
+            "participant_email": form_data.get("participant_email", ""),
+            "department": form_data.get("department", ""),
+            "year_of_study": form_data.get("year_of_study", ""),            # Step 2: General Event Experience
+            "overall_satisfaction": form_data.get("overall_satisfaction", ""),  # Changed from int() to string
+            "recommendation_likelihood": form_data.get("recommendation_likelihood", ""),  # Store as string since form sends 'very_likely', etc.
+            "favorite_part": form_data.get("favorite_part", ""),
+            "future_improvements": form_data.get("future_improvements", ""),
+              # Step 3: Event Logistics & Organization
+            "well_organized": form_data.get("well_organized", ""),
+            "communication_quality": form_data.get("communication_quality", ""),
+            "schedule_adherence": form_data.get("schedule_adherence", ""),
+            "venue_suitability": form_data.get("venue_suitability", ""),
+            
+            # Step 4: Content & Delivery
+            "content_relevance": form_data.get("content_relevance", ""),
+            "speaker_engagement": form_data.get("speaker_engagement", ""),
+            "met_expectations": form_data.get("met_expectations", ""),
+            "outstanding_sessions": form_data.get("outstanding_sessions", ""),
+            
+            # Step 5: Team Event Specific (if applicable)
+            "team_format_management": form_data.get("team_format_management", ""),
+            "rules_clarity": form_data.get("rules_clarity", ""),
+            
+            # Step 6: Paid Event Specific (if applicable)
+            "value_for_money": form_data.get("value_for_money", ""),
+            "payment_process": form_data.get("payment_process", ""),
+            
+            # Step 7: Suggestions & Final Comments
+            "future_suggestions": form_data.get("future_suggestions", ""),
+            
+            # Metadata
+            "submitted_at": datetime.now(),
+            "form_version": "comprehensive_v1"
+        }
+
+        # Store feedback in event's feedbacks collection using event_id as collection name
+        feedback_collection_name = f"{event_id}_feedbacks"
+        await DatabaseOperations.insert_one(feedback_collection_name, feedback_data)
+        
+        # Also store in main event document for tracking
+        await DatabaseOperations.update_one(
+            "events",
+            {"event_id": event_id},
+            {"$set": {f"feedbacks.{feedback_id}": student.enrollment_no}}
+        )
+        
+        # Update student's event participation record with feedback_id
+        await DatabaseOperations.update_one(
+            "students",
+            {"enrollment_no": student.enrollment_no},
+            {"$set": {f"event_participations.{event_id}.feedback_id": feedback_id}}
+        )
+
+        # Send feedback confirmation email
+        try:
+            await email_service.send_feedback_confirmation(
+                student_email=student_data.get("email"),
+                student_name=student_data.get("full_name"),
+                event_title=event.get("event_name", event_id),
+                event_date=event.get("start_date")
+            )
+        except Exception as e:
+            print(f"Failed to send feedback confirmation email: {str(e)}")
+            # Continue even if email fails
+        
+        # Create registration object for template
+        registration = {
+            "registrar_id": registration_id,
+            "enrollment_no": student.enrollment_no,
+            "full_name": student_data.get("full_name", ""),
+            "email": student_data.get("email", "")
+        }
+        
+        # Show success page
+        return templates.TemplateResponse(
+            "client/feedback_success.html",
+            {
+                "request": request,
+                "event": event,
+                "student": student,
+                "registration": registration,
+                "feedback": feedback_data
+            }
+        )
 
     except HTTPException as he:
-        if he.status_code == status.HTTP_401_UNAUTHORIZED:
-            return RedirectResponse(
+        if he.status_code == status.HTTP_401_UNAUTHORIZED:            return RedirectResponse(
                 url=f"/client/login?redirect={request.url.path}",
                 status_code=302
             )
         raise he
+        
     except ValueError as ve:
+        # Create registration object for template even on error
+        student_data = await DatabaseOperations.find_one("students", {"enrollment_no": student.enrollment_no})
+        event_participations = student_data.get('event_participations', {})
+        participation = event_participations.get(event_id, {})
+        
+        registration = {
+            "registrar_id": participation.get('registration_id', ''),
+            "enrollment_no": student.enrollment_no,
+            "full_name": student_data.get("full_name", ""),
+            "email": student_data.get("email", ""),
+            "department": student_data.get("department", ""),
+            "semester": student_data.get("semester", "")
+        }
+        
         return templates.TemplateResponse(
             "client/feedback_form.html",
             {
                 "request": request,
                 "event": event if 'event' in locals() else None,
                 "student": student,
+                "registration": registration,
                 "error": str(ve),
                 "form_data": form_data if 'form_data' in locals() else {}
             },
