@@ -8,6 +8,7 @@ import asyncio
 from typing import Dict, Optional, List
 from utils.db_operations import DatabaseOperations
 from utils.id_generator import generate_attendance_id, generate_feedback_id, generate_certificate_id
+from datetime import datetime, timezone
 
 async def mark_attendance(enrollment_no: str, event_id: str, present: bool = True):
     """
@@ -45,20 +46,34 @@ async def mark_attendance(enrollment_no: str, event_id: str, present: bool = Tru
         
         if present:
             # Generate attendance ID only if student was present
-            attendance_id = generate_attendance_id(enrollment_no, event_id)
+            from models.attendance import AttendanceRecord
+            attendance_id = AttendanceRecord.generate_attendance_id(
+                enrollment_no=enrollment_no,
+                full_name=student_data.get('full_name', ''),
+                event_id=event_id
+            )
             
-            # Update student record with attendance ID
+            # Update student record with attendance ID and status
             await DatabaseOperations.update_one(
                 "students",
                 {"enrollment_no": enrollment_no},
-                {"$set": {f"event_participations.{event_id}.attendance_id": attendance_id}}
+                {"$set": {
+                    f"event_participations.{event_id}.attendance_id": attendance_id,
+                    f"event_participations.{event_id}.attendance_status": "present",
+                    f"event_participations.{event_id}.attendance_marked_at": datetime.now(timezone.utc)
+                }}
             )
             
-            # Also store attendance mapping in event data for admin tracking
+            # Store attendance in event data for admin tracking
             await DatabaseOperations.update_one(
                 "events",
                 {"event_id": event_id},
-                {"$set": {f"attendances.{attendance_id}": enrollment_no}}
+                {"$set": {f"attendances.{attendance_id}": {
+                    "enrollment_no": enrollment_no,
+                    "registration_id": registration_id,
+                    "attendance_status": "present",
+                    "marked_at": datetime.now(timezone.utc)
+                }}}
             )
             
             return True, attendance_id, "Attendance marked as present"
@@ -68,12 +83,28 @@ async def mark_attendance(enrollment_no: str, event_id: str, present: bool = Tru
             await DatabaseOperations.update_one(
                 "students",
                 {"enrollment_no": enrollment_no},
-                {"$set": {f"event_participations.{event_id}.attendance_status": "absent"}}
+                {"$set": {
+                    f"event_participations.{event_id}.attendance_status": "absent",
+                    f"event_participations.{event_id}.attendance_marked_at": datetime.now(timezone.utc)
+                }}
+            )
+            
+            # Also store in event data for tracking
+            await DatabaseOperations.update_one(
+                "events",
+                {"event_id": event_id},
+                {"$set": {f"attendances.{enrollment_no}": {
+                    "enrollment_no": enrollment_no,
+                    "registration_id": registration_id,
+                    "attendance_status": "absent",
+                    "marked_at": datetime.now(timezone.utc)
+                }}}
             )
             
             return True, None, "Attendance marked as absent"
             
     except Exception as e:
+        print(f"Error marking attendance: {str(e)}")
         return False, None, f"Error marking attendance: {str(e)}"
 
 async def submit_feedback(enrollment_no: str, event_id: str, feedback_data: dict):

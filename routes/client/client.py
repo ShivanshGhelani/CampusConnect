@@ -467,8 +467,11 @@ async def student_login(request: Request):
     password = form_data.get("password")
     redirect_url = form_data.get("redirect", "/client/dashboard")
     
+    print(f"[DEBUG] Login attempt for: {enrollment_no} with redirect to: {redirect_url}")
+    
     # Validate required fields
     if not all([enrollment_no, password]):
+        print("[DEBUG] Missing enrollment or password")
         return templates.TemplateResponse(
             "client/student_login.html",
             {
@@ -482,6 +485,7 @@ async def student_login(request: Request):
     # Authenticate student
     student = await authenticate_student(enrollment_no, password)
     if not student:
+        print(f"[DEBUG] Authentication failed for {enrollment_no}")
         return templates.TemplateResponse(
             "client/student_login.html",
             {
@@ -492,39 +496,69 @@ async def student_login(request: Request):
             status_code=401
         )
     
+    print(f"[DEBUG] Authentication successful for {enrollment_no}")
+    
     # Update last login time
     await DatabaseOperations.update_one(
         "students",
         {"enrollment_no": enrollment_no},
         {"$set": {"last_login": datetime.utcnow()}}
     )
-      # Convert student data to dict and serialize datetime objects
+    
+    # Convert student data to dict and serialize datetime objects
     student_data = student.model_dump()
     for key, value in student_data.items():
         if isinstance(value, datetime):
             student_data[key] = value.isoformat()
         elif isinstance(value, ObjectId):
             student_data[key] = str(value)
-    
-    # Store student in session
+      # Store student in session
     request.session["student"] = student_data
+    request.session["student_enrollment"] = enrollment_no
     
-    # Redirect to the original URL or dashboard
-    return RedirectResponse(url=redirect_url, status_code=303)
+    print(f"[DEBUG] Session data set. Keys in session: {list(request.session.keys())}")
+    print(f"[DEBUG] Redirecting to {redirect_url}")
+      # Use status code 303 (See Other) for redirect after successful login
+    # This ensures the browser doesn't use cache for the login page when navigating back
+    response = RedirectResponse(url=redirect_url, status_code=303)
+    
+    # Add cache control headers to prevent caching login page
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    
+    return response
 
 @router.get("/logout") 
 async def student_logout(request: Request):
     """Handle student logout"""
+    # Clear all session data
     request.session.clear()
-    return RedirectResponse(url="/client/events", status_code=302)
+    
+    # Create a response that redirects to events page
+    response = RedirectResponse(url="/client/events", status_code=303)
+    
+    # Add cache control headers to prevent caching
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    
+    return response
 
 @router.get("/dashboard")
 async def student_dashboard(request: Request):
     """Student dashboard showing their registrations and event history"""
+    print(f"[DEBUG] Dashboard access attempt. Keys in session: {list(request.session.keys())}")
+    print(f"[DEBUG] Student enrollment in session: {request.session.get('student_enrollment')}")
+    
     try:
         student = await get_current_student(request)
-    except HTTPException:
-        return RedirectResponse(url="/client/login", status_code=302)    # Handle flash messages from URL parameters
+        print(f"[DEBUG] Student successfully retrieved from session: {student.enrollment_no}")
+    except HTTPException as e:
+        print(f"[DEBUG] Error retrieving student from session: {str(e)}")
+        return RedirectResponse(url="/client/login", status_code=302)
+    
+    # Handle flash messages from URL parameters
     success_msg = request.query_params.get("success")
     error_msg = request.query_params.get("error")
     event_name = request.query_params.get("event_name", "Event")
@@ -1103,42 +1137,86 @@ async def mark_attendance_get(request: Request, event_id: str, student: Student 
                 }
             )
         
-        # Check if student is registered for this event
-        db = await Database.get_database(event_id)
-        registration = None
-        if db is not None:
-            registration = await db["registrations"].find_one({
-                "enrollment_no": student.enrollment_no
-            })
+        # Check if student is registered for this event using new event_participations structure
+        student_data = await DatabaseOperations.find_one("students", {"enrollment_no": student.enrollment_no})
+        if not student_data:
+            return templates.TemplateResponse(
+                "client/mark_attendance.html",
+                {
+                    "request": request,
+                    "event": event,
+                    "student": student,
+                    "error": "Student data not found"
+                }
+            )
+        
+        # Check event_participations for this event
+        event_participations = student_data.get('event_participations', {})
+        if event_id not in event_participations:
+            return templates.TemplateResponse(
+                "client/mark_attendance.html",
+                {
+                    "request": request,
+                    "event": event,
+                    "student": student,
+                    "error": "You must be registered for this event to mark attendance"
+                }
+            )
+        
+        # Get participation data
+        participation = event_participations[event_id]
+        registration_id = participation.get('registration_id')
+        
+        # Verify registration_id is not null
+        if not registration_id:
+            return templates.TemplateResponse(
+                "client/mark_attendance.html",
+                {
+                    "request": request,
+                    "event": event,
+                    "student": student,
+                    "error": "Invalid registration - registration ID not found"
+                }
+            )
+        
+        # Check if attendance already marked
+        existing_attendance_id = participation.get('attendance_id')
+        if existing_attendance_id:
+            # Create registration object for template compatibility
+            registration = {
+                "registrar_id": registration_id,
+                "enrollment_no": student.enrollment_no,
+                "full_name": student_data.get("full_name", ""),
+                "email": student_data.get("email", ""),
+                "mobile_no": student_data.get("mobile_no", ""),
+                "department": student_data.get("department", ""),
+                "semester": student_data.get("semester", ""),
+                "registration_type": participation.get("registration_type", "individual")
+            }
             
-            if not registration:
-                return templates.TemplateResponse(
-                    "client/mark_attendance.html",
-                    {
-                        "request": request,
-                        "event": event,
-                        "student": student,
-                        "error": "You must be registered for this event to mark attendance"
-                    }
-                )
-              # Check if attendance already marked
-            existing_attendance = await db["attendance"].find_one({
-                "registration_id": registration.get("registrar_id"),
-                "event_id": event_id
-            })
-            
-            if existing_attendance:
-                return templates.TemplateResponse(
-                    "client/attendance_confirmation.html",
-                    {
-                        "request": request,
-                        "event": event,
-                        "student": student,
-                        "registration": registration,
-                        "attendance": existing_attendance,
-                        "already_marked": True
-                    }
-                )
+            return templates.TemplateResponse(
+                "client/attendance_confirmation.html",
+                {
+                    "request": request,
+                    "event": event,
+                    "student": student,
+                    "registration": registration,
+                    "attendance": {"attendance_id": existing_attendance_id},
+                    "already_marked": True
+                }
+            )
+        
+        # Create registration object from student data for auto-filling
+        registration = {
+            "registrar_id": registration_id,
+            "enrollment_no": student.enrollment_no,
+            "full_name": student_data.get("full_name", ""),
+            "email": student_data.get("email", ""),
+            "mobile_no": student_data.get("mobile_no", ""),
+            "department": student_data.get("department", ""),
+            "semester": student_data.get("semester", ""),
+            "registration_type": participation.get("registration_type", "individual")
+        }
         
         return templates.TemplateResponse(
             "client/mark_attendance.html",
@@ -1146,7 +1224,8 @@ async def mark_attendance_get(request: Request, event_id: str, student: Student 
                 "request": request,
                 "event": event,
                 "student": student,
-                "registration": registration
+                "registration": registration,
+                "auto_filled": True  # Indicate form should be auto-filled
             }
         )
         
@@ -1168,6 +1247,9 @@ async def mark_attendance_post(request: Request, event_id: str, student: Student
     try:
         from utils.event_status_manager import EventStatusManager
         from models.event import EventSubStatus
+        from models.attendance import AttendanceRecord
+        from utils.event_lifecycle_helpers import mark_attendance
+        from datetime import datetime, timezone
         
         # Get form data
         form_data = await request.form()
@@ -1204,51 +1286,66 @@ async def mark_attendance_post(request: Request, event_id: str, student: Student
                     "form_data": {"student_name": student_name, "registration_id": registration_id}
                 }
             )
-        
-        # Get event collection for this event
-        event_collection = await Database.get_event_collection(event_id)
-        if event_collection is None:
+
+        # Get student data to access participation details
+        db_ops = DatabaseOperations()
+        student_data = await db_ops.find_one("students", {"enrollment_no": student.enrollment_no})
+        if not student_data:
             return templates.TemplateResponse(
                 "client/mark_attendance.html",
                 {
                     "request": request,
                     "event": event,
                     "student": student,
-                    "error": "Event collection not found",
+                    "error": "Student data not found",
                     "form_data": {"student_name": student_name, "registration_id": registration_id}
                 }
             )
-          # Find registration by registrar_id (registration ID)
-        registration = await event_collection.find_one({
+        
+        # Check if student is registered for this event
+        event_participations = student_data.get('event_participations', {})
+        if event_id not in event_participations:
+            return templates.TemplateResponse(
+                "client/mark_attendance.html",
+                {
+                    "request": request,
+                    "event": event,
+                    "student": student,
+                    "error": "You must be registered for this event to mark attendance",
+                    "form_data": {"student_name": student_name, "registration_id": registration_id}
+                }
+            )
+        
+        # Get participation details and verify registration ID
+        participation = event_participations[event_id]
+        student_registration_id = participation.get('registration_id')
+        
+        if student_registration_id != registration_id:
+            return templates.TemplateResponse(
+                "client/mark_attendance.html",
+                {
+                    "request": request,
+                    "event": event,
+                    "student": student,
+                    "error": f"Invalid registration ID. Your registration ID for this event is: {student_registration_id}",
+                    "form_data": {"student_name": student_name, "registration_id": registration_id}
+                }
+            )
+        
+        # Create registration object from student data for compatibility
+        registration = {
             "registrar_id": registration_id,
-            "type": "registration"
-        })
-        
-        if not registration:
-            return templates.TemplateResponse(
-                "client/mark_attendance.html",
-                {
-                    "request": request,
-                    "event": event,
-                    "student": student,
-                    "error": "Registration ID not found. Please check and try again.",
-                    "form_data": {"student_name": student_name, "registration_id": registration_id}
-                }
-            )
-        
-        # Verify that the current student is the one registered
-        if registration.get("enrollment_no") != student.enrollment_no:
-            return templates.TemplateResponse(
-                "client/mark_attendance.html",
-                {
-                    "request": request,
-                    "event": event,
-                    "student": student,
-                    "error": "This registration ID does not belong to your account",
-                    "form_data": {"student_name": student_name, "registration_id": registration_id}
-                }
-            )        # Verify student name matches registration
-        registered_name = registration.get("full_name", "").strip().lower()  # Using 'full_name' field from registration
+            "enrollment_no": student.enrollment_no,
+            "full_name": student_data.get("full_name", ""),
+            "email": student_data.get("email", ""),
+            "mobile_no": student_data.get("mobile_no", ""),
+            "department": student_data.get("department", ""),
+            "semester": student_data.get("semester", ""),
+            "registration_type": participation.get("registration_type", "individual")
+        }
+
+        # Verify student name matches registration
+        registered_name = registration.get("full_name", "").strip().lower()
         provided_name = student_name.strip().lower()
         
         if registered_name != provided_name:
@@ -1262,15 +1359,10 @@ async def mark_attendance_post(request: Request, event_id: str, student: Student
                     "form_data": {"student_name": student_name, "registration_id": registration_id}
                 }
             )
-        
+
         # Check if attendance already marked
-        existing_attendance = await event_collection.find_one({
-            "registration_id": registration_id,
-            "event_id": event_id,
-            "type": "attendance"
-        })
-        
-        if existing_attendance:
+        existing_attendance_id = participation.get('attendance_id')
+        if existing_attendance_id:
             return templates.TemplateResponse(
                 "client/attendance_confirmation.html",
                 {
@@ -1278,18 +1370,20 @@ async def mark_attendance_post(request: Request, event_id: str, student: Student
                     "event": event,
                     "student": student,
                     "registration": registration,
-                    "attendance": existing_attendance,
+                    "attendance": {"attendance_id": existing_attendance_id},
                     "already_marked": True
                 }
-            )        # Mark attendance using AttendanceRecord model
-        attendance_time = datetime.now()
+            )
         
-        # Create attendance record using the model
+        # Mark attendance using AttendanceRecord model
+        attendance_time = datetime.now(timezone.utc)
+        
+        # Create attendance record
         attendance_record = AttendanceRecord(
-            registration_id=registration_id,  # Store the registrar_id as registration_id in attendance
+            registration_id=registration_id,
             event_id=event_id,
             enrollment_no=student.enrollment_no,
-            full_name=registration.get("full_name"),  # Using 'full_name' field from registration
+            full_name=registration.get("full_name"),
             email=registration.get("email"),
             mobile_no=registration.get("mobile_no"),
             department=registration.get("department"),
@@ -1300,55 +1394,60 @@ async def mark_attendance_post(request: Request, event_id: str, student: Student
             attendance_status="present",
             type="attendance"
         )
-        
-        # Generate unique attendance ID 
-        attendance_record.attendance_id = AttendanceRecord.generate_unique_attendance_id(
-            student.enrollment_no,
-            registration.get("full_name"),
-            registration.get("department"),
-            event_id
+
+        # Generate unique attendance ID
+        attendance_record.attendance_id = AttendanceRecord.generate_attendance_id(
+            enrollment_no=student.enrollment_no,
+            full_name=registration.get("full_name"),
+            event_id=event_id
         )
         
-        # Convert to dict for database insertion
-        attendance_dict = attendance_record.dict_for_db()        # Insert attendance record
-        result = await event_collection.insert_one(attendance_dict)
+        # Mark attendance in both student and event data
+        success, attendance_id, message = await mark_attendance(
+            enrollment_no=student.enrollment_no,
+            event_id=event_id,
+            present=True
+        )
         
-        if result.inserted_id:            # Send attendance confirmation email
-            try:
-                await email_service.send_attendance_confirmation(
-                    student_email=registration.get("email"),
-                    student_name=registration.get("full_name"),
-                    event_title=event.get("event_name", event_id),
-                    attendance_date=attendance_time.strftime("%Y-%m-%d %H:%M:%S"),
-                    event_venue=event.get("venue", "TBD")
-                )
-            except Exception as e:
-                print(f"Failed to send attendance confirmation email: {str(e)}")
-                # Continue even if email fails
-            
-            # Redirect to success page
-            return templates.TemplateResponse(
-                "client/attendance_success.html",
-                {
-                    "request": request,
-                    "event": event,
-                    "student": student,
-                    "registration": registration,
-                    "attendance": attendance_record,
-                    "attendance_time": attendance_time
-                }
-            )
-        else:
+        if not success:
             return templates.TemplateResponse(
                 "client/mark_attendance.html",
                 {
                     "request": request,
                     "event": event,
                     "student": student,
-                    "error": "Failed to mark attendance. Please try again.",
+                    "error": message or "Failed to mark attendance. Please try again.",
                     "form_data": {"student_name": student_name, "registration_id": registration_id}
                 }
             )
+        
+        # Send attendance confirmation email
+        try:
+            from utils.email_service import EmailService
+            email_service = EmailService()
+            await email_service.send_attendance_confirmation(
+                student_email=registration.get("email"),
+                student_name=registration.get("full_name"),
+                event_title=event.get("event_name", event_id),
+                attendance_date=attendance_time.strftime("%Y-%m-%d %H:%M:%S"),
+                event_venue=event.get("venue", "TBD")
+            )
+        except Exception as e:
+            print(f"Failed to send attendance confirmation email: {str(e)}")
+            # Continue even if email fails
+        
+        # Return success response
+        return templates.TemplateResponse(
+            "client/attendance_success.html",
+            {
+                "request": request,
+                "event": event,
+                "student": student,
+                "registration": registration,
+                "attendance": attendance_record,
+                "attendance_time": attendance_time
+            }
+        )
         
     except HTTPException as he:
         if he.status_code == status.HTTP_401_UNAUTHORIZED:
@@ -1367,9 +1466,58 @@ async def mark_attendance_post(request: Request, event_id: str, student: Student
                 "event": event if 'event' in locals() else None,
                 "student": student,
                 "error": "An unexpected error occurred. Please try again.",
-                "form_data": {"student_name": form_data.get("student_name", ""), "registration_id": form_data.get("registration_id", "")}            }
+                "form_data": {"student_name": form_data.get("student_name", ""), "registration_id": form_data.get("registration_id", "")}
+            }
         )
 
-# This revert_registration function has been replaced by the better 
-# cancel_registration function in event_registration.py which properly 
-# handles both individual and team registrations using the new event_participations structure
+@router.get("/api/validate-registration")
+async def validate_registration_api(request: Request, registration_id: str, event_id: str, student: Student = Depends(require_student_login)):
+    """API endpoint to validate registration ID and return student details for auto-filling"""
+    try:
+        # Get student data
+        student_data = await DatabaseOperations.find_one("students", {"enrollment_no": student.enrollment_no})
+        if not student_data:
+            return {"success": False, "message": "Student data not found"}
+        
+        # Check event_participations for this event
+        event_participations = student_data.get('event_participations', {})
+        if event_id not in event_participations:
+            return {"success": False, "message": "You are not registered for this event"}
+        
+        # Get participation data
+        participation = event_participations[event_id]
+        student_registration_id = participation.get('registration_id')
+        
+        # Verify registration_id matches
+        if not student_registration_id:
+            return {"success": False, "message": "Registration ID not found"}
+        
+        if student_registration_id.upper() != registration_id.upper():
+            return {"success": False, "message": f"Invalid registration ID. Your registration ID is: {student_registration_id}"}
+        
+        # Check if attendance already marked
+        existing_attendance_id = participation.get('attendance_id')
+        if existing_attendance_id:
+            return {"success": False, "message": "Attendance already marked for this event"}
+        
+        # Return student details for auto-filling
+        student_details = {
+            "enrollment_no": student.enrollment_no,
+            "full_name": student_data.get("full_name", ""),
+            "email": student_data.get("email", ""),
+            "mobile_no": student_data.get("mobile_no", ""),
+            "department": student_data.get("department", ""),
+            "semester": student_data.get("semester", ""),
+            "registration_type": participation.get("registration_type", "individual"),
+            "registration_id": student_registration_id
+        }
+        
+        return {
+            "success": True,
+            "student": student_details,
+            "message": "Registration validated successfully"
+        }
+        
+    except Exception as e:
+        print(f"Error in validate_registration_api: {str(e)}")
+        return {"success": False, "message": "An error occurred while validating registration"}

@@ -127,17 +127,27 @@ async def show_registration_form(request: Request, event_id: str, student: Stude
             existing_registration = await event_collection.find_one({"enrollment_no": student.enrollment_no})
             if existing_registration:
                 # Student has already registered - show existing registration
-                
-                # Convert datetime objects to ISO format strings for template
-                serialized_event = {k: v.isoformat() if isinstance(v, datetime) else v for k, v in event.items()}
-                
-                return templates.TemplateResponse("client/existing_registration.html", {
-                    "request": request,
-                    "event": serialized_event,
-                    "student": student,
-                    "registration": {"registrar_id": existing_participation.get('registration_id'), "registration_type": existing_participation.get('registration_type', 'individual')},
-                    "datetime": datetime
-                })
+                # Get participation data from student's event_participations
+                student_data = await DatabaseOperations.find_one("students", {"enrollment_no": student.enrollment_no})
+                if student_data:
+                    event_participations = student_data.get('event_participations', {})
+                    if event_id in event_participations:
+                        existing_participation = event_participations[event_id]
+                        
+                        # Convert datetime objects to ISO format strings for template
+                        serialized_event = {k: v.isoformat() if isinstance(v, datetime) else v for k, v in event.items()}
+                        
+                        return templates.TemplateResponse("client/existing_registration.html", {
+                            "request": request,
+                            "event": serialized_event,
+                            "student": student,                            "registration": {
+                                "registrar_id": existing_participation.get('registration_id'), 
+                                "registration_type": existing_participation.get('registration_type', 'individual'),
+                                "registration_datetime": existing_participation.get('registration_date'),
+                                "enrollment_no": student.enrollment_no
+                            },
+                            "datetime": datetime
+                        })
         
         # Get current status using Event Status Manager
         current_time = datetime.now()
@@ -192,15 +202,18 @@ async def show_registration_form(request: Request, event_id: str, student: Stude
                 if event_id in event_participations:
                     # Student is already registered for THIS event - show existing registration
                     existing_participation = event_participations[event_id]
-                    
-                    # Convert datetime objects to ISO format strings for template
+                      # Convert datetime objects to ISO format strings for template
                     serialized_event = {k: v.isoformat() if isinstance(v, datetime) else v for k, v in event.items()}
-                    
                     return templates.TemplateResponse("client/existing_registration.html", {
                         "request": request,
                         "event": serialized_event,
                         "student": student,
-                        "registration": {"registrar_id": existing_participation.get('registration_id'), "registration_type": existing_participation.get('registration_type', 'individual')},
+                        "registration": {
+                            "registrar_id": existing_participation.get('registration_id'), 
+                            "registration_type": existing_participation.get('registration_type', 'individual'),
+                            "registration_datetime": existing_participation.get('registration_date'),
+                            "enrollment_no": student.enrollment_no
+                        },
                         "datetime": datetime
                     })
         
@@ -401,60 +414,42 @@ async def process_common_form_data(form_data: dict) -> dict:
 
 
 async def save_individual_registration(registration: RegistrationForm, event_id: str, event: dict, student, request: Request):
-    """Save individual registration to database"""    # Check for existing registration in student data
+    """Save individual registration to database"""
+    # Check for existing registration in student data
     student_data = await DatabaseOperations.find_one("students", {"enrollment_no": student.enrollment_no})
     if not student_data:
         raise HTTPException(status_code=404, detail="Student not found")
     
     event_participations = student_data.get('event_participations', {})
-    
+      
     # Check if already registered for this event
     if event_id in event_participations:
         existing_participation = event_participations[event_id]
         # Return existing registration view with the registration ID
         serialized_event = {k: v.isoformat() if isinstance(v, datetime) else v for k, v in event.items()}
-        
         return templates.TemplateResponse("client/existing_registration.html", {
             "request": request,
             "event": serialized_event,
             "student": student,
-            "registration": {"registrar_id": existing_participation.get('registration_id'), "registration_type": "individual"},
+            "registration": {
+                "registrar_id": existing_participation.get('registration_id'),
+                "registration_type": existing_participation.get('registration_type', 'individual'),
+                "registration_datetime": existing_participation.get('registration_date'),
+                "enrollment_no": student.enrollment_no
+            },
             "datetime": datetime
-        })      # Instead of blocking all multiple registrations, only check for registration in THIS event
-      # The check for existing registration in THIS event was already done above
-      
-      # The code below was removed to allow students to register for multiple different events
-      # Students are still prevented from registering for the same event twice by the check above# Generate IDs using new approach
+        })
+
+    # Generate only registration ID at registration time
     registration_id = generate_registration_id(student.enrollment_no, event_id, registration.full_name)
-    attendance_id = generate_attendance_id(student.enrollment_no, event_id)
-    feedback_id = generate_feedback_id(student.enrollment_no, event_id)
-    certificate_id = generate_certificate_id(student.enrollment_no, event_id, registration.full_name)
-    
     registration.registration_datetime = datetime.now()
 
-    # Create event participation record for student
-    event_participation = EventParticipation(
-        registration_id=registration_id,
-        attendance_id=attendance_id,
-        feedback_id=feedback_id,
-        certificate_id=certificate_id,
-        registration_type="individual",
-        registration_datetime=registration.registration_datetime,
-        student_data={
-            "full_name": registration.full_name,
-            "email": registration.email,
-            "mobile_no": registration.mobile_no,
-            "department": registration.department,
-            "semester": registration.semester,
-            "gender": registration.gender,
-            "date_of_birth": registration.date_of_birth
-        }
-    )    # Create individual registration using proper relational mapping
+    # Create individual participation with only registration_id, all other IDs as None
     individual_participation = EventParticipation(
         registration_id=registration_id,
-        attendance_id=attendance_id,
-        feedback_id=feedback_id,
-        certificate_id=certificate_id,
+        attendance_id=None,
+        feedback_id=None,
+        certificate_id=None,
         registration_type="individual",
         registration_datetime=registration.registration_datetime,
         student_data={
@@ -473,7 +468,7 @@ async def save_individual_registration(registration: RegistrationForm, event_id:
         "students",
         {"enrollment_no": student.enrollment_no},
         {"$set": {f"event_participations.{event_id}": individual_participation.model_dump()}}
-    )# Update event registrations count in events collection
+    )    # Update event registrations mapping
     await DatabaseOperations.update_one(
         "events",
         {"event_id": event_id},
@@ -491,7 +486,9 @@ async def save_individual_registration(registration: RegistrationForm, event_id:
             "student_name": registration.full_name,
             "enrollment_no": registration.enrollment_no,
             "is_team_registration": False
-        })    # Send registration confirmation email for free events
+        })
+
+    # Send registration confirmation email for free events
     try:
         await email_service.send_registration_confirmation(
             student_email=registration.email,
@@ -505,7 +502,7 @@ async def save_individual_registration(registration: RegistrationForm, event_id:
         print(f"Failed to send registration confirmation email: {str(e)}")
         # Continue with the response even if email fails
 
-    # For free events, show success page directly
+    # Return success response
     return templates.TemplateResponse("client/registration_success.html", {
         "request": request,
         "registrar_id": registration_id,
@@ -513,11 +510,13 @@ async def save_individual_registration(registration: RegistrationForm, event_id:
         "is_team_registration": False
     })
 
-
 async def save_team_registration(team_registration: TeamRegistrationForm, event_id: str, event: dict, student, valid_participants: list, request: Request):
-    """Save team registration using new relational mapping approach"""    # Generate team registration ID and other IDs
+    """Save team registration using new relational mapping approach"""    
+    # Generate team registration ID
     team_registration_id = generate_team_registration_id(student.enrollment_no, event_id, team_registration.team_name)
-    team_registration.registration_datetime = datetime.now()    # Create team registration record for event data
+    team_registration.registration_datetime = datetime.now()
+
+    # Create team registration record for event data
     team_reg_data = TeamRegistration(
         team_registration_id=team_registration_id,
         team_name=team_registration.team_name,
@@ -531,17 +530,17 @@ async def save_team_registration(team_registration: TeamRegistrationForm, event_
         "events",
         {"event_id": event_id},
         {"$set": {f"team_registrations.{team_registration_id}": team_reg_data.model_dump()}}
-    )    # Update student data for team leader
-    leader_registration_id = generate_registration_id(student.enrollment_no, event_id, team_registration.full_name)
-    leader_attendance_id = generate_attendance_id(student.enrollment_no, event_id)
-    leader_feedback_id = generate_feedback_id(student.enrollment_no, event_id)
-    leader_certificate_id = generate_certificate_id(student.enrollment_no, event_id, team_registration.full_name)
+    )
 
+    # Generate and store leader registration
+    leader_registration_id = generate_registration_id(student.enrollment_no, event_id, team_registration.full_name)
+
+    # Create leader participation with only registration_id
     leader_participation = EventParticipation(
         registration_id=leader_registration_id,
-        attendance_id=leader_attendance_id,
-        feedback_id=leader_feedback_id,
-        certificate_id=leader_certificate_id,
+        attendance_id=None,
+        feedback_id=None,
+        certificate_id=None,
         registration_type="team_leader",
         team_registration_id=team_registration_id,
         registration_datetime=team_registration.registration_datetime,
@@ -557,6 +556,7 @@ async def save_team_registration(team_registration: TeamRegistrationForm, event_
         }
     )
 
+    # Store leader participation
     await DatabaseOperations.update_one(
         "students",
         {"enrollment_no": student.enrollment_no},
@@ -568,18 +568,19 @@ async def save_team_registration(team_registration: TeamRegistrationForm, event_
         "events",
         {"event_id": event_id},
         {"$set": {f"registrations.{leader_registration_id}": student.enrollment_no}}
-    )    # Update student data for each team participant
-    for participant in team_registration.team_participants:
-        participant_registration_id = generate_registration_id(participant.enrollment_no, event_id, participant.full_name)
-        participant_attendance_id = generate_attendance_id(participant.enrollment_no, event_id)
-        participant_feedback_id = generate_feedback_id(participant.enrollment_no, event_id)
-        participant_certificate_id = generate_certificate_id(participant.enrollment_no, event_id, participant.full_name)
+    )
 
+    # Process each team participant
+    for participant in team_registration.team_participants:
+        # Generate only registration ID for participant
+        participant_registration_id = generate_registration_id(participant.enrollment_no, event_id, participant.full_name)
+
+        # Create participant participation with only registration_id
         participant_participation = EventParticipation(
             registration_id=participant_registration_id,
-            attendance_id=participant_attendance_id,
-            feedback_id=participant_feedback_id,
-            certificate_id=participant_certificate_id,
+            attendance_id=None,
+            feedback_id=None,
+            certificate_id=None,
             registration_type="team_participant",
             team_registration_id=team_registration_id,
             registration_datetime=team_registration.registration_datetime,
@@ -595,6 +596,7 @@ async def save_team_registration(team_registration: TeamRegistrationForm, event_
             }
         )
 
+        # Store participant participation
         await DatabaseOperations.update_one(
             "students",
             {"enrollment_no": participant.enrollment_no},
@@ -606,7 +608,9 @@ async def save_team_registration(team_registration: TeamRegistrationForm, event_
             "events",
             {"event_id": event_id},
             {"$set": {f"registrations.{participant_registration_id}": participant.enrollment_no}}
-        )    # Check if event is paid
+        )
+        
+    # Check if event is paid
     if event.get('registration_type') == 'paid' and event.get('registration_fee', 0) > 0:
         # Calculate total amount for team (fee per member)
         total_amount = event.get('registration_fee', 0) * team_registration.total_team_size

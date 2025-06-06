@@ -81,11 +81,10 @@ class Event(BaseModel):
         }
     }
     """)
-    
-    # Attendance tracking
-    # For individual events: attendance_id -> enrollment_no
+      # Attendance tracking
+    # For individual events: attendance_id -> attendance details
     # For team events: team_name -> {member_enrollments: attendance_ids}
-    attendances: Dict[str, str] = Field(default={}, description="Individual attendances: attendance_id -> enrollment_no")
+    attendances: Dict[str, Dict] = Field(default={}, description="Individual attendances: attendance_id -> attendance details")
     team_attendances: Dict[str, Dict] = Field(default={}, description="""
     Team attendances mapped by team_name:
     {

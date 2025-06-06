@@ -86,26 +86,39 @@
                     {% if auto_filled %}
                     <p class="text-xs text-gray-600 mt-1">This field has been auto-filled from your registration data.</p>
                     {% endif %}
-                </div>
-
-                <!-- Student Name -->
+                </div>                <!-- Student Name -->
                 <div>
                     <label for="student_name" class="block text-sm font-medium text-gray-700 mb-1">
-                        Full Name {% if auto_filled %}<span class="text-green-600 text-xs">(Auto-filled)</span>{% endif %}
+                        Full Name <span id="name_auto_filled" class="text-green-600 text-xs hidden">(Auto-filled)</span>
                     </label>
                     <input 
                         type="text" 
                         id="student_name" 
                         name="student_name"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent {% if auto_filled %}bg-green-50{% endif %}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="Enter your full name"
                         value="{{ registration.full_name if registration else '' }}"
                         {% if auto_filled %}readonly{% endif %}
                         required
                     >
-                    {% if auto_filled %}
-                    <p class="text-xs text-gray-600 mt-1">This field has been auto-filled from your registration data.</p>
-                    {% endif %}
+                    <p id="name_auto_filled_text" class="text-xs text-gray-600 mt-1 hidden">This field has been auto-filled from your registration data.</p>
+                </div>
+
+                <!-- Enrollment Number -->
+                <div>
+                    <label for="enrollment_no" class="block text-sm font-medium text-gray-700 mb-1">
+                        Enrollment Number <span id="enrollment_auto_filled" class="text-green-600 text-xs hidden">(Auto-filled)</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        id="enrollment_no" 
+                        name="enrollment_no"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
+                        placeholder="Enrollment number will be auto-filled"
+                        value="{{ registration.enrollment_no if registration else '' }}"
+                        readonly
+                    >
+                    <p id="enrollment_auto_filled_text" class="text-xs text-gray-600 mt-1 hidden">This field has been auto-filled from your registration data.</p>
                 </div>
 
                 <!-- Student Information Display (when auto-filled) -->
@@ -184,4 +197,169 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const registrationInput = document.getElementById('registration_id');
+    const studentNameInput = document.getElementById('student_name');
+    const enrollmentInput = document.getElementById('enrollment_no');
+    
+    // Auto-fill indicator elements
+    const nameAutoFilled = document.getElementById('name_auto_filled');
+    const nameAutoFilledText = document.getElementById('name_auto_filled_text');
+    const enrollmentAutoFilled = document.getElementById('enrollment_auto_filled');
+    const enrollmentAutoFilledText = document.getElementById('enrollment_auto_filled_text');
+    
+    let typingTimer;
+    const doneTypingInterval = 500; // Wait for 500ms after user stops typing
+
+    // Initialize student info section
+    const createStudentInfoSection = () => {
+        const studentInfo = document.createElement('div');
+        studentInfo.id = 'student-info';
+        studentInfo.className = 'grid grid-cols-1 md:grid-cols-2 gap-3 bg-gray-50 rounded-lg p-4 hidden';
+        document.querySelector('form').insertBefore(studentInfo, document.querySelector('button[type="submit"]'));
+        return studentInfo;
+    };
+
+    const studentInfo = createStudentInfoSection();
+
+    const showLoadingState = () => {
+        studentInfo.innerHTML = `
+            <div class="col-span-2 flex items-center justify-center py-4">
+                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                <span class="ml-2 text-gray-600">Validating registration...</span>
+            </div>
+        `;
+        studentInfo.classList.remove('hidden');
+    };
+
+    const resetFormFields = () => {
+        // Reset form fields
+        studentNameInput.value = '';
+        studentNameInput.readOnly = false;
+        studentNameInput.classList.remove('bg-green-50');
+        
+        enrollmentInput.value = '';
+        enrollmentInput.classList.remove('bg-green-50');
+        
+        // Hide auto-fill indicators
+        nameAutoFilled.classList.add('hidden');
+        nameAutoFilledText.classList.add('hidden');
+        enrollmentAutoFilled.classList.add('hidden');
+        enrollmentAutoFilledText.classList.add('hidden');
+    };
+
+    const showError = (message) => {
+        studentInfo.innerHTML = `
+            <div class="col-span-2 bg-red-50 border border-red-200 rounded-lg p-4">
+                <div class="flex items-start">
+                    <svg class="w-5 h-5 text-red-600 mt-0.5 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"/>
+                    </svg>
+                    <span class="text-sm text-red-700">${message}</span>
+                </div>
+            </div>
+        `;
+        studentInfo.classList.remove('hidden');
+        resetFormFields();
+    };
+
+    const formatStudentDetails = (student) => `
+        <div class="col-span-2 mb-4 bg-green-50 border border-green-200 rounded-lg p-4">
+            <div class="flex items-start">
+                <svg class="w-5 h-5 text-green-600 mt-0.5 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"/>
+                </svg>
+                <div>
+                    <p class="text-sm font-medium text-green-800">Registration Validated</p>
+                    <p class="text-sm text-green-700">Student details have been auto-filled</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-span-2 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div class="flex justify-between">
+                <span class="text-gray-600">Enrollment No:</span>
+                <span class="font-medium">${student.enrollment_no}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-600">Email:</span>
+                <span class="font-medium">${student.email}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-600">Department:</span>
+                <span class="font-medium">${student.department}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-600">Semester:</span>
+                <span class="font-medium">${student.semester}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-600">Mobile:</span>
+                <span class="font-medium">${student.mobile_no}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-600">Registration Type:</span>
+                <span class="font-medium capitalize">${student.registration_type}</span>
+            </div>
+        </div>
+    `;
+
+    const setAutoFilledState = (student) => {
+        // Auto-fill form fields
+        studentNameInput.value = student.full_name;
+        studentNameInput.readOnly = true;
+        studentNameInput.classList.add('bg-green-50');
+        
+        enrollmentInput.value = student.enrollment_no;
+        enrollmentInput.classList.add('bg-green-50');
+        
+        // Show auto-fill indicators
+        nameAutoFilled.classList.remove('hidden');
+        nameAutoFilledText.classList.remove('hidden');
+        enrollmentAutoFilled.classList.remove('hidden');
+        enrollmentAutoFilledText.classList.remove('hidden');
+    };
+
+    // Input event handlers
+    registrationInput.addEventListener('input', function(e) {
+        clearTimeout(typingTimer);
+        
+        const registrationId = e.target.value.trim().toUpperCase();
+        e.target.value = registrationId; // Keep input in uppercase
+        
+        if (registrationId) {
+            showLoadingState();
+            typingTimer = setTimeout(() => validateRegistration(registrationId), doneTypingInterval);
+        } else {
+            studentInfo.classList.add('hidden');
+            resetFormFields();
+        }
+    });
+
+    async function validateRegistration(registrationId) {
+        try {
+            // Get event ID from the URL
+            const eventId = window.location.pathname.split('/')[3];
+            const response = await fetch(`/client/api/validate-registration?registration_id=${encodeURIComponent(registrationId)}&event_id=${eventId}`);
+            const data = await response.json();
+
+            if (data.success) {
+                // Set auto-filled state for form fields
+                setAutoFilledState(data.student);
+                
+                // Show student details with success message
+                studentInfo.innerHTML = formatStudentDetails(data.student);
+            } else {
+                showError(data.message);
+            }
+        } catch (error) {
+            console.error('Error validating registration:', error);
+            showError('An unexpected error occurred. Please try again.');
+        }
+    }
+});
+</script>
 {% endblock %}

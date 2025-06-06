@@ -24,7 +24,7 @@ app = FastAPI()
 json._default_encoder = CustomJSONEncoder()
 
 # Add session middleware for student authentication
-app.add_middleware(SessionMiddleware, secret_key="your-secret-key-change-in-production")
+app.add_middleware(SessionMiddleware, secret_key="your-secret-key-change-in-production", max_age=3600)
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
