@@ -1,44 +1,142 @@
 {% extends "base.html" %}
 
-{% block title %}Team Management - CampusConnect{% endblock %}
+{% block title %}Team Management - {{ event.event_name }}{% endblock %}
+
+{% block head %}
+<script src="/static/js/registration.js"></script>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    * {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    @keyframes scaleIn {
+        from {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+    
+    .animate-fade-in-up {
+        animation: fadeInUp 0.5s ease-out forwards;
+    }
+    
+    .animate-scale-in {
+        animation: scaleIn 0.3s ease-out forwards;
+    }
+    
+    .glass-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .material-shadow {
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+    
+    .material-shadow-lg {
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+    
+    .material-shadow-xl {
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+    
+    .hover-lift {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .hover-lift:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        transition: all 0.3s ease;
+    }
+    
+    .btn-primary:hover {
+        background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+        transform: translateY(-1px);
+    }
+    
+    .btn-success {
+        background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    }
+    
+    .btn-success:hover {
+        background: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
+        transform: translateY(-1px);
+    }
+    
+    .btn-danger {
+        background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+    }
+    
+    .btn-danger:hover {
+        background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%);
+        transform: translateY(-1px);
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-gradient-to-br from-seafoam-50 to-sky-50">
-    <!-- Header -->
-    <div class="bg-gradient-to-r from-seafoam-50 to-sky-50 shadow-lg border-b border-seafoam-200">
-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<div class="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-6xl mx-auto">
+        <!-- Clean Modern Header -->
+        <div class="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 mb-8 animate-fade-in-up">
             <div class="flex items-center justify-between">
-                <div class="flex items-center space-x-6">
-                    <div class="w-16 h-16 bg-gradient-to-br from-seafoam-500 to-sky-600 rounded-full flex items-center justify-center shadow-lg">
-                        <i class="fas fa-users text-2xl text-white"></i>
-                    </div>
-                    <div>
-                        <h1 class="text-3xl font-bold text-cool-gray-800">Team Management</h1>
-                        <p class="text-cool-gray-600 mt-1">{{ event.title or event.event_name }}</p>
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900 flex items-center">
+                        <div class="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center mr-4">
+                            <i class="fas fa-users text-white text-xl"></i>
+                        </div>
+                        Team Management
+                    </h1>
+                    <p class="text-gray-600 mt-2 text-lg font-medium">{{ event.event_name }}</p>
+                </div>
+                {% if team_details %}
+                <div class="text-right">
+                    <div class="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                        <div class="text-xl font-bold text-gray-900">{{ team_details.team_name }}</div>
+                        <div class="text-gray-500 text-sm flex items-center justify-end mt-1">
+                            <i class="fas fa-users mr-2"></i>
+                            {{ (team_participants|length) + 1 }}/{{ event.team_size_max or 5 }} members
+                        </div>
                     </div>
                 </div>
-                <div class="flex items-center space-x-4">
-                    <div class="text-right">
-                        <p class="text-sm text-cool-gray-500">Team Size</p>
-                        <p class="text-2xl font-bold text-seafoam-600">{{ (team_participants|length) + 1 if team_participants else 1 }}/{{ event.max_team_size or event.team_size_max or 5 }}</p>
-                    </div>
-                </div>
+                {% endif %}
             </div>
         </div>
-    </div>
 
-    <!-- Main Content -->
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
-        <!-- Success/Error Messages -->
+        <!-- Clean Messages -->
         {% if success %}
-        <div class="mb-6 bg-seafoam-50 border-l-4 border-seafoam-400 text-seafoam-700 px-4 py-4 rounded-r-md">
-            <div class="flex">
-                <div class="flex-shrink-0">
-                    <i class="fas fa-check-circle text-seafoam-400"></i>
+        <div class="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 animate-fade-in-up">
+            <div class="flex items-center">
+                <div class="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center mr-3">
+                    <i class="fas fa-check text-white"></i>
                 </div>
-                <div class="ml-3">
-                    <p class="text-sm font-medium">
+                <div>
+                    <h3 class="text-green-800 font-semibold">Success!</h3>
+                    <p class="text-green-700">
                         {% if success == 'team_updated' %}Team updated successfully!
                         {% elif success == 'participant_added' %}New participant added to your team!
                         {% elif success == 'participant_removed' %}Participant removed successfully
@@ -48,32 +146,33 @@
             </div>
         </div>
         {% endif %}
-
+        
         {% if error %}
-        <div class="mb-6 bg-red-50 border-l-4 border-red-400 text-red-700 px-4 py-4 rounded-r-md">
-            <div class="flex">
-                <div class="flex-shrink-0">
-                    <i class="fas fa-exclamation-triangle text-red-400"></i>
+        <div class="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 animate-fade-in-up">
+            <div class="flex items-center">
+                <div class="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center mr-3">
+                    <i class="fas fa-exclamation-triangle text-white"></i>
                 </div>
-                <div class="ml-3">
-                    <p class="text-sm font-medium">{{ error }}</p>
+                <div>
+                    <h3 class="text-red-800 font-semibold">Error</h3>
+                    <p class="text-red-700">{{ error }}</p>
                 </div>
             </div>
         </div>
         {% endif %}
 
-        <!-- Team Members Card -->
-        <div class="bg-white rounded-lg shadow-lg border border-seafoam-100 overflow-hidden">
-            <!-- Card Header -->
-            <div class="bg-gradient-to-r from-seafoam-500 to-sky-500 px-6 py-4">
+        <!-- Modern Team Members Section -->
+        <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden animate-fade-in-up">
+            <!-- Section Header -->
+            <div class="bg-gray-900 px-8 py-6">
                 <div class="flex items-center justify-between">
-                    <h2 class="text-xl font-semibold text-white flex items-center">
+                    <h2 class="text-2xl font-bold text-white flex items-center">
                         <i class="fas fa-users mr-3"></i>
                         Team Members
                     </h2>
-                    {% set is_max_reached = (team_participants|length) + 1 >= (event.max_team_size or event.team_size_max or 5) %}
+                    {% set is_max_reached = (team_participants|length) + 1 >= (event.team_size_max or 5) %}
                     <button type="button" id="addParticipantBtn" 
-                            class="{% if is_max_reached %}bg-cool-gray-400 cursor-not-allowed{% else %}bg-white text-seafoam-600 hover:bg-seafoam-50{% endif %} px-4 py-2 rounded-md font-medium flex items-center transition-colors shadow-md"
+                            class="{% if is_max_reached %}bg-gray-400 cursor-not-allowed{% else %}btn-success hover-lift{% endif %} text-white px-6 py-3 rounded-xl font-semibold flex items-center material-shadow"
                             {% if is_max_reached %}disabled{% endif %}>
                         <i class="fas fa-user-plus mr-2"></i>
                         {% if is_max_reached %}Team Full{% else %}Add Member{% endif %}
@@ -81,39 +180,39 @@
                 </div>
             </div>
             
-            <div class="p-6">
-                <!-- Team Leader -->
-                <div class="bg-gradient-to-r from-seafoam-100 to-sky-100 border border-seafoam-200 rounded-lg p-4 mb-6">
+            <div class="p-8">
+                <!-- Team Leader Card -->
+                <div class="bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl p-6 mb-6 text-white material-shadow-lg">
                     <div class="flex items-center">
-                        <div class="w-12 h-12 bg-gradient-to-br from-seafoam-500 to-sky-500 rounded-full flex items-center justify-center text-white mr-4">
+                        <div class="w-16 h-16 bg-white bg-opacity-20 rounded-full flex items-center justify-center text-2xl mr-4">
                             <i class="fas fa-crown"></i>
                         </div>
-                        <div class="flex-1">
-                            <h3 class="font-semibold text-cool-gray-800 flex items-center">
+                        <div>
+                            <h3 class="text-xl font-bold flex items-center">
                                 {{ student.full_name }} 
-                                <span class="ml-3 bg-seafoam-500 text-white px-2 py-1 rounded text-xs font-medium">Team Leader</span>
+                                <span class="ml-3 bg-white bg-opacity-20 px-3 py-1 rounded-full text-sm font-medium">Team Leader</span>
                             </h3>
-                            <p class="text-cool-gray-600 text-sm">{{ student.enrollment_no }}</p>
+                            <p class="text-blue-100 font-medium">{{ student.enrollment_no }}</p>
                         </div>
                     </div>
                 </div>
                 
-                <!-- Team Members -->
+                <!-- Team Members Grid -->
                 {% if team_participants %}
-                <div class="space-y-4">
+                <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                     {% for participant in team_participants %}
-                    <div class="border border-cool-gray-200 rounded-lg p-4 hover:bg-cool-gray-50 transition-colors">
+                    <div class="bg-gray-50 border border-gray-200 rounded-xl p-6 hover-lift material-shadow">
                         <div class="flex items-center justify-between">
-                            <div class="flex items-center">
-                                <div class="w-10 h-10 bg-cool-gray-500 rounded-full flex items-center justify-center text-white font-semibold mr-4">
+                            <div class="flex items-center flex-1">
+                                <div class="w-12 h-12 bg-gray-600 rounded-full flex items-center justify-center text-white font-bold text-lg mr-4">
                                     {{ participant.full_name[0].upper() if participant.full_name else 'M' }}
                                 </div>
-                                <div>
-                                    <h4 class="font-medium text-cool-gray-800">{{ participant.full_name or 'Member' }}</h4>
-                                    <p class="text-sm text-cool-gray-600">{{ participant.enrollment_no }}</p>
+                                <div class="flex-1">
+                                    <h4 class="font-semibold text-gray-900">{{ participant.full_name or 'Member' }}</h4>
+                                    <p class="text-sm text-gray-600 font-medium">{{ participant.enrollment_no }}</p>
                                 </div>
                             </div>
-                            <button type="button" class="remove-participant-btn text-red-600 hover:text-red-800 hover:bg-red-50 p-2 rounded transition-colors"
+                            <button type="button" class="remove-participant-btn btn-danger text-white p-2 rounded-lg hover-lift material-shadow"
                                     data-enrollment="{{ participant.enrollment_no }}"
                                     data-name="{{ participant.full_name or participant.enrollment_no }}">
                                 <i class="fas fa-trash text-sm"></i>
@@ -123,26 +222,27 @@
                     {% endfor %}
                 </div>
                 {% else %}
-                <div class="text-center py-12 border-2 border-dashed border-cool-gray-300 rounded-lg bg-cool-gray-50">
-                    <div class="w-12 h-12 bg-cool-gray-300 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <i class="fas fa-users text-cool-gray-500"></i>
+                <div class="text-center py-16 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
+                    <div class="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-users text-gray-500 text-2xl"></i>
                     </div>
-                    <h3 class="text-lg font-medium text-cool-gray-700 mb-2">No additional team members</h3>
-                    <p class="text-cool-gray-500 text-sm">Click "Add Member" to invite participants to your team</p>
+                    <h3 class="text-xl font-semibold text-gray-700 mb-2">No additional team members</h3>
+                    <p class="text-gray-500 mb-4">Start building your team by adding members</p>
+                    <p class="text-sm text-gray-400">Click "Add Member" to invite participants</p>
                 </div>
                 {% endif %}
             </div>
         </div>
 
-        <!-- Navigation -->
-        <div class="flex justify-center space-x-4 mt-8">
+        <!-- Modern Navigation -->
+        <div class="flex justify-center space-x-6 mt-8">
             <a href="/client/events/{{ event.event_id }}" 
-               class="bg-cool-gray-600 text-white px-6 py-3 rounded-md hover:bg-cool-gray-700 transition-colors shadow-md flex items-center">
+               class="bg-gray-600 text-white px-8 py-3 rounded-xl hover:bg-gray-700 transition-all duration-200 hover-lift material-shadow-lg flex items-center font-semibold">
                 <i class="fas fa-arrow-left mr-2"></i>
                 Back to Event
             </a>
             <a href="/client/dashboard" 
-               class="bg-gradient-to-r from-seafoam-500 to-sky-500 text-white px-6 py-3 rounded-md hover:from-seafoam-600 hover:to-sky-600 transition-all shadow-md flex items-center">
+               class="btn-primary text-white px-8 py-3 rounded-xl hover-lift material-shadow-lg flex items-center font-semibold">
                 <i class="fas fa-home mr-2"></i>
                 Dashboard
             </a>
@@ -150,43 +250,43 @@
     </div>
 </div>
 
-<!-- Add New Participant Modal -->
-<div id="addParticipantModal" class="hidden fixed inset-0 bg-black bg-opacity-50 overflow-y-auto h-full w-full z-50">
+<!-- Modern Add New Participant Modal -->
+<div id="addParticipantModal" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm overflow-y-auto h-full w-full z-50">
     <div class="relative top-20 mx-auto p-6 w-full max-w-md">
-        <div class="bg-white rounded-lg shadow-lg">
+        <div class="bg-white rounded-2xl material-shadow-xl animate-scale-in">
             <!-- Modal Header -->
-            <div class="bg-gradient-to-r from-seafoam-500 to-sky-500 p-4 rounded-t-lg text-white">
+            <div class="bg-gray-900 p-6 rounded-t-2xl text-white">
                 <div class="flex items-center justify-between">
-                    <h3 class="text-lg font-semibold flex items-center">
+                    <h3 class="text-xl font-bold flex items-center">
                         <i class="fas fa-user-plus mr-2"></i>
                         Add Team Member
                     </h3>
-                    <button type="button" id="closeAddModal" class="text-white hover:text-seafoam-200 p-1">
+                    <button type="button" id="closeAddModal" class="text-gray-300 hover:text-white bg-white bg-opacity-10 rounded-full p-2 transition-all duration-200 hover:bg-opacity-20">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
             </div>
             
             <div class="p-6">
-                <form id="searchParticipantForm" class="space-y-4">
+                <form id="searchParticipantForm" class="space-y-6">
                     <div>
-                        <label for="participant_enrollment" class="block text-sm font-medium text-cool-gray-700 mb-2">
+                        <label for="participant_enrollment" class="block text-sm font-semibold text-gray-700 mb-3">
                             Enrollment Number
                         </label>
                         <input type="text" name="participant_enrollment" id="participant_enrollment"
                                placeholder="e.g., 21BECE40015" maxlength="12" 
-                               class="block w-full px-3 py-2 border border-cool-gray-300 rounded-md focus:ring-2 focus:ring-seafoam-500 focus:border-seafoam-500 text-center font-mono"
+                               class="block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-center font-mono text-lg"
                                required>
-                        <div id="enrollment-error" class="hidden text-red-600 text-sm mt-2 bg-red-50 p-2 rounded border border-red-200"></div>
+                        <div id="enrollment-error" class="hidden text-red-500 text-sm mt-2 bg-red-50 p-3 rounded-lg border border-red-200"></div>
                     </div>
                     
-                    <div class="flex justify-end space-x-3 pt-4">
+                    <div class="flex justify-end space-x-4 pt-4">
                         <button type="button" id="cancelAddModal" 
-                                class="bg-cool-gray-200 text-cool-gray-700 px-4 py-2 rounded-md hover:bg-cool-gray-300 transition-colors">
+                                class="bg-gray-200 text-gray-700 px-6 py-3 rounded-xl hover:bg-gray-300 transition-all duration-200 font-medium">
                             Cancel
                         </button>
                         <button type="submit" id="searchParticipantBtn"
-                                class="bg-gradient-to-r from-seafoam-500 to-sky-500 text-white px-4 py-2 rounded-md hover:from-seafoam-600 hover:to-sky-600 transition-all shadow-md">
+                                class="btn-primary text-white px-6 py-3 rounded-xl hover-lift material-shadow font-semibold">
                             <i class="fas fa-search mr-2"></i>
                             Search & Validate
                         </button>
@@ -197,20 +297,20 @@
     </div>
 </div>
 
-<!-- Remove Participant Modal -->
-<div id="removeModal" class="hidden fixed inset-0 bg-black bg-opacity-50 overflow-y-auto h-full w-full z-50">
+<!-- Modern Remove Participant Modal -->
+<div id="removeModal" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm overflow-y-auto h-full w-full z-50">
     <div class="relative top-20 mx-auto p-6 w-96">
-        <div class="bg-white rounded-lg shadow-lg">
+        <div class="bg-white rounded-2xl material-shadow-xl animate-scale-in">
             <div class="p-6 text-center">
                 <!-- Warning Icon -->
-                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
-                    <i class="fas fa-exclamation-triangle text-red-600"></i>
+                <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4">
+                    <i class="fas fa-exclamation-triangle text-red-600 text-2xl"></i>
                 </div>
                 
-                <h3 class="text-lg font-semibold text-cool-gray-900 mb-4">Remove Team Member</h3>
-                <p class="text-cool-gray-600 mb-6">
+                <h3 class="text-xl font-bold text-gray-900 mb-4">Remove Team Member</h3>
+                <p class="text-gray-600 mb-6">
                     Are you sure you want to remove 
-                    <span id="remove-participant-name" class="font-medium text-red-600"></span> 
+                    <span id="remove-participant-name" class="font-semibold text-red-600"></span> 
                     from your team?
                 </p>
                 
@@ -218,13 +318,13 @@
                     <input type="hidden" name="action" value="remove_participant">
                     <input type="hidden" name="participant_enrollment" id="remove-participant-enrollment">
                     
-                    <div class="flex justify-center space-x-3">
+                    <div class="flex justify-center space-x-4">
                         <button type="button" id="cancelRemove" 
-                                class="bg-cool-gray-200 text-cool-gray-700 px-4 py-2 rounded-md hover:bg-cool-gray-300 transition-colors">
+                                class="bg-gray-200 text-gray-700 px-6 py-3 rounded-xl hover:bg-gray-300 transition-all duration-200 font-medium">
                             Cancel
                         </button>
                         <button type="submit" 
-                                class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors">
+                                class="btn-danger text-white px-6 py-3 rounded-xl hover-lift material-shadow font-semibold">
                             <i class="fas fa-trash mr-2"></i>
                             Remove Member
                         </button>
@@ -235,18 +335,18 @@
     </div>
 </div>
 
-<!-- Add Participant Confirmation Modal -->
-<div id="confirmModal" class="hidden fixed inset-0 bg-black bg-opacity-50 overflow-y-auto h-full w-full z-50">
+<!-- Modern Add Participant Confirmation Modal -->
+<div id="confirmModal" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm overflow-y-auto h-full w-full z-50">
     <div class="relative top-20 mx-auto p-6 w-full max-w-md">
-        <div class="bg-white rounded-lg shadow-lg">
+        <div class="bg-white rounded-2xl material-shadow-xl animate-scale-in">
             <!-- Modal Header -->
-            <div class="bg-gradient-to-r from-seafoam-500 to-sky-500 p-4 rounded-t-lg text-white">
+            <div class="bg-green-600 p-6 rounded-t-2xl text-white">
                 <div class="flex items-center justify-between">
-                    <h3 class="text-lg font-semibold flex items-center">
+                    <h3 class="text-xl font-bold flex items-center">
                         <i class="fas fa-user-check mr-2"></i>
                         Confirm Add Member
                     </h3>
-                    <button type="button" id="cancelConfirm" class="text-white hover:text-seafoam-200 p-1">
+                    <button type="button" id="cancelConfirm" class="text-green-100 hover:text-white bg-white bg-opacity-10 rounded-full p-2 transition-all duration-200 hover:bg-opacity-20">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
@@ -254,9 +354,9 @@
             
             <div class="p-6">
                 <div id="studentDetails" class="mb-6">
-                    <div class="flex justify-center items-center py-8 px-4 text-seafoam-600">
-                        <i class="fas fa-spinner fa-spin mr-2"></i>
-                        <span>Loading student information...</span>
+                    <div class="flex justify-center items-center py-8 px-4 text-blue-500">
+                        <i class="fas fa-spinner fa-spin mr-2 text-xl"></i>
+                        <span class="font-medium">Loading student information...</span>
                     </div>
                 </div>
                 
@@ -264,13 +364,13 @@
                     <input type="hidden" name="action" value="add_participant">
                     <input type="hidden" name="participant_enrollment" id="confirm-participant-enrollment">
                     
-                    <div class="flex justify-end space-x-3">
+                    <div class="flex justify-end space-x-4">
                         <button type="button" id="cancelConfirmBtn" 
-                                class="bg-cool-gray-200 text-cool-gray-700 px-4 py-2 rounded-md hover:bg-cool-gray-300 transition-colors">
+                                class="bg-gray-200 text-gray-700 px-6 py-3 rounded-xl hover:bg-gray-300 transition-all duration-200 font-medium">
                             Cancel
                         </button>
                         <button type="submit" id="confirmAddBtn"
-                                class="bg-gradient-to-r from-seafoam-500 to-sky-500 text-white px-4 py-2 rounded-md hover:from-seafoam-600 hover:to-sky-600 transition-all shadow-md" disabled>
+                                class="btn-success text-white px-6 py-3 rounded-xl hover-lift material-shadow font-semibold" disabled>
                             <i class="fas fa-plus mr-2"></i>
                             Add to Team
                         </button>
@@ -282,14 +382,16 @@
 </div>
 
 <script>
+// Clean, modern team management script
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Team Management initialized');
+    console.log('Team Management System Initialized');
     
     // Modal functions
     function showModal(modalId) {
         const modal = document.getElementById(modalId);
         if (modal) {
             modal.classList.remove('hidden');
+            console.log('Modal opened:', modalId);
         }
     }
     
@@ -297,15 +399,21 @@ document.addEventListener('DOMContentLoaded', function() {
         const modal = document.getElementById(modalId);
         if (modal) {
             modal.classList.add('hidden');
+            console.log('Modal closed:', modalId);
         }
     }
     
     // Add Member Button
     const addBtn = document.getElementById('addParticipantBtn');
-    if (addBtn && !addBtn.disabled) {
+    if (addBtn) {
         addBtn.addEventListener('click', function(e) {
             e.preventDefault();
-            console.log('Add Member button clicked');
+            
+            if (this.disabled) {
+                console.log('Button disabled - team is full');
+                return;
+            }
+            
             showModal('addParticipantModal');
         });
     }
@@ -321,7 +429,7 @@ document.addEventListener('DOMContentLoaded', function() {
         clearForm();
     });
     
-    // Remove participant buttons
+    // Remove participant functionality
     document.addEventListener('click', function(e) {
         if (e.target.closest('.remove-participant-btn')) {
             const btn = e.target.closest('.remove-participant-btn');
@@ -332,22 +440,15 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('remove-participant-enrollment').value = enrollment;
             showModal('removeModal');
         }
-    });
-    
-    // Cancel remove
-    document.getElementById('cancelRemove')?.addEventListener('click', () => {
-        hideModal('removeModal');
-    });
-    
-    // Cancel confirm
-    document.getElementById('cancelConfirm')?.addEventListener('click', () => {
-        hideModal('confirmModal');
-        showModal('addParticipantModal');
-    });
-    
-    document.getElementById('cancelConfirmBtn')?.addEventListener('click', () => {
-        hideModal('confirmModal');
-        showModal('addParticipantModal');
+        
+        if (e.target.id === 'cancelRemove') {
+            hideModal('removeModal');
+        }
+        
+        if (e.target.id === 'cancelConfirm' || e.target.id === 'cancelConfirmBtn') {
+            hideModal('confirmModal');
+            showModal('addParticipantModal');
+        }
     });
     
     // Search form handling
@@ -381,9 +482,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const studentDetailsDiv = document.getElementById('studentDetails');
         studentDetailsDiv.innerHTML = `
-            <div class="flex justify-center items-center py-8 px-4 text-seafoam-600">
-                <i class="fas fa-spinner fa-spin mr-2"></i>
-                <span>Validating student...</span>
+            <div class="flex justify-center items-center py-8 px-4 text-blue-500">
+                <i class="fas fa-spinner fa-spin mr-2 text-xl"></i>
+                <span class="font-medium">Validating student...</span>
             </div>
         `;
         
@@ -398,17 +499,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     document.getElementById('confirm-participant-enrollment').value = student.enrollment_no;
                     
                     studentDetailsDiv.innerHTML = `
-                        <div class="bg-seafoam-50 border border-seafoam-200 rounded-lg p-4">
+                        <div class="bg-green-50 border border-green-200 rounded-xl p-6">
                             <div class="text-center mb-4">
-                                <div class="w-12 h-12 bg-seafoam-500 rounded-full flex items-center justify-center text-white text-lg font-bold mx-auto mb-3">
+                                <div class="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-3">
                                     ${student.full_name[0].toUpperCase()}
                                 </div>
-                                <h4 class="text-lg font-semibold text-cool-gray-800 mb-1">${student.full_name}</h4>
-                                <p class="text-seafoam-600 font-medium mb-2">${student.enrollment_no}</p>
-                                <p class="text-sm text-cool-gray-600">Department: ${student.department || 'N/A'}</p>
-                                <p class="text-sm text-cool-gray-600">Email: ${student.email || 'N/A'}</p>
+                                <h4 class="text-xl font-semibold text-gray-900 mb-1">${student.full_name}</h4>
+                                <p class="text-green-600 font-medium mb-2">${student.enrollment_no}</p>
+                                <p class="text-sm text-gray-600">Department: ${student.department || 'N/A'}</p>
+                                <p class="text-sm text-gray-600">Email: ${student.email || 'N/A'}</p>
                             </div>
-                            <div class="bg-seafoam-100 border border-seafoam-300 p-3 text-seafoam-700 text-sm text-center rounded">
+                            <div class="bg-green-100 border border-green-300 p-3 text-green-700 text-sm text-center rounded-lg">
                                 <i class="fas fa-check-circle mr-1"></i>Student validated successfully!
                             </div>
                         </div>
@@ -417,8 +518,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     document.getElementById('confirmAddBtn').disabled = false;
                 } else {
                     studentDetailsDiv.innerHTML = `
-                        <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
-                            <div class="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center text-white mx-auto mb-3">
+                        <div class="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+                            <div class="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center text-white text-2xl mx-auto mb-3">
                                 <i class="fas fa-times"></i>
                             </div>
                             <h4 class="font-semibold text-red-800 mb-2">Unable to Add Student</h4>
@@ -439,8 +540,8 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(error => {
                 console.error('Validation error:', error);
                 studentDetailsDiv.innerHTML = `
-                    <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
-                        <div class="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center text-white mx-auto mb-3">
+                    <div class="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+                        <div class="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center text-white text-2xl mx-auto mb-3">
                             <i class="fas fa-exclamation-triangle"></i>
                         </div>
                         <h4 class="font-semibold text-red-800 mb-2">Connection Error</h4>
@@ -485,6 +586,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const errorDiv = document.getElementById('enrollment-error');
         if (errorDiv) errorDiv.classList.add('hidden');
     }
+    
+    console.log('Team Management System Ready');
 });
 </script>
 
