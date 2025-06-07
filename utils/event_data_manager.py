@@ -412,7 +412,7 @@ class EventDataManager:
             
             return True
             
-        except Exception as e:
+        except Exception as e:            
             print(f"Error updating payment status: {e}")
             return False
     
@@ -424,9 +424,31 @@ class EventDataManager:
             if not event:
                 return {}
             
-            stats = {
-                "total_individual_registrations": len(event.get("registrations", {})),
-                "total_team_registrations": len(event.get("team_registrations", {})),
+            is_team_based = event.get("is_team_based", False)
+            
+            if is_team_based:
+                # For team-based events:
+                # - team_registrations count = number of teams
+                # - registrations count = total participants (including team members)
+                stats = {
+                    "total_individual_registrations": 0,  # No individual registrations for team events
+                    "total_team_registrations": len(event.get("team_registrations", {})),
+                    "total_participants": len(event.get("registrations", {})),  # Total participants
+                    "total_team_members": len(event.get("registrations", {})),  # Same as participants for team events
+                }
+            else:
+                # For individual events:
+                # - registrations count = individual registrations
+                # - no team registrations
+                stats = {
+                    "total_individual_registrations": len(event.get("registrations", {})),
+                    "total_team_registrations": 0,  # No teams for individual events
+                    "total_participants": len(event.get("registrations", {})),
+                    "total_team_members": 0,  # No team members for individual events
+                }
+            
+            # Common statistics (attendance, feedback, certificates)
+            stats.update({
                 "total_attendances": len(event.get("attendances", {})) + sum(
                     len(team_attendance) for team_attendance in event.get("team_attendances", {}).values()
                 ),
@@ -436,16 +458,7 @@ class EventDataManager:
                 "total_certificates": len(event.get("certificates", {})) + sum(
                     len(team_certificate) for team_certificate in event.get("team_certificates", {}).values()
                 )
-            }
-            
-            # Calculate team statistics
-            total_team_members = sum(
-                len([k for k in team_data.keys() if k not in ["payment_id", "payment_status"]])
-                for team_data in event.get("team_registrations", {}).values()
-            )
-            
-            stats["total_team_members"] = total_team_members
-            stats["total_participants"] = stats["total_individual_registrations"] + total_team_members
+            })
             
             # Payment statistics for paid events
             if event.get("is_paid", False):
@@ -473,9 +486,7 @@ class EventDataManager:
             
         except Exception as e:
             print(f"Error getting event statistics: {e}")
-            return {}
-
-    @staticmethod
+            return {}    @staticmethod
     async def get_event_registrations_with_details(event_id: str, limit: int = 5) -> Dict:
         """
         Get registration details with student information for admin display
@@ -492,61 +503,101 @@ class EventDataManager:
             if not event:
                 return {"individual_registrations": [], "team_registrations": []}
             
+            is_team_based = event.get("is_team_based", False)
+            
             result = {
                 "individual_registrations": [],
                 "team_registrations": [],
-                "is_team_based": event.get("is_team_based", False)
+                "is_team_based": is_team_based
             }
             
-            # Process individual registrations
-            individual_registrations = []
-            for registrar_id, enrollment_no in event.get("registrations", {}).items():
-                student_data = await DatabaseOperations.find_one("students", {"enrollment_no": enrollment_no})
-                if student_data:
-                    participation = student_data.get("event_participations", {}).get(event_id, {})
-                    individual_registrations.append({
-                        "registrar_id": registrar_id,
-                        "enrollment_no": enrollment_no,
-                        "full_name": student_data.get("full_name", "N/A"),
-                        "email": student_data.get("email", "N/A"),
-                        "mobile_no": student_data.get("mobile_no", "N/A"),
-                        "department": student_data.get("department", "N/A"),
-                        "semester": student_data.get("semester", "N/A"),
-                        "registration_date": participation.get("registration_date"),
-                        "attendance_id": participation.get("attendance_id"),
-                        "feedback_id": participation.get("feedback_id"),
-                        "certificate_id": participation.get("certificate_id"),
-                        "payment_status": participation.get("payment_status")
-                    })
-            
-            # Sort by registration date (newest first)
-            individual_registrations.sort(
-                key=lambda x: x.get("registration_date") or datetime.min, 
-                reverse=True
-            )
-            
-            # Apply limit if specified
-            if limit > 0:
-                individual_registrations = individual_registrations[:limit]
-            
-            result["individual_registrations"] = individual_registrations
-            
-            # Process team registrations
-            team_registrations = []
-            for team_name, team_data in event.get("team_registrations", {}).items():
-                team_members = []
-                team_leader_enrollment = None
-                registration_date = None
+            if is_team_based:
+                # For team-based events, focus on team_registrations and ignore individual registrations
+                team_registrations = []
+                for team_registration_id, team_data in event.get("team_registrations", {}).items():
+                    # Handle the actual team data structure:
+                    # {
+                    #     "team_registration_id": "TEAM_INNOVATI_10056_543C",
+                    #     "team_name": "DRID",
+                    #     "team_leader_enrollment": "22CSEB10056", 
+                    #     "participants": ["22BEIT30043"],
+                    #     "registration_date": datetime(...)
+                    # }
+                    
+                    team_members = []
+                    team_name = team_data.get("team_name", team_registration_id)
+                    team_leader_enrollment = team_data.get("team_leader_enrollment")
+                    registration_date = team_data.get("registration_date")
+                    participants = team_data.get("participants", [])
+                    
+                    # Add team leader to participants list if not already included
+                    all_participants = [team_leader_enrollment] if team_leader_enrollment else []
+                    if participants:
+                        all_participants.extend(participants)
+                    
+                    # Remove duplicates while preserving order
+                    seen = set()
+                    unique_participants = []
+                    for participant in all_participants:
+                        if participant and participant not in seen:
+                            seen.add(participant)
+                            unique_participants.append(participant)
+                    
+                    # Get student details for all team members
+                    for enrollment_no in unique_participants:
+                        student_data = await DatabaseOperations.find_one("students", {"enrollment_no": enrollment_no})
+                        if student_data:
+                            participation = student_data.get("event_participations", {}).get(event_id, {})
+                            
+                            # Determine if this is the team leader
+                            is_team_leader = (enrollment_no == team_leader_enrollment)
+                            member_info = {
+                                "registrar_id": participation.get("registration_id", team_registration_id),
+                                "enrollment_no": enrollment_no,
+                                "full_name": student_data.get("full_name", "N/A"),
+                                "email": student_data.get("email", "N/A"),
+                                "mobile_no": student_data.get("mobile_no", "N/A"),
+                                "department": student_data.get("department", "N/A"),
+                                "semester": student_data.get("semester", "N/A"),
+                                "registration_type": "team_leader" if is_team_leader else "team_member",
+                                "attendance_id": participation.get("attendance_id"),
+                                "feedback_id": participation.get("feedback_id"),
+                                "certificate_id": participation.get("certificate_id")
+                            }
+                            
+                            team_members.append(member_info)
+                    
+                    if team_members:
+                        team_registrations.append({
+                            "team_name": team_name,
+                            "team_leader_enrollment": team_leader_enrollment,
+                            "registration_date": registration_date,
+                            "payment_status": team_data.get("payment_status"),
+                            "payment_id": team_data.get("payment_id"),
+                            "members": team_members,
+                            "member_count": len(team_members)
+                        })
                 
-                # Get team member details
-                for enrollment_no, registrar_id in team_data.items():
-                    if enrollment_no in ["payment_id", "payment_status"]:
-                        continue
-                        
+                # Sort teams by registration date (newest first)
+                team_registrations.sort(
+                    key=lambda x: x.get("registration_date") or datetime.min,
+                    reverse=True
+                )
+                
+                # Apply limit if specified
+                if limit > 0:
+                    team_registrations = team_registrations[:limit]
+                
+                result["team_registrations"] = team_registrations
+                
+            else:
+                # For individual events, process individual registrations
+                individual_registrations = []
+                for registrar_id, enrollment_no in event.get("registrations", {}).items():
                     student_data = await DatabaseOperations.find_one("students", {"enrollment_no": enrollment_no})
                     if student_data:
                         participation = student_data.get("event_participations", {}).get(event_id, {})
-                        member_info = {
+                        individual_registrations.append({
                             "registrar_id": registrar_id,
                             "enrollment_no": enrollment_no,
                             "full_name": student_data.get("full_name", "N/A"),
@@ -554,41 +605,24 @@ class EventDataManager:
                             "mobile_no": student_data.get("mobile_no", "N/A"),
                             "department": student_data.get("department", "N/A"),
                             "semester": student_data.get("semester", "N/A"),
-                            "registration_type": participation.get("registration_type", "team_member"),
+                            "registration_date": participation.get("registration_date"),
                             "attendance_id": participation.get("attendance_id"),
                             "feedback_id": participation.get("feedback_id"),
-                            "certificate_id": participation.get("certificate_id")
-                        }
-                        
-                        team_members.append(member_info)
-                        
-                        # Track team leader and registration date
-                        if participation.get("registration_type") == "team_leader":
-                            team_leader_enrollment = enrollment_no
-                            registration_date = participation.get("registration_date")
+                            "certificate_id": participation.get("certificate_id"),
+                            "payment_status": participation.get("payment_status")
+                        })
                 
-                if team_members:
-                    team_registrations.append({
-                        "team_name": team_name,
-                        "team_leader_enrollment": team_leader_enrollment,
-                        "registration_date": registration_date,
-                        "payment_status": team_data.get("payment_status"),
-                        "payment_id": team_data.get("payment_id"),
-                        "members": team_members,
-                        "member_count": len(team_members)
-                    })
-            
-            # Sort teams by registration date (newest first)
-            team_registrations.sort(
-                key=lambda x: x.get("registration_date") or datetime.min,
-                reverse=True
-            )
-            
-            # Apply limit if specified
-            if limit > 0:
-                team_registrations = team_registrations[:limit]
-            
-            result["team_registrations"] = team_registrations
+                # Sort by registration date (newest first)
+                individual_registrations.sort(
+                    key=lambda x: x.get("registration_date") or datetime.min, 
+                    reverse=True
+                )
+                
+                # Apply limit if specified
+                if limit > 0:
+                    individual_registrations = individual_registrations[:limit]
+                
+                result["individual_registrations"] = individual_registrations
             
             return result
             
