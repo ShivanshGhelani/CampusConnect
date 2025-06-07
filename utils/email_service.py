@@ -2,9 +2,12 @@ import smtplib
 import ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
 from jinja2 import Environment, FileSystemLoader
 import os
 from typing import Optional, List
+from pathlib import Path
 import logging
 from datetime import datetime
 import asyncio
@@ -41,23 +44,48 @@ class EmailService:
             logger.error(f"Failed to initialize EmailService: {str(e)}")
             raise
 
-    def _send_email_sync(self, to_email: str, subject: str, html_content: str, text_content: Optional[str] = None) -> bool:
-        """Synchronous email sending method"""
+    def _send_email_sync(self, to_email: str, subject: str, html_content: str, text_content: Optional[str] = None, attachments: Optional[List[str]] = None) -> bool:
+        """Synchronous email sending method with attachment support"""
         try:
             # Create message
-            message = MIMEMultipart("alternative")
+            message = MIMEMultipart("mixed")
             message["Subject"] = subject
             message["From"] = self.from_email
             message["To"] = to_email
 
+            # Create alternative container for text and HTML content
+            msg_alternative = MIMEMultipart("alternative")
+
             # Add text content if provided
             if text_content:
                 text_part = MIMEText(text_content, "plain")
-                message.attach(text_part)
+                msg_alternative.attach(text_part)
 
             # Add HTML content
             html_part = MIMEText(html_content, "html")
-            message.attach(html_part)
+            msg_alternative.attach(html_part)
+
+            # Attach the alternative container to the main message
+            message.attach(msg_alternative)
+
+            # Add attachments if provided
+            if attachments:
+                for attachment_path in attachments:
+                    if os.path.exists(attachment_path):
+                        with open(attachment_path, "rb") as attachment:
+                            part = MIMEBase('application', 'octet-stream')
+                            part.set_payload(attachment.read())
+                        
+                        encoders.encode_base64(part)
+                        
+                        # Get filename from path
+                        filename = os.path.basename(attachment_path)
+                        part.add_header(
+                            'Content-Disposition',
+                            f'attachment; filename= {filename}',
+                        )
+                        message.attach(part)
+                        logger.info(f"Added attachment: {filename}")
 
             # Create secure connection and send email
             context = ssl.create_default_context()
@@ -81,8 +109,8 @@ class EmailService:
             logger.error(f"Failed to send email to {to_email}: {str(e)}")
             return False
 
-    async def send_email_async(self, to_email: str, subject: str, html_content: str, text_content: Optional[str] = None) -> bool:
-        """Asynchronous email sending method"""
+    async def send_email_async(self, to_email: str, subject: str, html_content: str, text_content: Optional[str] = None, attachments: Optional[List[str]] = None) -> bool:
+        """Asynchronous email sending method with attachment support"""
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(
             self.executor, 
@@ -90,7 +118,8 @@ class EmailService:
             to_email, 
             subject, 
             html_content, 
-            text_content
+            text_content,
+            attachments
         )
 
     def render_template(self, template_name: str, **kwargs) -> str:
@@ -242,7 +271,8 @@ class EmailService:
         student_name: str, 
         event_title: str, 
         certificate_url: str,
-        event_date: Optional[str] = None
+        event_date: Optional[str] = None,
+        certificate_pdf_path: Optional[str] = None
     ) -> bool:
         """Send certificate available notification email"""
         try:
@@ -256,7 +286,11 @@ class EmailService:
                 event_date=event_date
             )
             
-            return await self.send_email_async(student_email, subject, html_content)
+            attachments = []
+            if certificate_pdf_path and Path(certificate_pdf_path).exists():
+                attachments.append(str(certificate_pdf_path))
+            
+            return await self.send_email_async(student_email, subject, html_content, attachments=attachments)
             
         except Exception as e:
             logger.error(f"Failed to send certificate notification: {str(e)}")

@@ -1106,8 +1106,7 @@ async def download_certificate(request: Request, event_id: str, student: Student
                 {"event_id": event_id},
                 {"$set": {f"certificates.{certificate_id}": student.enrollment_no}}
             )
-        
-        # Create certificate data for the template
+          # Create certificate data for the template
         certificate = {
             "certificate_id": certificate_id,
             "full_name": student_data.get("full_name", ""),
@@ -1116,7 +1115,17 @@ async def download_certificate(request: Request, event_id: str, student: Student
             "event_date": event.get("start_date", "").strftime("%d %B %Y") if event.get("start_date") else ""
         }
         
-        # Return certificate download page
+        # Create registration and attendance objects for template compatibility
+        registration = {
+            "registrar_id": participation.get('registration_id'),
+            "full_name": student_data.get("full_name", ""),
+            "email": student_data.get("email", ""),
+        }
+        
+        attendance = {
+            "attendance_id": participation.get('attendance_id')
+        }
+          # Return certificate download page with validated=True
         return templates.TemplateResponse(
             "client/certificate_download.html",
             {
@@ -1124,6 +1133,9 @@ async def download_certificate(request: Request, event_id: str, student: Student
                 "event": event,
                 "student": student,
                 "certificate": certificate,
+                "registration": registration,
+                "attendance": attendance,
+                "validated": True,  # All requirements are met
                 "message": "Your certificate is ready for download!"
             }
         )
@@ -1139,6 +1151,33 @@ async def download_certificate(request: Request, event_id: str, student: Student
     except Exception as e:
         print(f"Error in download_certificate: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/events/{event_id}/certificate/download")
+async def download_certificate_file(request: Request, event_id: str, student: Student = Depends(require_student_login)):
+    """Actually download the certificate file with enhanced features"""
+    try:
+        from utils.certificate_generator_enhanced import generate_enhanced_certificate_for_student
+        
+        # Generate certificate using the enhanced certificate generator
+        success, message, download_info = await generate_enhanced_certificate_for_student(event_id, student.enrollment_no)
+        
+        if success:
+            return {
+                "success": True,
+                "message": message,
+                "download_info": download_info
+            }
+        else:
+            return {
+                "success": False,
+                "message": message
+            }
+            
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"Error generating certificate: {str(e)}"
+        }
 
 @router.get("/events/{event_id}/mark-attendance")
 async def mark_attendance_get(request: Request, event_id: str, student: Student = Depends(require_student_login)):
