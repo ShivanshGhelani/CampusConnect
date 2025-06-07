@@ -153,17 +153,18 @@
                         <!-- ...existing academic fields... -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label for="department" class="block text-sm font-semibold text-gray-800 mb-2">Department *</label>
-                                <select name="department" id="department"
+                                <label for="department" class="block text-sm font-semibold text-gray-800 mb-2">Department *</label>                                <select name="department" id="department"
                                     class="block w-full px-4 py-2 mt-1 text-gray-900 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                     required>
                                     <option value="">Select Department</option>
-                                    <option value="Information Technology" {% if (student and student.department=='Information Technology') or (form_data and form_data.department=='Information Technology') %}selected{% endif %}>Information Technology</option>
                                     <option value="Computer Engineering" {% if (student and student.department=='Computer Engineering') or (form_data and form_data.department=='Computer Engineering') %}selected{% endif %}>Computer Engineering</option>
-                                    <option value="Electronics" {% if (student and student.department=='Electronics') or (form_data and form_data.department=='Electronics') %}selected{% endif %}>Electronics Engineering</option>
-                                    <option value="Electrical" {% if (student and student.department=='Electrical') or (form_data and form_data.department=='Electrical') %}selected{% endif %}>Electrical Engineering</option>
-                                    <option value="Mechanical" {% if (student and student.department=='Mechanical') or (form_data and form_data.department=='Mechanical') %}selected{% endif %}>Mechanical Engineering</option>
-                                    <option value="Civil" {% if (student and student.department=='Civil') or (form_data and form_data.department=='Civil') %}selected{% endif %}>Civil Engineering</option>
+                                    <option value="Information Technology" {% if (student and student.department=='Information Technology') or (form_data and form_data.department=='Information Technology') %}selected{% endif %}>Information Technology</option>
+                                    <option value="Electronics & Communication" {% if (student and student.department=='Electronics & Communication') or (form_data and form_data.department=='Electronics & Communication') %}selected{% endif %}>Electronics & Communication</option>
+                                    <option value="Mechanical Engineering" {% if (student and student.department=='Mechanical Engineering') or (form_data and form_data.department=='Mechanical Engineering') %}selected{% endif %}>Mechanical Engineering</option>
+                                    <option value="Civil Engineering" {% if (student and student.department=='Civil Engineering') or (form_data and form_data.department=='Civil Engineering') %}selected{% endif %}>Civil Engineering</option>
+                                    <option value="Electrical Engineering" {% if (student and student.department=='Electrical Engineering') or (form_data and form_data.department=='Electrical Engineering') %}selected{% endif %}>Electrical Engineering</option>
+                                    <option value="Master of Computer Applications" {% if (student and student.department=='Master of Computer Applications') or (form_data and form_data.department=='Master of Computer Applications') %}selected{% endif %}>Master of Computer Applications</option>
+                                    <option value="MBA" {% if (student and student.department=='MBA') or (form_data and form_data.department=='MBA') %}selected{% endif %}>MBA</option>
                                 </select>
                                 <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
                             </div>
@@ -271,26 +272,15 @@
                             <select name="department" id="department"
                                 class="block w-full px-4 py-2 mt-1 text-gray-900 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 required>
-                                <option value="">Select Department</option>
-                                <option value="Information Technology" {% if (student and
-                                    student.department=='Information Technology' ) or (form_data and
-                                    form_data.department=='Information Technology' ) %}selected{% endif %}>Information
-                                    Technology</option>
-                                <option value="Computer Engineering" {% if (student and
-                                    student.department=='Computer Engineering' ) or (form_data and
-                                    form_data.department=='Computer Engineering' ) %}selected{% endif %}>Computer
-                                    Engineering</option>
-                                <option value="Electronics" {% if (student and student.department=='Electronics' ) or
-                                    (form_data and form_data.department=='Electronics' ) %}selected{% endif %}>
-                                    Electronics Engineering</option>
-                                <option value="Electrical" {% if (student and student.department=='Electrical' ) or
-                                    (form_data and form_data.department=='Electrical' ) %}selected{% endif %}>Electrical
-                                    Engineering</option>
-                                <option value="Mechanical" {% if (student and student.department=='Mechanical' ) or
-                                    (form_data and form_data.department=='Mechanical' ) %}selected{% endif %}>Mechanical
-                                    Engineering</option>
-                                <option value="Civil" {% if (student and student.department=='Civil' ) or (form_data and
-                                    form_data.department=='Civil' ) %}selected{% endif %}>Civil Engineering</option>
+                                <option value="">Select Department</option>                                <option value="Computer Engineering" {% if (student and student.department=='Computer Engineering') or (form_data and form_data.department=='Computer Engineering') %}selected{% endif %}>Computer Engineering</option>
+                                <option value="Information Technology" {% if (student and student.department=='Information Technology') or (form_data and form_data.department=='Information Technology') %}selected{% endif %}>Information Technology</option>
+                                <option value="Electronics & Communication" {% if (student and student.department=='Electronics & Communication') or (form_data and form_data.department=='Electronics & Communication') %}selected{% endif %}>Electronics & Communication</option>
+                                <option value="Mechanical Engineering" {% if (student and student.department=='Mechanical Engineering') or (form_data and form_data.department=='Mechanical Engineering') %}selected{% endif %}>Mechanical Engineering</option>
+                                <option value="Civil Engineering" {% if (student and student.department=='Civil Engineering') or (form_data and form_data.department=='Civil Engineering') %}selected{% endif %}>Civil Engineering</option>
+                                <option value="Electrical Engineering" {% if (student and student.department=='Electrical Engineering') or (form_data and form_data.department=='Electrical Engineering') %}selected{% endif %}>Electrical Engineering</option>
+                                <option value="Chemical Engineering" {% if (student and student.department=='Chemical Engineering') or (form_data and form_data.department=='Chemical Engineering') %}selected{% endif %}>Chemical Engineering</option>
+                                <option value="Master of Computer Applications" {% if (student and student.department=='Master of Computer Applications') or (form_data and form_data.department=='Master of Computer Applications') %}selected{% endif %}>Master of Computer Applications</option>
+                                <option value="MBA" {% if (student and student.department=='MBA') or (form_data and form_data.department=='MBA') %}selected{% endif %}>MBA</option>
                             </select>
                             <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
                         </div>

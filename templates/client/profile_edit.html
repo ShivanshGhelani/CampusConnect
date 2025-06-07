@@ -181,12 +181,9 @@
                                     <option value="">Select Your Department</option>
                                     <option value="Computer Engineering" {% if student.department == 'Computer Engineering' %}selected{% endif %}>Computer Engineering</option>
                                     <option value="Information Technology" {% if student.department == 'Information Technology' %}selected{% endif %}>Information Technology</option>
-                                    <option value="Electronics & Communication" {% if student.department == 'Electronics & Communication' %}selected{% endif %}>Electronics & Communication</option>
-                                    <option value="Electronics" {% if student.department == 'Electronics' %}selected{% endif %}>Electronics Engineering</option>
-                                    <option value="Electrical" {% if student.department == 'Electrical' %}selected{% endif %}>Electrical Engineering</option>
-                                    <option value="Mechanical" {% if student.department == 'Mechanical' %}selected{% endif %}>Mechanical Engineering</option>
-                                    <option value="Civil" {% if student.department == 'Civil' %}selected{% endif %}>Civil Engineering</option>
-                                    <option value="Chemical Engineering" {% if student.department == 'Chemical Engineering' %}selected{% endif %}>Chemical Engineering</option>
+                                    <option value="Electronics & Communication" {% if student.department == 'Electronics & Communication' %}selected{% endif %}>Electronics & Communication</option>                                    <option value="Electrical Engineering" {% if student.department == 'Electrical Engineering' or student.department == 'Electrical' %}selected{% endif %}>Electrical Engineering</option>
+                                    <option value="Mechanical Engineering" {% if student.department == 'Mechanical Engineering' or student.department == 'Mechanical' %}selected{% endif %}>Mechanical Engineering</option>
+                                    <option value="Civil Engineering" {% if student.department == 'Civil Engineering' or student.department == 'Civil' %}selected{% endif %}>Civil Engineering</option>
                                     <option value="Master of Computer Applications" {% if student.department == 'Master of Computer Applications' %}selected{% endif %}>Master of Computer Applications</option>
                                     <option value="MBA" {% if student.department == 'MBA' %}selected{% endif %}>MBA</option>
                                 </select>
