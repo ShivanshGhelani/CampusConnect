@@ -108,8 +108,8 @@
             <h3 class="text-xl font-semibold text-gray-800 mb-2">Certificate Ready</h3>
             <p class="text-gray-600 mb-6">{{ message }}</p>            <!-- Certificate Download Action -->
             <div class="space-y-4">
-                {% if event.registration_type == 'free' and event.registration_mode == 'individual' %}
-                <!-- Available for free individual events -->
+                {% if event.registration_mode == 'individual' and event.registration_type in ['free', 'paid'] %}
+                <!-- Available for individual events (free or paid) -->
                 <button id="downloadCertificateBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg transition-colors duration-200">
                     <svg class="w-5 h-5 inline mr-2" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
@@ -145,7 +145,7 @@
 </div>
 
 <!-- JavaScript for Certificate Download -->
-{% if event.registration_type == 'free' and event.registration_mode == 'individual' %}
+{% if event.registration_mode == 'individual' and event.registration_type in ['free', 'paid'] %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const downloadBtn = document.getElementById('downloadCertificateBtn');
@@ -158,8 +158,7 @@ document.addEventListener('DOMContentLoaded', function() {
             downloadBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
             downloadBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
             downloadText.textContent = 'Generating Certificate...';
-            
-            try {
+              try {
                 // Make request to download certificate
                 const response = await fetch(`/client/events/{{ event.event_id }}/certificate/download`, {
                     method: 'POST',
@@ -168,75 +167,104 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 });
                 
-                const result = await response.json();
-                
-                if (result.success) {
-                    // Show success message
-                    downloadText.textContent = 'Certificate Generated!';
+                // Check if response is successful
+                if (response.ok) {
+                    // Get the content type to determine how to handle the response
+                    const contentType = response.headers.get('content-type');
                     
-                    // Create a temporary success message
-                    const successDiv = document.createElement('div');
-                    successDiv.className = 'bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4';
-                    successDiv.innerHTML = `
-                        <div class="flex items-center">
-                            <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                            </svg>
-                            <div>
-                                <p class="font-medium">✓ Certificate Generated Successfully!</p>
-                                <p class="text-sm text-green-600">${result.message}</p>
-                                <p class="text-sm text-green-600">Check your browser's print dialog or downloads folder.</p>
+                    if (contentType && (contentType.includes('application/pdf') || contentType.includes('text/html'))) {
+                        // Handle file download
+                        const blob = await response.blob();
+                        const url = window.URL.createObjectURL(blob);
+                        
+                        // Get filename from response headers or create default
+                        const contentDisposition = response.headers.get('content-disposition');
+                        let filename = 'certificate.pdf';
+                        if (contentDisposition) {
+                            const filenameMatch = contentDisposition.match(/filename=(.+)/);
+                            if (filenameMatch) {
+                                filename = filenameMatch[1].replace(/"/g, '');
+                            }
+                        }
+                        
+                        // Create download link and trigger download
+                        const a = document.createElement('a');
+                        a.style.display = 'none';
+                        a.href = url;
+                        a.download = filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        
+                        // Clean up
+                        window.URL.revokeObjectURL(url);
+                        document.body.removeChild(a);
+                        
+                        // Show success message
+                        downloadText.textContent = 'Certificate Downloaded!';
+                        
+                        // Create a temporary success message
+                        const successDiv = document.createElement('div');
+                        successDiv.className = 'bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4';
+                        successDiv.innerHTML = `
+                            <div class="flex items-center">
+                                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                </svg>
+                                <div>
+                                    <p class="font-medium">✓ Certificate Downloaded Successfully!</p>
+                                    <p class="text-sm text-green-600">Certificate has been downloaded to your device and emailed to you.</p>
+                                    <p class="text-sm text-green-600">Check your downloads folder and email inbox.</p>
+                                </div>
                             </div>
-                        </div>
-                    `;
-                    
-                    // Insert success message before the certificate status div
-                    const certificateStatusDiv = document.querySelector('.bg-gradient-to-r.from-blue-50');
-                    certificateStatusDiv.parentNode.insertBefore(successDiv, certificateStatusDiv);
-                    
-                    // Reset button after delay
-                    setTimeout(() => {
-                        downloadBtn.disabled = false;
-                        downloadBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
-                        downloadBtn.classList.add('bg-green-600', 'hover:bg-green-700');
-                        downloadText.textContent = 'Download Certificate';
-                    }, 3000);
+                        `;
+                        
+                        // Insert success message before the certificate status div
+                        const certificateStatusDiv = document.querySelector('.bg-gradient-to-r.from-blue-50');
+                        certificateStatusDiv.parentNode.insertBefore(successDiv, certificateStatusDiv);
+                        
+                    } else {
+                        // Handle JSON error response
+                        const result = await response.json();
+                        throw new Error(result.message || 'Failed to generate certificate');
+                    }
                     
                 } else {
-                    // Show error message
-                    downloadText.textContent = 'Download Failed';
-                    
-                    // Create error message
-                    const errorDiv = document.createElement('div');
-                    errorDiv.className = 'bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4';
-                    errorDiv.innerHTML = `
-                        <div class="flex items-center">
-                            <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                            </svg>
-                            <div>
-                                <p class="font-medium">Certificate Generation Failed</p>
-                                <p class="text-sm text-red-600">${result.message}</p>
-                            </div>
-                        </div>
-                    `;
-                    
-                    // Insert error message
-                    const certificateStatusDiv = document.querySelector('.bg-gradient-to-r.from-blue-50');
-                    certificateStatusDiv.parentNode.insertBefore(errorDiv, certificateStatusDiv);
-                    
-                    // Reset button
-                    setTimeout(() => {
-                        downloadBtn.disabled = false;
-                        downloadBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
-                        downloadBtn.classList.add('bg-green-600', 'hover:bg-green-700');
-                        downloadText.textContent = 'Download Certificate';
-                    }, 3000);
+                    // Handle HTTP error
+                    const result = await response.json().catch(() => ({ message: 'Server error occurred' }));
+                    throw new Error(result.message || `HTTP ${response.status}: ${response.statusText}`);
                 }
                 
-            } catch (error) {
+                // Reset button after delay
+                setTimeout(() => {
+                    downloadBtn.disabled = false;
+                    downloadBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
+                    downloadBtn.classList.add('bg-green-600', 'hover:bg-green-700');
+                    downloadText.textContent = 'Download Certificate';
+                }, 3000);
+                  } catch (error) {
                 console.error('Error downloading certificate:', error);
                 downloadText.textContent = 'Download Failed';
+                
+                // Create error message
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4';
+                errorDiv.innerHTML = `
+                    <div class="flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                        </svg>
+                        <div>
+                            <p class="font-medium">Certificate Generation Failed</p>
+                            <p class="text-sm text-red-600">${error.message}</p>
+                        </div>
+                    </div>
+                `;
+                
+                // Insert error message
+                const certificateStatusDiv = document.querySelector('.bg-gradient-to-r.from-blue-50');
+                if (certificateStatusDiv) {
+                    certificateStatusDiv.parentNode.insertBefore(errorDiv, certificateStatusDiv);
+                }
                 
                 // Reset button
                 setTimeout(() => {

@@ -1154,19 +1154,21 @@ async def download_certificate(request: Request, event_id: str, student: Student
 
 @router.post("/events/{event_id}/certificate/download")
 async def download_certificate_file(request: Request, event_id: str, student: Student = Depends(require_student_login)):
-    """Actually download the certificate file with enhanced features"""
+    """Download the certificate file directly to client"""
     try:
-        from utils.certificate_generator_enhanced import generate_enhanced_certificate_for_student
+        from utils.certificate_generator import generate_certificate_for_student, create_certificate_download_response
         
-        # Generate certificate using the enhanced certificate generator
-        success, message, download_info = await generate_enhanced_certificate_for_student(event_id, student.enrollment_no)
+        # Generate certificate for client-side download
+        success, message, pdf_bytes = await generate_certificate_for_student(event_id, student.enrollment_no)
         
-        if success:
-            return {
-                "success": True,
-                "message": message,
-                "download_info": download_info
-            }
+        if success and pdf_bytes:
+            # Create filename for download
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"Certificate_{student.enrollment_no}_{timestamp}.pdf"
+            
+            # Return the PDF as a downloadable file
+            return create_certificate_download_response(pdf_bytes, filename)
         else:
             return {
                 "success": False,
