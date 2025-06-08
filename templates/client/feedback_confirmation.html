@@ -1,5 +1,9 @@
 {% extends "base.html" %}
 
+{% block navigation %}
+{% include 'components/client_navigation.html' %}
+{% endblock %}
+
 {% block title %}Feedback Already Submitted - {{ event.event_name }}{% endblock %}
 
 {% block content %}

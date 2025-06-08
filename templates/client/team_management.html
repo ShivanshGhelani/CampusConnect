@@ -1,70 +1,57 @@
 {% extends "base.html" %}
 
+{% block navigation %}
+{% include 'components/client_navigation.html' %}
+{% endblock %}
+
 {% block title %}Team Management - {{ event.event_name }}{% endblock %}
 
 {% block head %}
 <script src="/static/js/registration.js"></script>
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    /* Minimal custom styles for glass morphism effects not available in Tailwind */
+    .glass-morphism {
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+    }
     
-    * {
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    }    :root {
-        /* Professional Business Color Palette */
-        --primary-50: #f8fafc;
-        --primary-100: #f1f5f9;
-        --primary-200: #e2e8f0;
-        --primary-300: #cbd5e1;
-        --primary-400: #94a3b8;
-        --primary-500: #64748b;
-        --primary-600: #475569;
-        --primary-700: #334155;
-        --primary-800: #1e293b;
-        --primary-900: #0f172a;
-        
-        --blue-50: #eff6ff;
-        --blue-100: #dbeafe;
-        --blue-200: #bfdbfe;
-        --blue-300: #93c5fd;
-        --blue-400: #60a5fa;
-        --blue-500: #3b82f6;
-        --blue-600: #2563eb;
-        --blue-700: #1d4ed8;
-        --blue-800: #1e40af;
-        --blue-900: #1e3a8a;
-        
-        --indigo-50: #eef2ff;
-        --indigo-100: #e0e7ff;
-        --indigo-200: #c7d2fe;
-        --indigo-300: #a5b4fc;
-        --indigo-400: #818cf8;
+    .card-hover {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .card-hover:hover {
+        transform: translateY(-4px);
+    }
         --indigo-500: #6366f1;
         --indigo-600: #4f46e5;
         --indigo-700: #4338ca;
         --indigo-800: #3730a3;
         --indigo-900: #312e81;
         
-        --gray-50: #f9fafb;
-        --gray-100: #f3f4f6;
-        --gray-200: #e5e7eb;
-        --gray-300: #d1d5db;
-        --gray-400: #9ca3af;
-        --gray-500: #6b7280;
-        --gray-600: #4b5563;        --gray-700: #374151;
-        --gray-800: #1f2937;
-        --gray-900: #111827;
+        /* Cool Gray Neutrals */
+        --gray-50: #f8fafc;
+        --gray-100: #f1f5f9;
+        --gray-200: #e2e8f0;
+        --gray-300: #cbd5e1;
+        --gray-400: #94a3b8;
+        --gray-500: #64748b;
+        --gray-600: #475569;
+        --gray-700: #334155;
+        --gray-800: #1e293b;
+        --gray-900: #0f172a;
+        
+        /* Status Colors */
+        --mint-50: #f0fdf4;
+        --mint-100: #dcfce7;
+        --mint-500: #22c55e;
+        --mint-600: #16a34a;
+        --mint-700: #15803d;
         
         --red-50: #fef2f2;
         --red-100: #fee2e2;
         --red-500: #ef4444;
         --red-600: #dc2626;
         --red-700: #b91c1c;
-        
-        --green-50: #f0fdf4;
-        --green-100: #dcfce7;
-        --green-500: #22c55e;
-        --green-600: #16a34a;
-        --green-700: #15803d;
         
         --amber-50: #fffbeb;
         --amber-100: #fef3c7;
@@ -115,226 +102,357 @@
     
     .animate-pulse-subtle {
         animation: pulse-subtle 2s ease-in-out infinite;
-    }    /* Professional compact design system */
+    }    /* Professional Glass Morphism Design System */
     .card-professional {
-        background: white;
-        border: 1px solid var(--gray-200);
-        border-radius: 8px;
-        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-        transition: all 0.2s ease-in-out;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(226, 232, 240, 0.8);
+        border-radius: 16px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
     
     .card-professional:hover {
-        border-color: var(--blue-300);
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        border-color: rgba(46, 212, 191, 0.4);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        transform: translateY(-2px);
     }
     
     .header-professional {
-        background: linear-gradient(135deg, var(--gray-800) 0%, var(--gray-900) 100%);
+        background: linear-gradient(135deg, var(--seafoam-600) 0%, var(--sky-600) 50%, var(--indigo-600) 100%);
         color: white;
-        border-bottom: 1px solid var(--gray-700);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .header-professional::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
+        transform: translateX(-100%);
+        transition: transform 0.6s;
+    }
+    
+    .header-professional:hover::before {
+        transform: translateX(100%);
     }
     
     .btn-professional {
         font-weight: 500;
         font-size: 14px;
-        padding: 8px 16px;
-        border-radius: 6px;
-        transition: all 0.15s ease-in-out;
+        padding: 10px 20px;
+        border-radius: 12px;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         border: 1px solid transparent;
         text-decoration: none;
         display: inline-flex;
         align-items: center;
         justify-content: center;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .btn-professional::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transition: left 0.5s;
+    }
+    
+    .btn-professional:hover::before {
+        left: 100%;
     }
     
     .btn-primary-professional {
-        background-color: var(--blue-600);
+        background: linear-gradient(135deg, var(--seafoam-500) 0%, var(--sky-500) 100%);
         color: white;
-        border-color: var(--blue-600);
+        border-color: var(--seafoam-500);
+        box-shadow: 0 4px 14px 0 rgba(20, 184, 166, 0.3);
     }
     
     .btn-primary-professional:hover {
-        background-color: var(--blue-700);
-        border-color: var(--blue-700);
+        background: linear-gradient(135deg, var(--seafoam-600) 0%, var(--sky-600) 100%);
+        border-color: var(--seafoam-600);
         color: white;
-        transform: translateY(-1px);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px 0 rgba(20, 184, 166, 0.4);
     }
     
     .btn-success-professional {
-        background-color: var(--green-600);
+        background: linear-gradient(135deg, var(--mint-500) 0%, var(--seafoam-500) 100%);
         color: white;
-        border-color: var(--green-600);
+        border-color: var(--mint-500);
+        box-shadow: 0 4px 14px 0 rgba(34, 197, 94, 0.3);
     }
     
     .btn-success-professional:hover {
-        background-color: var(--green-700);
-        border-color: var(--green-700);
+        background: linear-gradient(135deg, var(--mint-600) 0%, var(--seafoam-600) 100%);
+        border-color: var(--mint-600);
         color: white;
-        transform: translateY(-1px);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px 0 rgba(34, 197, 94, 0.4);
     }
     
     .btn-danger-professional {
-        background-color: var(--red-600);
+        background: linear-gradient(135deg, var(--red-500) 0%, #f97316 100%);
         color: white;
-        border-color: var(--red-600);
+        border-color: var(--red-500);
+        box-shadow: 0 4px 14px 0 rgba(239, 68, 68, 0.3);
     }
     
     .btn-danger-professional:hover {
-        background-color: var(--red-700);
-        border-color: var(--red-700);
+        background: linear-gradient(135deg, var(--red-600) 0%, #ea580c 100%);
+        border-color: var(--red-600);
         color: white;
-        transform: translateY(-1px);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px 0 rgba(239, 68, 68, 0.4);
     }
     
     .btn-secondary-professional {
-        background-color: white;
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(10px);
         color: var(--gray-700);
-        border-color: var(--gray-300);
+        border-color: rgba(203, 213, 225, 0.8);
+        box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.1);
     }
     
     .btn-secondary-professional:hover {
-        background-color: var(--gray-50);
-        border-color: var(--gray-400);
+        background: rgba(248, 250, 252, 0.95);
+        border-color: var(--seafoam-300);
         color: var(--gray-800);
-    }
-    
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.15);
+    }    
     .status-badge {
         display: inline-flex;
         align-items: center;
-        padding: 4px 8px;
-        border-radius: 12px;
+        padding: 6px 12px;
+        border-radius: 20px;
         font-size: 11px;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.025em;
+        border: 1px solid transparent;
+        backdrop-filter: blur(10px);
     }
     
     .status-active {
-        background-color: var(--green-100);
-        color: var(--green-700);
-        border: 1px solid var(--green-200);
+        background: linear-gradient(135deg, var(--mint-50) 0%, var(--seafoam-50) 100%);
+        color: var(--mint-700);
+        border-color: var(--mint-200);
+        box-shadow: 0 2px 8px rgba(34, 197, 94, 0.1);
     }
     
     .status-leader {
-        background-color: var(--amber-100);
+        background: linear-gradient(135deg, var(--amber-50) 0%, #fef3c7 100%);
         color: var(--amber-700);
-        border: 1px solid var(--amber-200);
+        border-color: var(--amber-200);
+        box-shadow: 0 2px 8px rgba(245, 158, 11, 0.1);
     }
     
     .status-team {
-        background-color: var(--blue-100);
-        color: var(--blue-700);
-        border: 1px solid var(--blue-200);
+        background: linear-gradient(135deg, var(--sky-50) 0%, var(--indigo-50) 100%);
+        color: var(--sky-700);
+        border-color: var(--sky-200);
+        box-shadow: 0 2px 8px rgba(2, 132, 199, 0.1);
     }
     
     .leader-card-professional {
-        background: linear-gradient(135deg, var(--indigo-50) 0%, var(--blue-50) 100%);
-        border: 1px solid var(--indigo-200);
-        border-left: 4px solid var(--indigo-600);
-    }
-    
-    .member-card-professional {
-        background: white;
-        border: 1px solid var(--gray-200);
-        border-left: 3px solid var(--blue-400);
-    }
-    
-    .member-card-professional:hover {
-        border-color: var(--blue-300);
-        border-left-color: var(--blue-500);
-        transform: translateY(-1px);
-    }
-    
-    .progress-bar-professional {
-        background-color: var(--gray-200);
-        border-radius: 4px;
+        background: linear-gradient(135deg, var(--seafoam-50) 0%, var(--sky-50) 50%, var(--indigo-50) 100%);
+        border: 1px solid rgba(46, 212, 191, 0.3);
+        border-left: 4px solid var(--seafoam-500);
+        backdrop-filter: blur(10px);
+        position: relative;
         overflow: hidden;
     }
     
+    .leader-card-professional::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(45deg, transparent 30%, rgba(46, 212, 191, 0.05) 50%, transparent 70%);
+        pointer-events: none;
+    }
+    
+    .member-card-professional {
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(15px);
+        border: 1px solid rgba(226, 232, 240, 0.6);
+        border-left: 3px solid var(--sky-400);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .member-card-professional:hover {
+        background: rgba(255, 255, 255, 0.95);
+        border-color: var(--seafoam-300);
+        border-left-color: var(--seafoam-500);
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    }
+    
+    .progress-bar-professional {
+        background: linear-gradient(90deg, var(--gray-200) 0%, var(--gray-100) 100%);
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
     .progress-fill-professional {
-        background: linear-gradient(90deg, var(--blue-500) 0%, var(--indigo-500) 100%);
-        transition: width 0.3s ease-in-out;
+        background: linear-gradient(90deg, var(--seafoam-500) 0%, var(--sky-500) 50%, var(--indigo-500) 100%);
+        transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .progress-fill-professional::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        right: 0;
+        background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.2) 50%, transparent 70%);
+        animation: shimmer 2s infinite;
     }
     
     .modal-professional {
-        background: rgba(0, 0, 0, 0.5);
-        backdrop-filter: blur(4px);
+        background: rgba(15, 23, 42, 0.6);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
     }
     
     .modal-content-professional {
-        background: white;
-        border-radius: 8px;
-        border: 1px solid var(--gray-200);
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border-radius: 20px;
+        border: 1px solid rgba(226, 232, 240, 0.8);
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
     }
     
     .modal-header-professional {
-        background: var(--gray-50);
-        border-bottom: 1px solid var(--gray-200);
-        padding: 16px 24px;
-        border-radius: 8px 8px 0 0;
+        background: linear-gradient(135deg, var(--seafoam-50) 0%, var(--sky-50) 100%);
+        border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+        padding: 20px 24px;
+        border-radius: 20px 20px 0 0;
     }
     
     .form-input-professional {
-        border: 1px solid var(--gray-300);
-        border-radius: 6px;
-        padding: 8px 12px;
+        border: 1px solid rgba(203, 213, 225, 0.8);
+        border-radius: 12px;
+        padding: 12px 16px;
         font-size: 14px;
-        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(10px);
     }
     
     .form-input-professional:focus {
         outline: none;
-        border-color: var(--blue-500);
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        border-color: var(--seafoam-400);
+        box-shadow: 0 0 0 4px rgba(46, 212, 191, 0.1);
+        background: rgba(255, 255, 255, 0.95);
     }
     
     .avatar-professional {
-        width: 40px;
-        height: 40px;
-        border-radius: 6px;
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-weight: 600;
-        font-size: 14px;
+        font-weight: 700;
+        font-size: 16px;
         color: white;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
     }
     
     .avatar-leader {
-        background: linear-gradient(135deg, var(--amber-500) 0%, var(--amber-600) 100%);
+        background: linear-gradient(135deg, var(--amber-500) 0%, var(--amber-600) 50%, #f59e0b 100%);
+        box-shadow: 0 4px 14px rgba(245, 158, 11, 0.3);
     }
     
     .avatar-member {
-        background: linear-gradient(135deg, var(--blue-500) 0%, var(--indigo-500) 100%);
+        background: linear-gradient(135deg, var(--seafoam-500) 0%, var(--sky-500) 50%, var(--indigo-500) 100%);
+        box-shadow: 0 4px 14px rgba(46, 212, 191, 0.3);
     }    
     /* Mobile responsiveness */
     @media (max-width: 768px) {
+        .card-professional {
+            border-radius: 12px;
+            margin: 0 4px;
+        }
+        
         .member-card-professional {
-            margin-bottom: 8px;
+            margin-bottom: 12px;
+            padding: 16px;
         }
         
         .btn-professional {
-            padding: 6px 12px;
+            padding: 8px 16px;
             font-size: 13px;
         }
         
         .modal-content-professional {
             margin: 16px;
-            border-radius: 6px;
+            border-radius: 16px;
         }
         
         .avatar-professional {
-            width: 32px;
-            height: 32px;
-            font-size: 12px;
+            width: 40px;
+            height: 40px;
+            font-size: 14px;
+        }
+        
+        .header-professional {
+            border-radius: 12px 12px 0 0;
+        }
+        
+        .status-badge {
+            padding: 4px 8px;
+            font-size: 10px;
+        }
+    }
+    
+    @media (max-width: 640px) {
+        .max-w-6xl {
+            padding-left: 16px;
+            padding-right: 16px;
+        }
+        
+        .py-6 {
+            padding-top: 16px;
+            padding-bottom: 16px;
+        }
+        
+        .leader-card-professional {
+            padding: 20px;
+        }
+        
+        .modal-header-professional {
+            padding: 16px 20px;
+        }
+        
+        .modal-content-professional div[class*="p-8"] {
+            padding: 24px;
         }
     }
     
     /* Accessibility improvements */
     .focus-ring-professional:focus {
-        outline: 2px solid var(--blue-500);
+        outline: 3px solid var(--seafoam-400);
         outline-offset: 2px;
     }
     
@@ -349,389 +467,338 @@
         white-space: nowrap;
         border: 0;
     }
+    
+    /* Enhanced animations */
+    .animate-slide-down {
+        animation: slideInDown 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+    
+    .animate-fade-scale {
+        animation: fadeInScale 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+    
+    .animate-pulse-subtle {
+        animation: pulse-subtle 3s ease-in-out infinite;
+    }
+    
+    /* Glass morphism hover effects */
+    .card-professional:hover {
+        background: rgba(255, 255, 255, 0.98);
+    }
+    
+    .member-card-professional:hover {
+        background: rgba(255, 255, 255, 0.98);
+    }
+    
+    /* Loading animation enhancement */
+    @keyframes border-spin {
+        0% { border-color: var(--seafoam-500) transparent transparent transparent; }
+        25% { border-color: transparent var(--sky-500) transparent transparent; }
+        50% { border-color: transparent transparent var(--indigo-500) transparent; }
+        75% { border-color: transparent transparent transparent var(--seafoam-500); }
+        100% { border-color: var(--seafoam-500) transparent transparent transparent; }
+    }
+    
+    .border-3 {
+        border-width: 3px;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-gray-50">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+<div class="page-container">
+    <div class="container">
         
-        <!-- Header Section -->
-        <div class="card-professional p-6 mb-6">
-            <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between">
-                <div class="mb-4 lg:mb-0">
-                    <div class="flex items-center mb-3">
-                        <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
-                            <i class="fas fa-users-cog text-white text-lg"></i>
-                        </div>
-                        <div>
-                            <h1 class="text-2xl font-bold text-gray-900">Team Management</h1>
-                            <p class="text-gray-600 text-sm font-medium">{{ event.event_name }}</p>
-                        </div>
-                    </div>
-                    
-                    <!-- Event Status -->
-                    <div class="flex flex-wrap gap-2">
-                        <span class="status-badge status-active">
-                            <i class="fas fa-calendar-check mr-1 text-xs"></i>
-                            Active Event
-                        </span>
-                        <span class="status-badge status-team">
-                            <i class="fas fa-users mr-1 text-xs"></i>
-                            Team Mode
-                        </span>
-                    </div>
+        <!-- Hero Header -->
+        <div class="page-header">
+            <h1>Team Management</h1>
+            <p class="subtitle">Build and manage your competition team for {{ event.event_name }}</p>
+            
+            <!-- Stats Overview -->
+            <div class="stats-overview">
+                <div class="stat-card">
+                    <div class="stat-number">{{ (team_participants|length) + 1 }}</div>
+                    <div class="stat-label">Current Members</div>
                 </div>
-                
-                {% if team_details %}
-                <div class="lg:text-right">
-                    <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                        <div class="text-lg font-bold text-gray-900 mb-2">{{ team_details.team_name }}</div>
-                        <div class="flex items-center justify-end text-gray-700 text-sm mb-3">
-                            <i class="fas fa-users mr-2"></i>
-                            <span class="font-semibold">{{ (team_participants|length) + 1 }}</span>
-                            <span class="text-gray-400 mx-1">/</span>
-                            <span class="font-semibold">{{ event.team_size_max or 5 }}</span>
-                            <span class="ml-1">members</span>
-                        </div>
-                        
-                        <!-- Progress Bar -->
-                        {% set progress_percentage = (((team_participants|length) + 1) / (event.team_size_max or 5)) * 100 %}
-                        <div class="progress-bar-professional h-2">
-                            <div class="progress-fill-professional h-full rounded" 
-                                 style="width: {{ progress_percentage }}%"></div>
-                        </div>
-                    </div>
+                <div class="stat-card">
+                    <div class="stat-number">{{ event.team_size_max or 5 }}</div>
+                    <div class="stat-label">Max Team Size</div>
                 </div>
-                {% endif %}
+                <div class="stat-card">
+                    <div class="stat-number">{{ event.team_size_max|int - ((team_participants|length) + 1) }}</div>
+                    <div class="stat-label">Spots Available</div>
+                </div>
             </div>
-        </div>        <!-- Success/Error Messages -->
+        </div>
+
+        <!-- Alert Messages -->
         {% if success %}
-        <div class="card-professional p-4 mb-6 border-l-4 border-green-500 bg-green-50">
-            <div class="flex items-start">
-                <div class="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center mr-3">
-                    <i class="fas fa-check text-white text-sm"></i>
-                </div>
-                <div class="flex-1">
-                    <h3 class="text-green-800 font-semibold text-sm mb-1">Success</h3>
-                    <p class="text-green-700 text-sm">
-                        {% if success == 'team_updated' %}Your team has been updated successfully.
-                        {% elif success == 'participant_added' %}New team member has been added successfully.
-                        {% elif success == 'participant_removed' %}Team member has been removed successfully.
-                        {% else %}{{ success }}{% endif %}
-                    </p>
-                </div>
-            </div>
+        <div class="alert alert-success">
+            <strong>Success!</strong> 
+            {% if success == 'team_updated' %}Your team has been updated successfully.
+            {% elif success == 'participant_added' %}New team member has been added successfully.
+            {% elif success == 'participant_removed' %}Team member has been removed successfully.
+            {% else %}{{ success }}{% endif %}
         </div>
         {% endif %}
         
         {% if error %}
-        <div class="card-professional p-4 mb-6 border-l-4 border-red-500 bg-red-50">
-            <div class="flex items-start">
-                <div class="w-8 h-8 bg-red-600 rounded-full flex items-center justify-center mr-3">
-                    <i class="fas fa-exclamation-triangle text-white text-sm"></i>
-                </div>
-                <div class="flex-1">
-                    <h3 class="text-red-800 font-semibold text-sm mb-1">Error</h3>
-                    <p class="text-red-700 text-sm">{{ error }}</p>
-                </div>
-            </div>
+        <div class="alert alert-error">
+            <strong>Error:</strong> {{ error }}
         </div>
-        {% endif %}        <!-- Team Members Section -->
-        <div class="card-professional">
-            <!-- Section Header -->
-            <div class="header-professional px-6 py-4">
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                    <div class="mb-3 sm:mb-0">
-                        <h2 class="text-lg font-semibold text-white flex items-center">
-                            <i class="fas fa-users mr-2"></i>
-                            Team Members
-                        </h2>
-                        <p class="text-gray-300 text-sm">Manage your team composition</p>
+        {% endif %}
+
+        <!-- Main Team Card -->
+        <div class="main-card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <div class="icon">👥</div>
+                    Your Team
+                </h2>
+                {% set is_max_reached = (team_participants|length) + 1 >= (event.team_size_max or 5) %}
+                <button type="button" id="addParticipantBtn" 
+                        class="btn btn-primary {% if is_max_reached %}btn-outline{% endif %}"
+                        {% if is_max_reached %}disabled{% endif %}>
+                    <i class="fas fa-user-plus"></i>
+                    {% if is_max_reached %}Team Complete{% else %}Add Member{% endif %}
+                </button>
+            </div>
+
+            <!-- Team Leader -->
+            <div class="team-list">
+                <div class="team-card" style="border-left: 6px solid var(--accent);">
+                    <div class="team-header">
+                        <div class="team-info">
+                            <h3>{{ student.full_name }}</h3>
+                            <div class="team-leader">Team Leader</div>
+                        </div>
+                        <div class="status-badge status-complete">Leader</div>
                     </div>
                     
-                    {% set is_max_reached = (team_participants|length) + 1 >= (event.team_size_max or 5) %}
-                    <button type="button" id="addParticipantBtn" 
-                            class="btn-professional btn-success-professional focus-ring-professional
-                                   {% if is_max_reached %}opacity-50 cursor-not-allowed{% endif %}"
-                            {% if is_max_reached %}disabled{% endif %}>
-                        <i class="fas fa-user-plus mr-2 text-sm"></i>
-                        {% if is_max_reached %}Team Complete{% else %}Add Member{% endif %}
-                    </button>
-                </div>
-            </div>
-            
-            <div class="p-6">
-                <!-- Team Leader Card -->
-                <div class="leader-card-professional rounded-lg p-4 mb-6">
-                    <div class="flex items-center">
-                        <div class="avatar-professional avatar-leader mr-4">
-                            <i class="fas fa-crown"></i>
-                        </div>
-                        <div class="flex-1">
-                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                                <div>
-                                    <h3 class="font-semibold text-gray-900 mb-1">
-                                        {{ student.full_name }}
-                                    </h3>
-                                    <p class="text-gray-600 text-sm mb-2">{{ student.enrollment_no }}</p>
-                                    <span class="status-badge status-leader">
-                                        <i class="fas fa-shield-alt mr-1"></i>
-                                        Team Leader
-                                    </span>
-                                </div>
-                            </div>
+                    <div class="member-card">
+                        <div class="member-avatar">{{ student.full_name[0].upper() if student.full_name else 'L' }}</div>
+                        <div class="member-info">
+                            <div class="member-name">{{ student.full_name }}</div>
+                            <div class="member-email">{{ student.enrollment_no }}</div>
                         </div>
                     </div>
-                </div>                <!-- Team Members Grid -->
+                </div>
+
+                <!-- Team Members -->
                 {% if team_participants %}
-                <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     {% for participant in team_participants %}
-                    <div class="member-card-professional rounded-lg p-4">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center flex-1">
-                                <div class="avatar-professional avatar-member mr-3">
-                                    {{ participant.full_name[0].upper() if participant.full_name else 'M' }}
-                                </div>
-                                <div class="flex-1">
-                                    <h4 class="font-semibold text-gray-900 text-sm mb-1">{{ participant.full_name or 'Team Member' }}</h4>
-                                    <p class="text-gray-600 text-xs mb-2">{{ participant.enrollment_no }}</p>
-                                    <span class="status-badge status-active">
-                                        <i class="fas fa-user-check mr-1"></i>
-                                        Active
-                                    </span>
-                                </div>
+                    <div class="team-card">
+                        <div class="team-header">
+                            <div class="team-info">
+                                <h3>{{ participant.full_name or 'Team Member' }}</h3>
+                                <div class="team-leader">Member</div>
                             </div>
-                            <button type="button" class="remove-participant-btn btn-professional btn-danger-professional focus-ring-professional"
+                            <div class="status-badge status-complete">Active</div>
+                        </div>
+                        
+                        <div class="member-card">
+                            <div class="member-avatar">{{ participant.full_name[0].upper() if participant.full_name else 'M' }}</div>
+                            <div class="member-info">
+                                <div class="member-name">{{ participant.full_name or 'Team Member' }}</div>
+                                <div class="member-email">{{ participant.enrollment_no }}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="team-actions">
+                            <button type="button" class="btn btn-danger remove-participant-btn"
                                     data-enrollment="{{ participant.enrollment_no }}"
-                                    data-name="{{ participant.full_name or participant.enrollment_no }}"
-                                    title="Remove team member">
-                                <i class="fas fa-user-minus text-sm"></i>
-                                <span class="sr-only">Remove {{ participant.full_name or participant.enrollment_no }}</span>
+                                    data-name="{{ participant.full_name or participant.enrollment_no }}">
+                                <i class="fas fa-user-minus"></i>
+                                Remove Member
                             </button>
                         </div>
                     </div>
                     {% endfor %}
-                </div>
                 {% else %}
-                <div class="text-center py-12 px-6">
-                    <div class="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-                        <i class="fas fa-users text-gray-400 text-2xl"></i>
+                    <div class="empty-state">
+                        <div class="icon">👥</div>
+                        <h3>Build Your Team</h3>
+                        <p>You're the team leader. Start adding members to your team to compete together in {{ event.event_name }}.</p>
+                        <button type="button" id="addFirstMemberBtn" class="btn btn-primary">
+                            <i class="fas fa-user-plus"></i>
+                            Add Your First Member
+                        </button>
                     </div>
-                    <h3 class="text-lg font-semibold text-gray-900 mb-2">Build Your Team</h3>
-                    <p class="text-gray-600 text-sm mb-4 max-w-sm mx-auto">You're the team leader. Start adding members to your team.</p>
-                    <div class="flex items-center justify-center text-gray-500">
-                        <i class="fas fa-info-circle mr-2 text-sm"></i>
-                        <span class="text-xs">Click "Add Member" to get started</span>
-                    </div>
-                </div>
                 {% endif %}
             </div>
-        </div>        <!-- Navigation Footer -->
-        <div class="flex flex-col sm:flex-row justify-center gap-3 mt-6">
-            <a href="/client/events/{{ event.event_id }}" 
-               class="btn-professional btn-secondary-professional focus-ring-professional">
-                <i class="fas fa-arrow-left mr-2 text-sm"></i>
+        </div>
+
+        <!-- Navigation -->
+        <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 2rem;">
+            <a href="/client/events/{{ event.event_id }}" class="btn btn-outline">
+                <i class="fas fa-arrow-left"></i>
                 Back to Event
             </a>
-            <a href="/client/dashboard" 
-               class="btn-professional btn-primary-professional focus-ring-professional">
-                <i class="fas fa-home mr-2 text-sm"></i>
+            <a href="/client/dashboard" class="btn btn-primary">
+                <i class="fas fa-home"></i>
                 Dashboard
             </a>
         </div>
     </div>
 </div>
 
-<!-- Professional Add New Participant Modal -->
-<div id="addParticipantModal" class="hidden fixed inset-0 modal-professional z-50">
-    <div class="flex items-center justify-center min-h-screen p-4">
-        <div class="modal-content-professional max-w-lg w-full">
-            <!-- Modal Header -->
-            <div class="modal-header-professional">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center">
-                        <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
-                            <i class="fas fa-user-plus text-white"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-lg font-semibold text-gray-900">Add Team Member</h3>
-                            <p class="text-gray-600 text-sm">Invite a new member to join your team</p>
-                        </div>
-                    </div>
-                    <button type="button" id="closeAddModal" class="btn-professional btn-secondary-professional focus-ring-professional p-2">
-                        <i class="fas fa-times"></i>
-                    </button>
+<!-- Modern Add Participant Modal -->
+<div id="addParticipantModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Add Team Member</h3>
+            <button type="button" id="closeAddModal" class="close-btn">×</button>
+        </div>
+        
+        <form id="searchParticipantForm">
+            <div class="form-group">
+                <label for="participant_enrollment" class="form-label">Student Enrollment Number</label>
+                <input type="text" name="participant_enrollment" id="participant_enrollment"
+                       placeholder="e.g., 21BECE40015" maxlength="12" 
+                       class="form-input" required>
+                <div id="enrollment-error" class="alert alert-error" style="display: none; margin-top: 1rem;">
+                    <span></span>
                 </div>
             </div>
             
-            <div class="p-6">
-                <form id="searchParticipantForm" class="space-y-4">
-                    <div>
-                        <label for="participant_enrollment" class="block text-sm font-semibold text-gray-700 mb-2">
-                            Student Enrollment Number
-                        </label>
-                        <div class="relative">
-                            <input type="text" name="participant_enrollment" id="participant_enrollment"
-                                   placeholder="e.g., 21BECE40015" maxlength="12" 
-                                   class="form-input-professional w-full font-mono text-center"
-                                   required>
-                            <div class="absolute inset-y-0 right-0 flex items-center pr-3">
-                                <i class="fas fa-search text-gray-400"></i>
-                            </div>
-                        </div>
-                        <div id="enrollment-error" class="hidden mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                            <div class="flex items-center">
-                                <i class="fas fa-exclamation-circle text-red-500 mr-2"></i>
-                                <span class="text-red-700 text-sm font-medium"></span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="flex gap-3 pt-4">
-                        <button type="button" id="cancelAddModal" 
-                                class="flex-1 btn-professional btn-secondary-professional">
-                            Cancel
-                        </button>
-                        <button type="submit" id="searchParticipantBtn"
-                                class="flex-1 btn-professional btn-primary-professional">
-                            <i class="fas fa-search mr-2"></i>
-                            Find & Validate
-                        </button>
-                    </div>
-                </form>
+            <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                <button type="button" id="cancelAddModal" class="btn btn-outline" style="flex: 1;">
+                    Cancel
+                </button>
+                <button type="submit" id="searchParticipantBtn" class="btn btn-primary" style="flex: 1;">
+                    <i class="fas fa-search"></i>
+                    Find & Validate
+                </button>
             </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modern Remove Participant Modal -->
+<div id="removeModal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h3 class="modal-title">Remove Team Member</h3>
+            <button type="button" id="cancelRemove" class="close-btn">×</button>
+        </div>
+        
+        <div style="padding: 2rem; text-align: center;">
+            <div style="width: 80px; height: 80px; background: linear-gradient(135deg, var(--danger), #dc2626); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 2rem; color: white; font-size: 2rem;">
+                <i class="fas fa-user-times"></i>
+            </div>
+            
+            <h3 style="margin-bottom: 1rem; color: var(--dark);">Remove Team Member</h3>
+            <p style="margin-bottom: 2rem; color: #64748b;">
+                Are you sure you want to remove 
+                <strong id="remove-participant-name" style="color: var(--danger);"></strong> 
+                from your team? This action cannot be undone.
+            </p>
+            
+            <form id="removeParticipantForm" action="/client/events/{{ event.event_id }}/manage-team" method="POST">
+                <input type="hidden" name="action" value="remove_participant">
+                <input type="hidden" name="participant_enrollment" id="remove-participant-enrollment">
+                
+                <div style="display: flex; gap: 1rem;">
+                    <button type="button" id="cancelRemoveBtn" class="btn btn-outline" style="flex: 1;">
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn btn-danger" style="flex: 1;">
+                        <i class="fas fa-user-times"></i>
+                        Remove Member
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
 
-<!-- Professional Remove Participant Modal -->
-<div id="removeModal" class="hidden fixed inset-0 modal-professional z-50">
-    <div class="flex items-center justify-center min-h-screen p-4">
-        <div class="modal-content-professional max-w-md w-full">
-            <div class="p-6 text-center">
-                <!-- Warning Icon -->
-                <div class="w-16 h-16 bg-red-600 rounded-lg flex items-center justify-center mx-auto mb-4">
-                    <i class="fas fa-user-times text-white text-xl"></i>
-                </div>
-                
-                <h3 class="text-lg font-semibold text-gray-900 mb-3">Remove Team Member</h3>
-                <p class="text-gray-600 text-sm mb-6">
-                    Are you sure you want to remove 
-                    <span id="remove-participant-name" class="font-semibold text-red-600"></span> 
-                    from your team? This action cannot be undone.
-                </p>
-                
-                <form id="removeParticipantForm" action="/client/events/{{ event.event_id }}/manage-team" method="POST">
-                    <input type="hidden" name="action" value="remove_participant">
-                    <input type="hidden" name="participant_enrollment" id="remove-participant-enrollment">
-                    
-                    <div class="flex gap-3">
-                        <button type="button" id="cancelRemove" 
-                                class="flex-1 btn-professional btn-secondary-professional">
-                            Cancel
-                        </button>
-                        <button type="submit" 
-                                class="flex-1 btn-professional btn-danger-professional">
-                            <i class="fas fa-user-times mr-2"></i>
-                            Remove Member
-                        </button>
-                    </div>
-                </form>
+<!-- Modern Confirmation Modal -->
+<div id="confirmModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Confirm Add Member</h3>
+            <button type="button" id="cancelConfirm" class="close-btn">×</button>
+        </div>
+        
+        <div id="studentDetails" style="padding: 2rem;">
+            <div style="text-align: center; padding: 3rem;">
+                <div style="width: 60px; height: 60px; border: 4px solid var(--primary); border-top: 4px solid transparent; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem;"></div>
+                <p style="color: var(--primary); font-weight: 600;">Loading student information...</p>
             </div>
         </div>
+        
+        <form id="addParticipantForm" action="/client/events/{{ event.event_id }}/manage-team" method="POST" style="padding: 0 2rem 2rem;">
+            <input type="hidden" name="action" value="add_participant">
+            <input type="hidden" name="participant_enrollment" id="confirm-participant-enrollment">
+            
+            <div style="display: flex; gap: 1rem;">
+                <button type="button" id="cancelConfirmBtn" class="btn btn-outline" style="flex: 1;">
+                    Cancel
+                </button>
+                <button type="submit" id="confirmAddBtn" class="btn btn-success" style="flex: 1;" disabled>
+                    <i class="fas fa-user-plus"></i>
+                    Add to Team
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 
-<!-- Professional Add Participant Confirmation Modal -->
-<div id="confirmModal" class="hidden fixed inset-0 modal-professional z-50">
-    <div class="flex items-center justify-center min-h-screen p-4">
-        <div class="modal-content-professional max-w-lg w-full">
-            <!-- Modal Header -->
-            <div class="modal-header-professional">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center">
-                        <div class="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center mr-3">
-                            <i class="fas fa-user-check text-white"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-lg font-semibold text-gray-900">Confirm Add Member</h3>
-                            <p class="text-gray-600 text-sm">Verify student details before adding</p>
-                        </div>
-                    </div>
-                    <button type="button" id="cancelConfirm" class="btn-professional btn-secondary-professional focus-ring-professional p-2">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            </div>
-            
-            <div class="p-6">
-                <div id="studentDetails" class="mb-6">
-                    <div class="flex justify-center items-center py-8 px-4">
-                        <div class="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-3"></div>
-                        <div class="text-blue-600 font-medium">Loading student information...</div>
-                    </div>
-                </div>
-                
-                <form id="addParticipantForm" action="/client/events/{{ event.event_id }}/manage-team" method="POST">
-                    <input type="hidden" name="action" value="add_participant">
-                    <input type="hidden" name="participant_enrollment" id="confirm-participant-enrollment">
-                    
-                    <div class="flex gap-3">
-                        <button type="button" id="cancelConfirmBtn" 
-                                class="flex-1 btn-professional btn-secondary-professional">
-                            Cancel
-                        </button>
-                        <button type="submit" id="confirmAddBtn"
-                                class="flex-1 btn-professional btn-success-professional" disabled>
-                            <i class="fas fa-user-plus mr-2"></i>
-                            Add to Team
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
+<style>
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+</style>
 
 <script>
-// Clean, modern team management script
+// Modern Team Management System
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Team Management System Initialized');
+    console.log('Modern Team Management System Initialized');
     
     // Modal functions
     function showModal(modalId) {
         const modal = document.getElementById(modalId);
         if (modal) {
-            modal.classList.remove('hidden');
-            console.log('Modal opened:', modalId);
+            modal.style.display = 'flex';
+            setTimeout(() => {
+                modal.style.opacity = '1';
+                const content = modal.querySelector('.modal-content');
+                if (content) {
+                    content.style.transform = 'scale(1)';
+                }
+            }, 10);
         }
     }
     
     function hideModal(modalId) {
         const modal = document.getElementById(modalId);
         if (modal) {
-            modal.classList.add('hidden');
-            console.log('Modal closed:', modalId);
+            modal.style.opacity = '0';
+            const content = modal.querySelector('.modal-content');
+            if (content) {
+                content.style.transform = 'scale(0.9)';
+            }
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 300);
         }
     }
     
-    // Add Member Button
-    const addBtn = document.getElementById('addParticipantBtn');
-    if (addBtn) {
-        addBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            
-            if (this.disabled) {
-                console.log('Button disabled - team is full');
-                return;
-            }
-            
-            showModal('addParticipantModal');
-        });
-    }
+    // Add Member Button Events
+    const addBtns = ['addParticipantBtn', 'addFirstMemberBtn'];
+    addBtns.forEach(btnId => {
+        const btn = document.getElementById(btnId);
+        if (btn) {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (this.disabled) return;
+                showModal('addParticipantModal');
+            });
+        }
+    });
     
-    // Close modal buttons
+    // Close modal events
     document.getElementById('closeAddModal')?.addEventListener('click', () => {
         hideModal('addParticipantModal');
         clearForm();
@@ -742,7 +809,7 @@ document.addEventListener('DOMContentLoaded', function() {
         clearForm();
     });
     
-    // Remove participant functionality
+    // Remove participant events
     document.addEventListener('click', function(e) {
         if (e.target.closest('.remove-participant-btn')) {
             const btn = e.target.closest('.remove-participant-btn');
@@ -754,7 +821,7 @@ document.addEventListener('DOMContentLoaded', function() {
             showModal('removeModal');
         }
         
-        if (e.target.id === 'cancelRemove') {
+        if (e.target.id === 'cancelRemove' || e.target.id === 'cancelRemoveBtn') {
             hideModal('removeModal');
         }
         
@@ -775,12 +842,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const errorDiv = document.getElementById('enrollment-error');
             
             // Clear previous errors
-            errorDiv.classList.add('hidden');
+            errorDiv.style.display = 'none';
             
-            // Validation
             if (!enrollment || !enrollmentPattern.test(enrollment)) {
-                errorDiv.innerHTML = 'Could you check the enrollment number format? (e.g., 21BECE40015)';
-                errorDiv.classList.remove('hidden');
+                errorDiv.querySelector('span').textContent = 'Please check the enrollment number format (e.g., 21BECE40015)';
+                errorDiv.style.display = 'block';
                 return;
             }
             
@@ -795,9 +861,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const studentDetailsDiv = document.getElementById('studentDetails');
         studentDetailsDiv.innerHTML = `
-            <div class="flex justify-center items-center py-8 px-4 text-blue-500">
-                <i class="fas fa-spinner fa-spin mr-2 text-xl"></i>
-                <span class="font-medium">Validating student...</span>
+            <div style="text-align: center; padding: 3rem;">
+                <div style="width: 60px; height: 60px; border: 4px solid var(--primary); border-top: 4px solid transparent; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem;"></div>
+                <p style="color: var(--primary); font-weight: 600;">Validating student...</p>
             </div>
         `;
         
@@ -806,34 +872,38 @@ document.addEventListener('DOMContentLoaded', function() {
         
         fetch(`/client/api/validate-participant?enrollment=${encodeURIComponent(enrollment)}&event_id=${eventId}&team_id=${teamId}`)
             .then(response => response.json())
-            .then(data => {                if (data.success && data.can_add) {
+            .then(data => {
+                if (data.success && data.can_add) {
                     const student = data.student;
                     document.getElementById('confirm-participant-enrollment').value = student.enrollment_no;
-                      studentDetailsDiv.innerHTML = `
-                        <div class="bg-green-50 border border-green-200 rounded-lg p-4">
-                            <div class="text-center mb-4">
-                                <div class="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center text-white text-lg font-semibold mx-auto mb-3">
-                                    ${student.full_name[0].toUpperCase()}
-                                </div>
-                                <h4 class="text-lg font-semibold text-gray-900 mb-1">${student.full_name}</h4>
-                                <p class="text-green-600 font-medium mb-2 text-sm">${student.enrollment_no}</p>
-                                <p class="text-xs text-gray-600">Department: ${student.department || 'N/A'}</p>
-                                <p class="text-xs text-gray-600">Email: ${student.email || 'N/A'}</p>
+                    
+                    studentDetailsDiv.innerHTML = `
+                        <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(20, 184, 166, 0.1)); border: 2px solid var(--success); border-radius: 20px; padding: 2rem; text-align: center;">
+                            <div style="width: 80px; height: 80px; background: linear-gradient(135deg, var(--success), var(--primary)); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; color: white; font-size: 2rem; font-weight: 700;">
+                                ${student.full_name[0].toUpperCase()}
                             </div>
-                            <div class="bg-green-100 border border-green-200 p-3 text-green-700 text-sm text-center rounded">
-                                <i class="fas fa-check-circle mr-1"></i>Student validated successfully!
+                            <h4 style="font-size: 1.5rem; font-weight: 700; color: var(--dark); margin-bottom: 0.5rem;">${student.full_name}</h4>
+                            <p style="color: var(--primary); font-weight: 600; margin-bottom: 1rem; font-size: 1.1rem;">${student.enrollment_no}</p>
+                            <p style="color: #64748b; margin-bottom: 0.5rem;">Department: ${student.department || 'N/A'}</p>
+                            <p style="color: #64748b; margin-bottom: 1.5rem;">Email: ${student.email || 'N/A'}</p>
+                            <div style="background: var(--success); color: white; padding: 1rem; border-radius: 16px; font-weight: 600;">
+                                <i class="fas fa-check-circle" style="margin-right: 0.5rem;"></i>Student validated successfully!
                             </div>
                         </div>
                     `;
                     
-                    document.getElementById('confirmAddBtn').disabled = false;                } else {
+                    document.getElementById('confirmAddBtn').disabled = false;
+                } else {
                     studentDetailsDiv.innerHTML = `
-                        <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
-                            <div class="w-12 h-12 bg-red-600 rounded-lg flex items-center justify-center text-white mx-auto mb-3">
+                        <div style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.1)); border: 2px solid var(--danger); border-radius: 20px; padding: 2rem; text-align: center;">
+                            <div style="width: 80px; height: 80px; background: linear-gradient(135deg, var(--danger), #dc2626); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; color: white; font-size: 2rem;">
                                 <i class="fas fa-times"></i>
                             </div>
-                            <h4 class="font-semibold text-red-800 mb-2 text-sm">Unable to Add Student</h4>
-                            <p class="text-red-600 text-xs">${data.message || 'Unable to validate student'}</p>
+                            <h4 style="font-size: 1.5rem; font-weight: 700; color: var(--danger); margin-bottom: 1rem;">Unable to Add Student</h4>
+                            <p style="color: #64748b; margin-bottom: 1.5rem;">${data.message || 'Student cannot be added to this team'}</p>
+                            <div style="background: var(--danger); color: white; padding: 1rem; border-radius: 16px; font-weight: 600;">
+                                <i class="fas fa-exclamation-triangle" style="margin-right: 0.5rem;"></i>Validation failed
+                            </div>
                         </div>
                     `;
                     document.getElementById('confirmAddBtn').disabled = true;
@@ -842,19 +912,20 @@ document.addEventListener('DOMContentLoaded', function() {
                         hideModal('confirmModal');
                         showModal('addParticipantModal');
                         const errorDiv = document.getElementById('enrollment-error');
-                        errorDiv.innerHTML = data.message || 'Unable to add this student to your team';
-                        errorDiv.classList.remove('hidden');
+                        errorDiv.querySelector('span').textContent = data.message || 'Unable to add this student';
+                        errorDiv.style.display = 'block';
                     }, 3000);
                 }
-            })            .catch(error => {
+            })
+            .catch(error => {
                 console.error('Validation error:', error);
                 studentDetailsDiv.innerHTML = `
-                    <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
-                        <div class="w-12 h-12 bg-red-600 rounded-lg flex items-center justify-center text-white mx-auto mb-3">
+                    <div style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.1)); border: 2px solid var(--danger); border-radius: 20px; padding: 2rem; text-align: center;">
+                        <div style="width: 80px; height: 80px; background: linear-gradient(135deg, var(--danger), #dc2626); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; color: white; font-size: 2rem;">
                             <i class="fas fa-exclamation-triangle"></i>
                         </div>
-                        <h4 class="font-semibold text-red-800 mb-2 text-sm">Connection Error</h4>
-                        <p class="text-red-600 text-xs">Unable to connect to validation service</p>
+                        <h4 style="font-size: 1.5rem; font-weight: 700; color: var(--danger); margin-bottom: 1rem;">Connection Error</h4>
+                        <p style="color: #64748b;">Unable to connect to validation service</p>
                     </div>
                 `;
                 document.getElementById('confirmAddBtn').disabled = true;
@@ -893,10 +964,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const form = document.getElementById('searchParticipantForm');
         if (form) form.reset();
         const errorDiv = document.getElementById('enrollment-error');
-        if (errorDiv) errorDiv.classList.add('hidden');
+        if (errorDiv) errorDiv.style.display = 'none';
     }
     
-    console.log('Team Management System Ready');
+    console.log('Modern Team Management System Ready');
 });
 </script>
 

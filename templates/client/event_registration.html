@@ -1,5 +1,9 @@
 {% extends "base.html" %}
 
+{% block navigation %}
+{% include 'components/client_navigation.html' %}
+{% endblock %}
+
 {% block title %}Event Registration - {{ event.event_name }}{% endblock %}
 
 {% block head %}
@@ -293,8 +297,7 @@
                                     class="block w-full px-4 py-2 mt-1 text-gray-900 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                     required>
                                     <option value="">Select</option> {% for i in range(1, 9) %}
-                                    <option value="{{ i }}" {% if (student and student.semester|int==i) or (form_data
-                                        and form_data.semester|int==i) %}selected{% endif %}>{{ i }}</option>
+                                    <option value="{{ i }}" {% if (student and student.semester|int==i) or (form_data and form_data.semester|int==i) %}selected{% endif %}>{{ i }}</option>
                                     {% endfor %}
                                 </select>
                                 <div class="flex items-center">
@@ -724,4 +727,4 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 {% endif %}
 
-{% endblock %}
+{% endblock %

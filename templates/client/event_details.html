@@ -1,5 +1,9 @@
 {% extends "base.html" %}
 
+{% block navigation %}
+{% include 'components/client_navigation.html' %}
+{% endblock %}
+
 {% block extra_head %}
 <style>
   @keyframes float {
@@ -631,7 +635,7 @@
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="12" height="12">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                 </svg>
-              </span>
+              </div>
             </div>
           {% else %}
             <div class="text-gray-500 italic">No description available for this event.</div>

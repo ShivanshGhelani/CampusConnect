@@ -3,41 +3,7 @@
 {% block title %}Campus Events - CampusConnect{% endblock %}
 
 {% block navigation %}
-<div class="flex items-center space-x-1">
-    <a href="/client/events?filter=all" class="{% if filter == 'all' %}bg-gradient-to-r from-seafoam-500 to-sky-600 text-white{% else %}text-cool-gray-600 hover:text-seafoam-600 hover:bg-seafoam-50{% endif %} px-3 py-2 rounded font-medium transition-all duration-300 flex items-center space-x-2">
-        <i class="fas fa-calendar text-sm"></i>
-        <span>All Events</span>
-    </a>
-    <a href="/client/events?filter=upcoming" class="{% if filter == 'upcoming' %}bg-gradient-to-r from-sky-500 to-lavender-600 text-white{% else %}text-cool-gray-600 hover:text-sky-600 hover:bg-sky-50{% endif %} px-3 py-2 rounded font-medium transition-all duration-300 flex items-center space-x-2">
-        <i class="fas fa-clock text-sm"></i>
-        <span>Upcoming</span>
-    </a>
-    <a href="/client/events?filter=ongoing" class="{% if filter == 'ongoing' %}bg-gradient-to-r from-mint-500 to-seafoam-600 text-white{% else %}text-cool-gray-600 hover:text-mint-600 hover:bg-mint-50{% endif %} px-3 py-2 rounded font-medium transition-all duration-300 flex items-center space-x-2">
-        <span class="w-2 h-2 bg-mint-500 rounded-full {% if filter == 'ongoing' %}animate-pulse{% endif %}"></span>
-        <span>Live</span>
-    </a>
-</div>
-<div class="flex items-center space-x-3">
-    {% if is_student_logged_in %}
-        <a href="/client/dashboard" class="bg-gradient-to-r from-seafoam-500 to-sky-600 text-white px-4 py-2 rounded hover:from-seafoam-600 hover:to-sky-700 transition-all duration-300 font-medium flex items-center space-x-2 shadow-md">
-            <i class="fas fa-tachometer-alt text-sm"></i>
-            <span>Dashboard</span>
-        </a>
-        <a href="/client/logout" class="text-red-600 hover:text-red-700 hover:bg-red-50 px-4 py-2 rounded transition-colors font-medium flex items-center space-x-2">
-            <i class="fas fa-sign-out-alt text-sm"></i>
-            <span>Logout</span>
-        </a>
-    {% else %}
-        <a href="/client/register" class="text-mint-600 hover:text-mint-700 hover:bg-mint-50 px-4 py-2 rounded transition-colors font-medium flex items-center space-x-2">
-            <i class="fas fa-user-plus text-sm"></i>
-            <span>Register</span>
-        </a>
-        <a href="/client/login" class="bg-gradient-to-r from-seafoam-500 to-sky-600 text-white px-4 py-2 rounded hover:from-seafoam-600 hover:to-sky-700 transition-all duration-300 font-medium flex items-center space-x-2 shadow-md">
-            <i class="fas fa-sign-in-alt text-sm"></i>
-            <span>Login</span>
-        </a>
-    {% endif %}
-</div>
+{% include 'components/client_navigation.html' %}
 {% endblock %}
 
 {% block content %}
@@ -83,14 +49,12 @@
                 </div>
                   <!-- Category Filters -->
                 <div class="lg:w-auto">
-                    <label class="block text-sm font-medium text-cool-gray-700 mb-2">Filter by Category</label>
-                    <div class="flex flex-wrap gap-2">
-                        <button class="category-filter px-4 py-2 text-sm rounded-lg bg-gradient-to-r from-seafoam-500 to-sky-600 text-white font-medium transition-all hover:from-seafoam-600 hover:to-sky-700 shadow-md" data-category="all">
+                    <label class="block text-sm font-medium text-cool-gray-700 mb-2">Filter by Category</label>                    <div class="flex flex-wrap gap-2">
+                        <button class="category-filter px-4 py-2 text-sm rounded-lg bg-gradient-to-r from-seafoam-500 to-sky-600 text-white font-medium transition-all hover:from-seafoam-600 hover:to-sky-700 shadow-md active" data-category="all">
                             All Categories ({{ events|length }})
-                        </button>
-                        {% if event_type_counts %}
+                        </button>                        {% if event_type_counts %}
                             {% for event_type, count in event_type_counts.items() %}
-                                <button class="category-filter px-4 py-2 text-sm rounded-lg bg-cool-gray-100 text-cool-gray-700 hover:bg-seafoam-100 hover:text-seafoam-700 font-medium transition-all border border-cool-gray-200 hover:border-seafoam-300" data-category="{{ event_type }}">
+                                <button class="category-filter px-4 py-2 text-sm rounded-lg bg-white text-seafoam-600 hover:bg-seafoam-50 hover:text-seafoam-700 font-medium transition-all border border-seafoam-300 hover:border-seafoam-400" data-category="{{ event_type }}">
                                     {{ event_type.title() }} ({{ count }})
                                 </button>
                             {% endfor %}
@@ -306,6 +270,32 @@
 .event-card.filtered-out {
     display: none !important;
 }
+
+/* Category Filter Button Styles */
+.category-filter {
+    transition: all 0.3s ease;
+    background: white !important;
+    color: #374151 !important; /* gray-700 */
+    border: 1px solid #d1d5db !important; /* gray-300 */
+}
+
+.category-filter:hover {
+    background: #f3f4f6 !important; /* gray-100 */
+    color: #0f766e !important; /* seafoam-700 */
+    border-color: #14b8a6 !important; /* seafoam-500 */
+}
+
+.category-filter.active {
+    background: linear-gradient(to right, #14b8a6, #0284c7) !important; /* seafoam-500 to sky-600 */
+    color: white !important;
+    border: 1px solid transparent !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+
+.category-filter.active:hover {
+    background: linear-gradient(to right, #0f766e, #0369a1) !important; /* seafoam-600 to sky-700 */
+    color: white !important;
+}
 </style>
 
 <script>
@@ -321,17 +311,14 @@ document.addEventListener('DOMContentLoaded', function() {
     searchInput.addEventListener('input', function() {
         currentSearch = this.value.toLowerCase();
         filterEvents();
-    });
-    
-    // Category filter functionality
+    });    // Category filter functionality
     categoryFilters.forEach(filter => {
         filter.addEventListener('click', function() {
-            categoryFilters.forEach(f => {
-                f.classList.remove('bg-blue-600', 'text-white');
-                f.classList.add('bg-gray-100', 'text-gray-700');
-            });
-            this.classList.add('bg-blue-600', 'text-white');
-            this.classList.remove('bg-gray-100', 'text-gray-700');
+            // Remove active class from all filters
+            categoryFilters.forEach(f => f.classList.remove('active'));
+            
+            // Add active class to clicked filter
+            this.classList.add('active');
             
             currentCategory = this.dataset.category;
             filterEvents();
@@ -392,21 +379,14 @@ document.addEventListener('DOMContentLoaded', function() {
             `;
             eventsGrid.appendChild(noResultsMessage);
         }
-    }
-    
-    // Global function for clearing filters
+    }    // Global function for clearing filters
     window.clearAllFilters = function() {
         document.getElementById('searchInput').value = '';
         currentSearch = '';
         currentCategory = 'all';
-        
-        // Reset category buttons
-        categoryFilters.forEach(f => {
-            f.classList.remove('bg-blue-600', 'text-white');
-            f.classList.add('bg-gray-100', 'text-gray-700');
-        });
-        document.querySelector('.category-filter[data-category="all"]').classList.add('bg-blue-600', 'text-white');
-        document.querySelector('.category-filter[data-category="all"]').classList.remove('bg-gray-100', 'text-gray-700');
+          // Reset category buttons
+        categoryFilters.forEach(f => f.classList.remove('active'));
+        document.querySelector('.category-filter[data-category="all"]').classList.add('active');
         
         // Reset all cards
         eventCards.forEach(card => {
