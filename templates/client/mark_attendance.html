@@ -134,22 +134,6 @@
                     </h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-6 text-sm">
                         <div class="flex justify-between">
-                            <span class="text-gray-600">Enrollment No:</span>
-                            <span class="font-medium text-right">{{ registration.enrollment_no }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-600">Email:</span>
-                            <span class="font-medium text-right">{{ registration.email }}</span>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-gray-600">Department:</span>
-                            <span class="font-medium text-right">{{ registration.department }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-600">Semester:</span>
-                            <span class="font-medium text-right">{{ registration.semester }}</span>
-                        </div>
-                        <div class="flex justify-between">
                             <span class="text-gray-600">Mobile:</span>
                             <span class="font-medium text-right">{{ registration.mobile_no }}</span>
                         </div>
@@ -157,6 +141,14 @@
                             <span class="text-gray-600">Registration Type:</span>
                             <span class="font-medium capitalize text-right">{{ registration.registration_type }}</span>
                         </div>
+                    </div>
+                    <div class="flex justify-between items-center text-sm mt-4">
+                        <span class="text-gray-600">Department:</span>
+                        <span class="font-medium text-right">{{ registration.department }}</span>
+                    </div>
+                    <div class="flex justify-between text-sm mt-4">
+                        <span class="text-gray-600">Email:</span>
+                        <span class="font-medium text-right">{{ registration.email }}</span>
                     </div>
                 </div>
 
