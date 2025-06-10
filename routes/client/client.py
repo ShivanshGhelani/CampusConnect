@@ -1244,6 +1244,7 @@ async def mark_attendance_get(request: Request, event_id: str, student: Student 
                     "event": event,
                     "student": student,
                     "is_student_logged_in": True,
+                    "student_data": student.model_dump() if student else None,
                     "page_context": "attendance"
                 }
             )
@@ -1252,8 +1253,9 @@ async def mark_attendance_get(request: Request, event_id: str, student: Student 
         participation = event_participations[event_id]
         registration_id = participation.get('registration_id')
         
-        # Verify registration_id is not null        if not registration_id:
-        return templates.TemplateResponse(
+        # Verify registration_id is not null
+        if not registration_id:
+            return templates.TemplateResponse(
                 "client/mark_attendance.html",
                 {
                     "request": request,
@@ -1388,7 +1390,8 @@ async def mark_attendance_post(request: Request, event_id: str, student: Student
                     "error": "Student data not found",
                     "form_data": {"student_name": student_name, "registration_id": registration_id},
                     "is_student_logged_in": True,
-                    "student_data": student.model_dump() if student else None            }
+                    "student_data": student.model_dump() if student else None
+                }
             )
         
         # Check if student is registered for this event

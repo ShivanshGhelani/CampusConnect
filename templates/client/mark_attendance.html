@@ -8,7 +8,7 @@
 
 {% block content %}
 <div class="min-h-screen bg-gray-50 py-8 px-4">
-    <div class="max-w-md mx-auto">
+    <div class="max-w-lg mx-auto">
         <!-- Header -->
         <div class="text-center mb-8">
             <div class="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -127,38 +127,39 @@
 
                 <!-- Student Information Display (when auto-filled) -->
                 {% if auto_filled and registration %}
-                <div class="bg-gray-50 rounded-lg p-4">
-                    <h3 class="text-sm font-medium text-gray-900 mb-3 flex items-center">
+               <div class="bg-gray-50 rounded-lg p-4">
+                    <h3 class="text-sm font-medium text-gray-900 mb-4 flex items-center">
                         <i class="fas fa-user text-blue-600 mr-2"></i>
                         Your Registration Details
                     </h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-6 text-sm">
                         <div class="flex justify-between">
                             <span class="text-gray-600">Enrollment No:</span>
-                            <span class="font-medium">{{ registration.enrollment_no }}</span>
+                            <span class="font-medium text-right">{{ registration.enrollment_no }}</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-gray-600">Email:</span>
-                            <span class="font-medium">{{ registration.email }}</span>
+                            <span class="font-medium text-right">{{ registration.email }}</span>
                         </div>
-                        <div class="flex justify-between">
+                        <div class="flex justify-between items-center">
                             <span class="text-gray-600">Department:</span>
-                            <span class="font-medium">{{ registration.department }}</span>
+                            <span class="font-medium text-right">{{ registration.department }}</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-gray-600">Semester:</span>
-                            <span class="font-medium">{{ registration.semester }}</span>
+                            <span class="font-medium text-right">{{ registration.semester }}</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-gray-600">Mobile:</span>
-                            <span class="font-medium">{{ registration.mobile_no }}</span>
+                            <span class="font-medium text-right">{{ registration.mobile_no }}</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-gray-600">Registration Type:</span>
-                            <span class="font-medium capitalize">{{ registration.registration_type }}</span>
+                            <span class="font-medium capitalize text-right">{{ registration.registration_type }}</span>
                         </div>
                     </div>
                 </div>
+
                 {% endif %}
 
                 <!-- Event Details -->
@@ -176,9 +177,10 @@
                         <div class="flex justify-between">
                             <span>Time:</span>
                             <span>{{ format_datetime(event.start_datetime, 'time_only') if event.start_datetime else 'TBD' }}</span>
-                        </div>                        <div class="flex justify-between">
+                        </div>                        
+                        <div class="flex justify-between">
                             <span>Venue:</span>
-                            <span>{{ format_venue(event.venue) }}</span>
+                            <span class="text-right">{{ format_venue(event.venue) }}</span>
                         </div>
                     </div>
                 </div>
