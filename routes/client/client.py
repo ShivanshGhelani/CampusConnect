@@ -1265,9 +1265,7 @@ async def mark_attendance_get(request: Request, event_id: str, student: Student 
                     "is_student_logged_in": True,
                     "student_data": student.model_dump() if student else None
                 }
-            )
-        
-        # Check if attendance already marked
+            )        # Check if attendance already marked
         existing_attendance_id = participation.get('attendance_id')
         if existing_attendance_id:
             # Create registration object for template compatibility
@@ -1279,7 +1277,8 @@ async def mark_attendance_get(request: Request, event_id: str, student: Student 
                 "mobile_no": student_data.get("mobile_no", ""),
                 "department": student_data.get("department", ""),
                 "semester": student_data.get("semester", ""),
-                "registration_type": participation.get("registration_type", "individual")            }
+                "registration_type": participation.get("registration_type", "individual")
+            }
             
             return templates.TemplateResponse(
                 "client/attendance_confirmation.html",
