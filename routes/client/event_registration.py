@@ -200,33 +200,70 @@ async def show_registration_form(request: Request, event_id: str, student: Stude
             "team_size_max": event.get('team_size_max', 5),
             "is_student_logged_in": True,
             "student_data": student.model_dump()
-        }
-          # For individual registration events, only check if already registered for THIS specific event
-        # Students should be allowed to register for multiple different events
-        if event.get('registration_mode') != 'team':
-            # Check if student is already registered for THIS event specifically
-            student_data = await DatabaseOperations.find_one("students", {"enrollment_no": student.enrollment_no})
-            if student_data:
-                event_participations = student_data.get('event_participations', {})
-                if event_id in event_participations:
-                    # Student is already registered for THIS event - show existing registration
-                    existing_participation = event_participations[event_id]
-                      # Convert datetime objects to ISO format strings for template
-                    serialized_event = {k: v.isoformat() if isinstance(v, datetime) else v for k, v in event.items()}
-                    return templates.TemplateResponse("client/existing_registration.html", {
-                        "request": request,
-                        "event": serialized_event,
-                        "student": student,
-                        "registration": {
-                            "registrar_id": existing_participation.get('registration_id'), 
-                            "registration_type": existing_participation.get('registration_type', 'individual'),
-                            "registration_datetime": existing_participation.get('registration_date'),
-                            "enrollment_no": student.enrollment_no
-                        },
-                        "datetime": datetime,
-                        "is_student_logged_in": True,
-                        "student_data": student.model_dump()
-                    })
+        }        # Check if student is already registered for THIS specific event (both individual and team)
+        # Students should be allowed to register for multiple different events but not duplicate registration for the same event
+        student_data = await DatabaseOperations.find_one("students", {"enrollment_no": student.enrollment_no})
+        if student_data:
+            event_participations = student_data.get('event_participations', {})
+            if event_id in event_participations:
+                # Student is already registered for THIS event - show existing registration
+                existing_participation = event_participations[event_id]
+                
+                # For team registrations, also get team information
+                team_info = None
+                if existing_participation.get('registration_type') in ['team_leader', 'team_participant']:
+                    team_registration_id = existing_participation.get('team_registration_id')
+                    if team_registration_id:
+                        # Get team details from event data
+                        team_registrations = event.get('team_registrations', {})
+                        team_data = team_registrations.get(team_registration_id, {})
+                        
+                        if team_data:
+                            # Get team leader information
+                            leader_enrollment = team_data.get('team_leader_enrollment')
+                            leader_data = None
+                            if leader_enrollment:
+                                leader_data = await DatabaseOperations.find_one("students", {"enrollment_no": leader_enrollment})
+                            
+                            # Get team participants information
+                            participants = []
+                            for participant_enrollment in team_data.get('participants', []):
+                                participant_data = await DatabaseOperations.find_one("students", {"enrollment_no": participant_enrollment})
+                                if participant_data:
+                                    participants.append({
+                                        'full_name': participant_data.get('full_name', 'N/A'),
+                                        'enrollment_no': participant_enrollment,
+                                        'department': participant_data.get('department', 'N/A')
+                                    })
+                            
+                            team_info = {
+                                "team_name": team_data.get('team_name', 'Unknown Team'),
+                                "team_registration_id": team_registration_id,
+                                "participant_count": len(team_data.get('participants', [])) + 1,  # +1 for leader
+                                "leader_name": leader_data.get('full_name', 'Unknown') if leader_data else 'Unknown',
+                                "leader_enrollment": leader_enrollment,
+                                "participants": participants
+                            }
+                
+                # Convert datetime objects to ISO format strings for template
+                serialized_event = {k: v.isoformat() if isinstance(v, datetime) else v for k, v in event.items()}
+                return templates.TemplateResponse("client/existing_registration.html", {
+                    "request": request,
+                    "event": serialized_event,
+                    "student": student,
+                    "registration": {
+                        "registrar_id": existing_participation.get('registration_id'), 
+                        "registration_type": existing_participation.get('registration_type', 'individual'),
+                        "registration_datetime": existing_participation.get('registration_date'),
+                        "enrollment_no": student.enrollment_no,
+                        "payment_status": existing_participation.get('payment_status', 'pending'),
+                        "payment_completed_datetime": existing_participation.get('payment_completed_datetime')
+                    },
+                    "team_info": team_info,
+                    "datetime": datetime,
+                    "is_student_logged_in": True,
+                    "student_data": student.model_dump()
+                })
         
         return templates.TemplateResponse(
             "client/event_registration.html",
@@ -1015,44 +1052,76 @@ async def cancel_team_registration(enrollment_no: str, event_id: str, participat
 
 async def cancel_entire_team(event_id: str, team_registration_id: str):
     """Cancel entire team registration"""
+    print(f"DEBUG: Starting team cancellation for event {event_id}, team {team_registration_id}")
+    
     # Get event data to find team details
     event_data = await DatabaseOperations.find_one("events", {"event_id": event_id})
     if not event_data:
+        print(f"DEBUG: Event {event_id} not found")
         return
     
     team_registrations = event_data.get('team_registrations', {})
     if team_registration_id not in team_registrations:
+        print(f"DEBUG: Team registration {team_registration_id} not found in event")
         return
     
     team_reg = team_registrations[team_registration_id]
-    team_leader = team_reg.get('team_leader')
-    team_participants = team_reg.get('team_participants', [])
+    team_leader = team_reg.get('team_leader_enrollment')  # Using correct field name
+    team_participants = team_reg.get('participants', [])  # Using correct field name
     
+    print(f"DEBUG: Team leader: {team_leader}")
+    print(f"DEBUG: Team participants: {team_participants}")
+    
+    # Handle case where team_leader might be None
+    if not team_leader:
+        print("DEBUG: Warning - team leader is None, skipping team leader cleanup")
+        all_members = team_participants
+    else:
+        all_members = [team_leader] + team_participants
+    
+    print(f"DEBUG: All members to clean: {all_members}")    
     # Remove all team members from student data
-    all_members = [team_leader] + team_participants
     for member_enrollment in all_members:
+        if member_enrollment:  # Check if enrollment is not None
+            print(f"DEBUG: Removing participation for {member_enrollment}")
+            await DatabaseOperations.update_one(
+                "students",
+                {"enrollment_no": member_enrollment},
+                {"$unset": {f"event_participations.{event_id}": ""}}
+            )
+    
+    # Remove individual registration mappings for all team members
+    # We need to find and remove all registration IDs that map to team member enrollment numbers
+    registrations = event_data.get('registrations', {})
+    registration_ids_to_remove = []
+    
+    print(f"DEBUG: Checking registrations: {list(registrations.keys())}")
+    
+    for reg_id, member_enrollment in registrations.items():
+        if member_enrollment in all_members:
+            registration_ids_to_remove.append(reg_id)
+            print(f"DEBUG: Found registration {reg_id} for member {member_enrollment}")
+    
+    print(f"DEBUG: Registration IDs to remove: {registration_ids_to_remove}")
+    
+    # Remove all individual registration mappings for team members
+    for reg_id in registration_ids_to_remove:
+        print(f"DEBUG: Removing registration mapping {reg_id}")
         await DatabaseOperations.update_one(
-            "students",
-            {"enrollment_no": member_enrollment},
-            {"$unset": {f"event_participations.{event_id}": ""}}
+            "events",
+            {"event_id": event_id},
+            {"$unset": {f"registrations.{reg_id}": ""}}
         )
     
-    # Remove team registration from event data
+    # Remove team registration from event data (do this last)
+    print(f"DEBUG: Removing team registration {team_registration_id}")
     await DatabaseOperations.update_one(
         "events",
         {"event_id": event_id},
         {"$unset": {f"team_registrations.{team_registration_id}": ""}}
     )
     
-    # Remove individual registration mappings for all team members
-    registrations = event_data.get('registrations', {})
-    for reg_id, member_enrollment in registrations.items():
-        if member_enrollment in all_members:
-            await DatabaseOperations.update_one(
-                "events",
-                {"event_id": event_id},
-                {"$unset": {f"registrations.{reg_id}": ""}}
-            )
+    print(f"DEBUG: Team cancellation completed for {team_registration_id}")
 
 @router.get("/events/{event_id}/manage-team")
 async def manage_team_get(request: Request, event_id: str, student: Student = Depends(require_student_login)):
@@ -1268,19 +1337,15 @@ async def add_team_participant(event_id: str, team_registration_id: str, form_da
     event_participations = existing_participant.get('event_participations', {})
     if event_id in event_participations:
         raise HTTPException(status_code=400, detail="Participant is already registered for this event")
-    
-    # Generate IDs for the new participant
+      # Generate only registration ID for the new participant - other IDs will be generated when needed
     participant_registration_id = generate_registration_id(enrollment_no, event_id, existing_participant.get('full_name', ''))
-    participant_attendance_id = generate_attendance_id(enrollment_no, event_id)
-    participant_feedback_id = generate_feedback_id(enrollment_no, event_id)
-    participant_certificate_id = generate_certificate_id(enrollment_no, event_id, existing_participant.get('full_name', ''))
     
-    # Create event participation record for new participant
+    # Create event participation record for new participant with only registration_id
     participant_participation = EventParticipation(
         registration_id=participant_registration_id,
-        attendance_id=participant_attendance_id,
-        feedback_id=participant_feedback_id,
-        certificate_id=participant_certificate_id,
+        attendance_id=None,  # Generated when attendance is marked
+        feedback_id=None,    # Generated when feedback is submitted
+        certificate_id=None, # Generated when certificate is collected
         registration_type="team_participant",
         team_registration_id=team_registration_id,
         registration_datetime=datetime.now(),
@@ -1340,6 +1405,15 @@ async def remove_team_participant(event_id: str, team_registration_id: str, form
     # Check minimum team size
     if current_team_size <= min_team_size:
         raise HTTPException(status_code=400, detail=f"Team size cannot be less than the minimum of {min_team_size} participants")
+      # Get the participant's registration ID BEFORE removing event participation
+    student_data = await DatabaseOperations.find_one("students", {"enrollment_no": enrollment_no})
+    registration_id = None
+    if student_data:
+        event_participations = student_data.get('event_participations', {})
+        if event_id in event_participations:
+            registration_id = event_participations[event_id].get('registration_id')
+    
+    print(f"DEBUG: Found registration ID {registration_id} for participant {enrollment_no}")
     
     # Remove from student's event participations
     await DatabaseOperations.update_one(
@@ -1348,19 +1422,16 @@ async def remove_team_participant(event_id: str, team_registration_id: str, form
         {"$unset": {f"event_participations.{event_id}": ""}}
     )
     
-    # Get the participant's registration ID to remove from event registrations
-    student_data = await DatabaseOperations.find_one("students", {"enrollment_no": enrollment_no})
-    if student_data:
-        event_participations = student_data.get('event_participations', {})
-        if event_id in event_participations:
-            registration_id = event_participations[event_id].get('registration_id')
-            if registration_id:
-                # Remove from event registrations mapping
-                await DatabaseOperations.update_one(
-                    "events",
-                    {"event_id": event_id},
-                    {"$unset": {f"registrations.{registration_id}": ""}}
-                )
+    # Remove from event registrations mapping if registration ID was found
+    if registration_id:
+        print(f"DEBUG: Removing registration mapping {registration_id}")
+        await DatabaseOperations.update_one(
+            "events",
+            {"event_id": event_id},
+            {"$unset": {f"registrations.{registration_id}": ""}}
+        )
+    else:
+        print(f"DEBUG: Warning - No registration ID found for participant {enrollment_no}")
     
     # Remove participant from team registration in event data
     await DatabaseOperations.update_one(
