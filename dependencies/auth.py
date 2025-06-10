@@ -31,6 +31,13 @@ async def get_current_student(request: Request) -> Student:
                 
     return Student(**student_data)
 
+async def get_current_student_optional(request: Request) -> Optional[Student]:
+    """Get currently logged in student from session, return None if not logged in"""
+    try:
+        return await get_current_student(request)
+    except HTTPException:
+        return None
+
 async def require_admin(request: Request):
     """Dependency to require admin authentication"""
     try:

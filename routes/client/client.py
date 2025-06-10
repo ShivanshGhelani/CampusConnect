@@ -14,7 +14,7 @@ from config.database import Database
 from bson import ObjectId
 from utils.template_context import get_template_context
 from utils.statistics import StatisticsManager
-from dependencies.auth import require_student_login, get_current_student
+from dependencies.auth import require_student_login, get_current_student, get_current_student_optional
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -291,21 +291,30 @@ async def event_details(request: Request, event_id: str):
         )
         if not event_data:
             raise HTTPException(status_code=404, detail="Event not found")
+              # Check if student is logged in
+        try:
+            student = await get_current_student_optional(request)
+            is_student_logged_in = student is not None
+            student_data = student.model_dump() if student else None
+        except:
+            is_student_logged_in = False
+            student_data = None
             
         # Convert string dates to datetime objects
         for date_field in ["start_datetime", "end_datetime", "registration_start_date", "registration_end_date",
                           "certificate_start_date", "certificate_end_date"]:
             if isinstance(event_data.get(date_field), str):
                 event_data[date_field] = datetime.fromisoformat(event_data[date_field].replace('Z', '+00:00'))
-          # Create Event model (status will be updated in get_event_timeline)
-        event = Event(**event_data)
         
+        # Create Event model (status will be updated in get_event_timeline)
+        event = Event(**event_data)
+
         # Get timeline (this also updates status)
         timeline = await EventStatusManager.get_event_timeline(event)
-        
-        # Get available forms (status already updated)
+            
+        # Get available forms (status already updated)  
         available_forms = event.get_available_forms()
-        
+
         # Calculate registration time remaining
         registration_time_remaining = None
         if "registration" in available_forms:
@@ -318,7 +327,7 @@ async def event_details(request: Request, event_id: str):
                 registration_time_remaining = f"{hours} hours"
             else:
                 registration_time_remaining = "Less than 1 hour"
-        
+
         # Calculate event duration
         event_duration = None
         if event.start_datetime and event.end_datetime:
@@ -332,14 +341,14 @@ async def event_details(request: Request, event_id: str):
                     event_duration = f"{hours}h {minutes}m"
                 else:
                     event_duration = f"{minutes} minutes"
-        
+
         # Get registration statistics
         registration_stats = {
             "total_registrations": 0,
             "available_spots": None,
             "waiting_list": 0
         }
-        
+
         try:
             # Use event-specific database for registrations
             event_collection = await Database.get_event_collection(event_id)
@@ -354,12 +363,14 @@ async def event_details(request: Request, event_id: str):
                     if registration_stats["total_registrations"] > event_data['registration_limit']:
                         registration_stats["waiting_list"] = registration_stats["total_registrations"] - event_data['registration_limit']
         except Exception as e:
-            print(f"Could not fetch registration stats: {e}")          # Check if registration is possible (FIXED: compare with .value)
+            print(f"Could not fetch registration stats: {e}")
+
+        # Check if registration is possible (FIXED: compare with .value)
         can_register = (
             event.sub_status == EventSubStatus.REGISTRATION_OPEN.value and
             (not event_data.get('registration_limit') or registration_stats["available_spots"] > 0)
         )
-        
+
         # Determine registration status for template (FIXED: compare with .value)
         if event.sub_status == EventSubStatus.REGISTRATION_NOT_STARTED.value:
             registration_status = "not_started"
@@ -369,46 +380,45 @@ async def event_details(request: Request, event_id: str):
             registration_status = "ended"
         else:
             registration_status = "ended"  # Default fallback
-        
+
         # Process contact information
         event_contacts = []
         if event_data.get('contacts'):
             for contact in event_data['contacts']:
                 contact_info = contact.get('contact', '')
                 email = phone = None
-                
+
                 if '@' in contact_info and '.' in contact_info:
                     email = contact_info
                 elif any(char.isdigit() for char in contact_info):
                     cleaned_phone = ''.join(filter(str.isdigit, contact_info))
                     if len(cleaned_phone) >= 10:
                         phone = contact_info
-                
+
                 event_contacts.append({
                     'name': contact.get('name', ''),
                     'role': None,
                     'email': email,
                     'phone': phone
                 })
-          # Add timeline, contacts and other details to event data
+
+        # Add timeline, contacts and other details to event data
         event_data.update({
             'event_contacts': event_contacts,
             'timeline': timeline,
             'available_forms': available_forms,
             'status': event.status,
             'sub_status': event.sub_status,
-        })
-        
-        # Convert datetime objects to ISO format strings for template
+        })        # Convert datetime objects to ISO format strings for template
         serialized_event_data = {}
         for key, value in event_data.items():
             if isinstance(value, datetime):
                 serialized_event_data[key] = value.isoformat()
             else:
                 serialized_event_data[key] = value
-        
+
         return templates.TemplateResponse(
-            "client/event_details.html",
+            "client/event_details.html", 
             {
                 "request": request,
                 "event": serialized_event_data,
@@ -418,7 +428,9 @@ async def event_details(request: Request, event_id: str):
                 "event_duration": event_duration,
                 "registration_stats": registration_stats,
                 "registration_status": registration_status,
-                "can_register": can_register
+                "can_register": can_register,
+                "is_student_logged_in": is_student_logged_in,
+                "student_data": student_data
             }
         )
     except HTTPException as he:
