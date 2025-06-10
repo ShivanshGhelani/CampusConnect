@@ -59,16 +59,15 @@
                 <i class="fas fa-users mr-2"></i>
                 Team Full ({{ event.team_size_max or 5 }}/{{ event.team_size_max or 5 }})
             </div>
-            {% endif %}
-              <div class="flex gap-2">
-                <button id="exportDropdownBtn" class="flex-1 bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-medium relative">
+            {% endif %}              <div class="relative">
+                <button id="exportDropdownBtn" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-medium">
                     <i class="fas fa-download mr-2"></i>
                     Export Team Data
                     <i class="fas fa-chevron-down ml-2"></i>
                 </button>
                 
                 <!-- Export Options Dropdown -->
-                <div id="exportDropdown" class="absolute top-full left-0 mt-2 w-64 bg-white border rounded-lg shadow-lg z-10 hidden">
+                <div id="exportDropdown" class="absolute right-0 top-full mt-2 w-64 bg-white border rounded-lg shadow-lg z-50 hidden">
                     <div class="py-2">
                         <div class="px-4 py-2 text-sm font-semibold text-gray-700 border-b">Export Options</div>
                         
@@ -81,28 +80,7 @@
                             <i class="fas fa-file-csv text-green-500 mr-3"></i>
                             Contact List (CSV)
                         </button>
-                        
-                        <button onclick="exportTeamData('json')" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center">
-                            <i class="fas fa-code text-blue-500 mr-3"></i>
-                            Team Data (JSON)
-                        </button>
-                        
-                        <button onclick="exportTeamData('print')" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center">
-                            <i class="fas fa-print text-purple-500 mr-3"></i>
-                            Print Team List
-                        </button>
-                        
-                        <div class="border-t my-1"></div>
-                        
-                        <button onclick="exportTeamData('qr')" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center">
-                            <i class="fas fa-qrcode text-indigo-500 mr-3"></i>
-                            QR Code for Team
-                        </button>
-                        
-                        <button onclick="exportTeamData('share')" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center">
-                            <i class="fas fa-share-alt text-orange-500 mr-3"></i>
-                            Share Team Info
-                        </button>
+                    
                     </div>
                 </div>
             </div>
@@ -529,56 +507,82 @@ document.addEventListener('DOMContentLoaded', function() {
         if (form) form.reset();
         const errorDiv = document.getElementById('enrollment-error');
         if (errorDiv) errorDiv.classList.add('hidden');    }
-    
-    // Function to collect team data from DOM elements
+      // Function to collect team data from DOM elements
     function collectTeamDataFromDOM() {
+        console.log('🔍 Starting team data collection from DOM...');
+        
         // Extract team name from header
         const teamNameElement = document.querySelector('h1');
         const teamName = teamNameElement ? teamNameElement.textContent.trim() : 'Unknown Team';
+        console.log('📋 Team Name:', teamName);
         
-        // Extract event name from page title or meta
+        // Extract event name from page title
         const eventName = document.title.replace(' - Team Management', '') || 'Unknown Event';
+        console.log('🎯 Event Name:', eventName);
         
-        // Extract team leader info
+        // Extract team leader info (first member card)
         const leaderCard = document.querySelector('.bg-white.rounded-lg.border.p-4');
         let teamLeader = {
             name: 'Unknown Leader',
             enrollment: 'Unknown',
-            email: 'N/A'
+            email: 'N/A',
+            mobile: 'N/A',
+            department: 'N/A'
         };
         
         if (leaderCard) {
-            const leaderNameElement = leaderCard.querySelector('h3');
-            const leaderDetailsElement = leaderCard.querySelector('p');
-            const leaderContactElements = leaderCard.querySelectorAll('.text-right.text-sm.text-gray-600 div');
+            console.log('👑 Processing team leader card...');
             
-            if (leaderNameElement) {
-                teamLeader.name = leaderNameElement.textContent.trim();
+            // Get name from h3 element
+            const nameElement = leaderCard.querySelector('h3');
+            if (nameElement) {
+                teamLeader.name = nameElement.textContent.trim();
             }
             
-            if (leaderDetailsElement) {
-                const detailsText = leaderDetailsElement.textContent;
-                const enrollmentMatch = detailsText.match(/([A-Z0-9]+)\s+•/);
+            // Get enrollment and role from p element
+            const detailsElement = leaderCard.querySelector('p');
+            if (detailsElement) {
+                const detailsText = detailsElement.textContent;
+                console.log('📝 Leader details text:', detailsText);
+                
+                // Extract enrollment number (format: ENROLLMENT • Role)
+                const enrollmentMatch = detailsText.match(/([A-Z0-9]+)\s*•/);
                 if (enrollmentMatch) {
                     teamLeader.enrollment = enrollmentMatch[1];
                 }
             }
             
-            if (leaderContactElements.length > 0) {
-                teamLeader.email = leaderContactElements[0].textContent.trim();
+            // Get department from small text
+            const deptElement = leaderCard.querySelector('.text-xs.text-gray-500');
+            if (deptElement) {
+                teamLeader.department = deptElement.textContent.trim();
+            }
+            
+            // Get contact info from right side
+            const contactElements = leaderCard.querySelectorAll('.text-right.text-sm.text-gray-600 div');
+            if (contactElements.length >= 1) {
+                teamLeader.email = contactElements[0].textContent.trim();
+            }
+            if (contactElements.length >= 2) {
+                teamLeader.mobile = contactElements[1].textContent.trim();
             }
         }
+        console.log('👑 Team Leader:', teamLeader);
         
-        // Extract team members
+        // Extract team members (skip the first card which is the leader)
         const memberCards = document.querySelectorAll('.bg-white.rounded-lg.border.p-4');
         const members = [];
         
-        // Skip the first card (team leader) and process the rest as members
+        console.log(`👥 Found ${memberCards.length} total cards (including leader)`);
+        
+        // Process member cards (skip index 0 which is the leader)
         for (let i = 1; i < memberCards.length; i++) {
             const card = memberCards[i];
+            console.log(`🔍 Processing member card ${i}...`);
+            
             const nameElement = card.querySelector('h3');
             const detailsElement = card.querySelector('p');
-            const departmentElement = card.querySelector('.text-xs.text-gray-500');
+            const deptElement = card.querySelector('.text-xs.text-gray-500');
             const contactElements = card.querySelectorAll('.text-right.text-sm.text-gray-600 div');
             
             if (nameElement && detailsElement) {
@@ -587,31 +591,37 @@ document.addEventListener('DOMContentLoaded', function() {
                     enrollment: 'Unknown',
                     email: 'N/A',
                     department: 'Unknown',
-                    year: 'N/A',
-                    semester: 'N/A'
+                    semester: 'N/A',
+                    year: 'N/A'
                 };
                 
-                // Extract enrollment from details
+                // Extract enrollment from details (format: ENROLLMENT • Member X)
                 const detailsText = detailsElement.textContent;
-                const enrollmentMatch = detailsText.match(/([A-Z0-9]+)\s+•/);
+                console.log(`📝 Member ${i} details:`, detailsText);
+                
+                const enrollmentMatch = detailsText.match(/([A-Z0-9]+)\s*•/);
                 if (enrollmentMatch) {
                     member.enrollment = enrollmentMatch[1];
                 }
                 
                 // Extract department
-                if (departmentElement) {
-                    member.department = departmentElement.textContent.trim();
+                if (deptElement) {
+                    member.department = deptElement.textContent.trim();
                 }
                 
-                // Extract contact info and semester/year
-                if (contactElements.length > 0) {
+                // Extract contact info
+                if (contactElements.length >= 1) {
                     member.email = contactElements[0].textContent.trim();
                 }
                 
-                if (contactElements.length > 1) {
+                // Extract semester and year from second contact element
+                if (contactElements.length >= 2) {
                     const semesterText = contactElements[1].textContent;
-                    const semesterMatch = semesterText.match(/Semester (\d+)/);
-                    const yearMatch = semesterText.match(/Year (\d+)/);
+                    console.log(`📚 Semester text for member ${i}:`, semesterText);
+                    
+                    // Match patterns like "Semester 5 (Year 3)"
+                    const semesterMatch = semesterText.match(/Semester\s+(\d+)/);
+                    const yearMatch = semesterText.match(/Year\s+(\d+)/);
                     
                     if (semesterMatch) {
                         member.semester = semesterMatch[1];
@@ -621,12 +631,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
                 
+                console.log(`👤 Member ${i}:`, member);
                 members.push(member);
+            } else {
+                console.log(`⚠️ Skipping card ${i} - missing name or details element`);
             }
         }
         
-        // Extract registration date from stats
-        const statsCards = document.querySelectorAll('.bg-white.p-4.rounded-lg.border.text-center');
+        // Extract registration date from stats section
+        const statsCards = document.querySelectorAll('.grid.grid-cols-4 .bg-white.p-4.rounded-lg.border.text-center');
         let registrationDate = 'N/A';
         
         if (statsCards.length >= 4) {
@@ -636,24 +649,47 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         
-        return {
+        // Extract current member count from stats
+        let currentMembers = members.length + 1; // +1 for leader
+        if (statsCards.length >= 1) {
+            const memberCountElement = statsCards[0].querySelector('.text-xl.font-bold');
+            if (memberCountElement) {
+                currentMembers = parseInt(memberCountElement.textContent.trim()) || currentMembers;
+            }
+        }
+        
+        const teamData = {
             teamName: teamName,
             eventName: eventName,
             teamLeader: teamLeader,
             members: members,
-            totalMembers: members.length + 1, // +1 for leader
+            totalMembers: currentMembers,
             registrationDate: registrationDate
         };
-    }
-    
-    // Export dropdown toggle functionality
+        
+        console.log('✅ Final team data:', teamData);
+        return teamData;
+    }    // Export dropdown toggle functionality
     const exportDropdownBtn = document.getElementById('exportDropdownBtn');
     const exportDropdown = document.getElementById('exportDropdown');
     
+    console.log('🔍 Export button found:', !!exportDropdownBtn);
+    console.log('🔍 Export dropdown found:', !!exportDropdown);
+    
     if (exportDropdownBtn && exportDropdown) {
+        console.log('✅ Both export elements found, setting up event listeners...');
+        
         exportDropdownBtn.addEventListener('click', function(e) {
+            e.preventDefault();
             e.stopPropagation();
+            console.log('🚀 Export button clicked!');
+            
+            const isHidden = exportDropdown.classList.contains('hidden');
+            console.log('📋 Dropdown was hidden:', isHidden);
+            
             exportDropdown.classList.toggle('hidden');
+            
+            console.log('📋 Dropdown now hidden:', exportDropdown.classList.contains('hidden'));
         });
         
         // Close dropdown when clicking outside
@@ -662,38 +698,44 @@ document.addEventListener('DOMContentLoaded', function() {
                 exportDropdown.classList.add('hidden');
             }
         });
-    }
-      // Export functions
+    } else {
+        console.error('❌ Export elements not found!', {
+            button: !!exportDropdownBtn,
+            dropdown: !!exportDropdown
+        });
+    }// Export functions
     window.exportTeamData = function(format) {
-        // Collect team data from DOM elements instead of Jinja templates
-        const teamData = collectTeamDataFromDOM();
+        console.log('🚀 Export function called with format:', format);
         
-        console.log('Exporting team data:', teamData);
-        
-        // Close dropdown
-        exportDropdown.classList.add('hidden');
-        
-        switch(format) {
-            case 'pdf':
-                exportToPDF(teamData);
-                break;
-            case 'csv':
-                exportToCSV(teamData);
-                break;
-            case 'json':
-                exportToJSON(teamData);
-                break;
-            case 'print':
-                printTeamData(teamData);
-                break;
-            case 'qr':
-                generateQRCode(teamData);
-                break;
-            case 'share':
-                shareTeamData(teamData);
-                break;
-            default:
-                console.error('Unknown export format:', format);
+        try {
+            // Collect team data from DOM elements
+            const teamData = collectTeamDataFromDOM();
+            
+            // Close dropdown
+            if (exportDropdown) {
+                exportDropdown.classList.add('hidden');
+            }
+            
+            switch(format) {
+                case 'pdf':
+                    exportToPDF(teamData);
+                    break;
+                case 'csv':
+                    exportToCSV(teamData);
+                    break;
+                case 'json':
+                    exportToJSON(teamData);
+                    break;
+                case 'print':
+                    printTeamData(teamData);
+                    break;
+                default:
+                    console.error('Unknown export format:', format);
+                    showNotification('Unknown export format', 'error');
+            }
+        } catch (error) {
+            console.error('Export failed:', error);
+            showNotification('Export failed: ' + error.message, 'error');
         }
     };
       // PDF Export Function (Simple HTML-to-Print method)
@@ -729,31 +771,32 @@ document.addEventListener('DOMContentLoaded', function() {
                         <p><strong>Total Members:</strong> ${teamData.totalMembers}</p>
                         <p><strong>Registration Date:</strong> ${teamData.registrationDate}</p>
                     </div>
-                    
-                    <div class="info-section">
-                        <h2>Team Leader</h2>
+                      <div class="info-section">
+                        <h2>👑 Team Leader</h2>
                         <div class="member">
                             <div class="member-name">${teamData.teamLeader.name}</div>
                             <div class="member-details">
                                 <div><strong>Enrollment:</strong> ${teamData.teamLeader.enrollment}</div>
                                 <div><strong>Email:</strong> ${teamData.teamLeader.email}</div>
+                                <div><strong>Mobile:</strong> ${teamData.teamLeader.mobile || 'N/A'}</div>
+                                <div><strong>Department:</strong> ${teamData.teamLeader.department || 'N/A'}</div>
                             </div>
                         </div>
                     </div>
                     
                     <div class="info-section">
-                        <h2>Team Members</h2>
-                        ${teamData.members.map((member, index) => `
+                        <h2>👥 Team Members</h2>
+                        ${teamData.members.length > 0 ? teamData.members.map((member, index) => `
                             <div class="member">
                                 <div class="member-name">${index + 1}. ${member.name}</div>
                                 <div class="member-details">
                                     <div><strong>Enrollment:</strong> ${member.enrollment}</div>
                                     <div><strong>Email:</strong> ${member.email}</div>
-                                    <div><strong>Department:</strong> ${member.department} | <strong>Year:</strong> ${member.year}</div>
-                                    <div><strong>Semester:</strong> ${member.semester}</div>
+                                    <div><strong>Department:</strong> ${member.department}</div>
+                                    <div><strong>Semester:</strong> ${member.semester} | <strong>Year:</strong> ${member.year}</div>
                                 </div>
                             </div>
-                        `).join('')}
+                        `).join('') : '<p style="color: #7f8c8d; font-style: italic;">No additional members yet.</p>'}
                     </div>
                     
                     <div class="footer">
@@ -781,11 +824,10 @@ document.addEventListener('DOMContentLoaded', function() {
             showNotification('Failed to open PDF export window', 'error');
         }
     }
-    
-    // CSV Export Function
+      // CSV Export Function
     function exportToCSV(teamData) {
         try {
-            const headers = ['Name', 'Enrollment', 'Email', 'Department', 'Year', 'Semester', 'Role'];
+            const headers = ['Name', 'Enrollment', 'Email', 'Mobile', 'Department', 'Year', 'Semester', 'Role'];
             const rows = [];
             
             // Add team leader
@@ -793,7 +835,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 teamData.teamLeader.name,
                 teamData.teamLeader.enrollment,
                 teamData.teamLeader.email,
-                'N/A',
+                teamData.teamLeader.mobile || 'N/A',
+                teamData.teamLeader.department || 'N/A',
                 'N/A',
                 'N/A',
                 'Team Leader'
@@ -805,6 +848,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     member.name,
                     member.enrollment,
                     member.email,
+                    'N/A', // Mobile not available for members in current structure
                     member.department,
                     member.year,
                     member.semester,
@@ -814,18 +858,19 @@ document.addEventListener('DOMContentLoaded', function() {
             
             let csvContent = headers.join(',') + '\n';
             rows.forEach(row => {
-                csvContent += row.map(field => `"${field}"`).join(',') + '\n';
+                csvContent += row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(',') + '\n';
             });
             
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
             const url = URL.createObjectURL(blob);
             link.setAttribute('href', url);
-            link.setAttribute('download', `${teamData.teamName}_Contacts.csv`);
+            link.setAttribute('download', `${teamData.teamName.replace(/[^a-zA-Z0-9]/g, '_')}_Contacts.csv`);
             link.style.visibility = 'hidden';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+            URL.revokeObjectURL(url);
             
             showNotification('CSV exported successfully!', 'success');
         } catch (error) {
@@ -887,30 +932,32 @@ document.addEventListener('DOMContentLoaded', function() {
                         <p><strong>Total Members:</strong> ${teamData.totalMembers}</p>
                         <p><strong>Registration Date:</strong> ${teamData.registrationDate}</p>
                     </div>
-                    
-                    <div class="info-section">
-                        <h2>Team Leader</h2>
+                      <div class="info-section">
+                        <h2>👑 Team Leader</h2>
                         <div class="member">
                             <div class="member-name">${teamData.teamLeader.name}</div>
                             <div class="member-details">
                                 <div><strong>Enrollment:</strong> ${teamData.teamLeader.enrollment}</div>
                                 <div><strong>Email:</strong> ${teamData.teamLeader.email}</div>
+                                <div><strong>Mobile:</strong> ${teamData.teamLeader.mobile || 'N/A'}</div>
+                                <div><strong>Department:</strong> ${teamData.teamLeader.department || 'N/A'}</div>
                             </div>
                         </div>
                     </div>
                     
                     <div class="info-section">
-                        <h2>Team Members</h2>
-                        ${teamData.members.map((member, index) => `
+                        <h2>👥 Team Members</h2>
+                        ${teamData.members.length > 0 ? teamData.members.map((member, index) => `
                             <div class="member">
                                 <div class="member-name">${index + 1}. ${member.name}</div>
                                 <div class="member-details">
                                     <div><strong>Enrollment:</strong> ${member.enrollment}</div>
                                     <div><strong>Email:</strong> ${member.email}</div>
-                                    <div><strong>Department:</strong> ${member.department} | <strong>Year:</strong> ${member.year}</div>
+                                    <div><strong>Department:</strong> ${member.department}</div>
+                                    <div><strong>Semester:</strong> ${member.semester} | <strong>Year:</strong> ${member.year}</div>
                                 </div>
                             </div>
-                        `).join('')}
+                        `).join('') : '<p style="color: #7f8c8d; font-style: italic;">No additional members yet.</p>'}
                     </div>
                     
                     <div class="footer">
