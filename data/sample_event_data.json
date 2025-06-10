@@ -1,59 +1,59 @@
 {
     "login_credentials": {
-        "username": "NIL299",
-        "password": "nilam@299t"
-    },
-    "event_data": {        "event_id": "TECH_STARTUP_BOOTCAMP_2025",
-        "event_name": "Tech Startup Bootcamp 2025",
-        "event_type": "workshop",
-        "short_description": "An intensive 5-day paid team-based bootcamp for aspiring entrepreneurs to build, validate, and launch their tech startup ideas with expert mentorship.",
-        "detailed_description": "Transform your innovative ideas into successful tech startups! This comprehensive 5-day Tech Startup Bootcamp is designed for ambitious teams ready to turn their entrepreneurial dreams into reality. Teams will work together through the complete startup journey from ideation to product launch, guided by successful entrepreneurs, venture capitalists, and industry experts. The bootcamp covers essential startup fundamentals including market research and validation, customer discovery interviews, business model development, financial planning and fundraising strategies, technical product development, and go-to-market planning. Participants will learn lean startup methodologies, agile development practices, and rapid prototyping techniques using cutting-edge tools and platforms. Teams will develop minimum viable products (MVPs), conduct user testing sessions, and refine their solutions based on real market feedback. The program includes intensive workshops on pitch deck creation, investor presentations, legal considerations for startups, intellectual property protection, and scaling strategies. Expert mentors include successful tech founders, venture capital partners, angel investors, product managers from leading tech companies, and startup accelerator directors. Teams will have access to premium development tools, cloud computing credits, design software, market research databases, and prototype development resources. The bootcamp features mock investor pitch sessions, peer feedback rounds, and networking events with the startup ecosystem. Participants will learn about different funding stages, equity distribution, team building, and hiring strategies for growing startups. The program culminates in a Demo Day where teams present their validated startup concepts to a panel of real investors and industry leaders. Outstanding teams receive follow-up meetings with venture capital firms, connections to startup accelerators, and ongoing mentorship opportunities.",
-        "organizing_department": "Department of Entrepreneurship & Business Innovation",
+        "username": "SHIV9090",
+        "password": "Shiv@9090"
+    },    "event_data": {
+        "event_id": "INNOVATION_CHALLENGE_2025",
+        "event_name": "Student Innovation Challenge 2025",
+        "event_type": "competition",
+        "short_description": "A free team-based innovation challenge where student teams collaborate to solve real-world problems using creative thinking and technology.",
+        "detailed_description": "Join the ultimate Student Innovation Challenge 2025, where creativity meets technology to solve tomorrow's problems today! This exciting free competition brings together diverse student teams to tackle real-world challenges through innovative solutions. Teams will work collaboratively over three intensive days to identify problems, brainstorm solutions, prototype ideas, and present their innovations to a panel of industry experts and judges. The challenge covers multiple domains including sustainable technology, social impact solutions, healthcare innovations, educational technology, environmental conservation, and digital transformation. Participants will have access to mentorship from industry professionals, startup founders, and academic experts throughout the event. The program includes ideation workshops, design thinking sessions, rapid prototyping labs, technical development support, and presentation skills training. Teams will learn problem-solving methodologies, user-centered design principles, market validation techniques, and effective collaboration strategies. The challenge provides access to cutting-edge tools, software licenses, prototyping materials, 3D printing facilities, and technical resources. Expert mentors will guide teams through the innovation process, helping them refine their ideas and develop compelling presentations. The event culminates in a grand finale where teams pitch their solutions to judges from leading technology companies, venture capital firms, and social impact organizations. Winners receive recognition, certificates, mentorship opportunities, and potential pathways to further develop their innovations through incubator programs and startup accelerators.",
+        "organizing_department": "Department of Innovation & Entrepreneurship",
         "organizers": [
-            "Dr. Rajesh Gupta - Startup Accelerator Director",
-            "Ms. Priya Malhotra - Venture Capital Partner",
-            "Prof. Vikash Sharma - Entrepreneurship Chair",
-            "Mr. Arjun Kapoor - Tech Startup Mentor",
-            "Dr. Neha Agarwal - Business Strategy Professor"
+            "Dr. Anita Sharma - Innovation Program Director",
+            "Prof. Vikram Singh - Technology Challenge Coordinator",
+            "Ms. Riya Gupta - Student Innovation Mentor",
+            "Mr. Karan Patel - Industry Partnership Manager",
+            "Dr. Sonia Kumar - Design Thinking Specialist"
         ],
         "contacts": [
             {
-                "name": "Dr. Rajesh Gupta",
-                "contact": "rajesh.gupta@startup.edu"
+                "name": "Dr. Anita Sharma",
+                "contact": "anita.sharma@innovation.edu"
             },
             {
-                "name": "Bootcamp Director - Ms. Priya Malhotra",
-                "contact": "+91-98876-54321"
+                "name": "Challenge Coordinator - Prof. Vikram Singh",
+                "contact": "+91-99887-65432"
             },
             {
-                "name": "Startup Bootcamp Support",
-                "contact": "support@techstartup.edu"
+                "name": "Innovation Support Team",
+                "contact": "innovation@challenge.edu"
             }
         ],
-        "start_date": "2025-09-15",
+        "start_date": "2025-08-15",
         "start_time": "09:00",
-        "end_date": "2025-09-19",
+        "end_date": "2025-08-17",
         "end_time": "18:00",
-        "registration_start_date": "2025-08-01",
+        "registration_start_date": "2025-07-01",
         "registration_start_time": "00:01",
-        "registration_end_date": "2025-09-10",
+        "registration_end_date": "2025-08-10",
         "registration_end_time": "23:59",
-        "certificate_end_date": "2025-10-31",
+        "certificate_end_date": "2025-09-30",
         "certificate_end_time": "23:59",
         "mode": "hybrid",
-        "venue": "Entrepreneurship Hub - Innovation Labs, Pitch Rooms, Collaboration Spaces, and Virtual Meeting Rooms",
-        "target_outcomes": "By the end of this Tech Startup Bootcamp, participants will be able to:\n• Validate business ideas using lean startup methodologies and customer discovery techniques\n• Develop comprehensive business models and financial projections for tech startups\n• Build minimum viable products (MVPs) using modern development tools and frameworks\n• Create compelling pitch decks and deliver persuasive investor presentations\n• Understand funding landscapes including angel investment, venture capital, and alternative financing\n• Navigate legal and regulatory considerations for starting and scaling tech companies\n• Implement go-to-market strategies and customer acquisition tactics\n• Build and manage diverse teams with complementary skills and expertise\n• Network with investors, mentors, and fellow entrepreneurs in the startup ecosystem\n• Apply agile development and rapid prototyping methodologies to product development\n• Understand intellectual property protection and competitive analysis strategies\n• Develop sustainable business operations and scaling plans for growth",
-        "prerequisites": "Basic business acumen and entrepreneurial mindset. Some technical background helpful but not mandatory as teams should include diverse skill sets. Previous startup experience beneficial but not required. Strong communication and collaboration skills essential. Commitment to intensive 5-day program and post-bootcamp implementation.",
-        "what_to_bring": "Laptop with development tools and design software, business idea or problem statement to work on, notebook for strategy planning and note-taking, professional attire for pitch presentations, willingness to receive and provide constructive feedback, commitment to team collaboration and intensive work sessions, and openness to pivoting ideas based on market validation feedback",
-        "registration_type": "paid",
+        "venue": "Innovation Hub - Maker Spaces, Collaboration Labs, Presentation Halls, and Virtual Meeting Rooms",
+        "target_outcomes": "By the end of this Innovation Challenge, participants will be able to:\n• Apply design thinking methodologies to identify and solve real-world problems\n• Collaborate effectively in diverse teams to develop innovative solutions\n• Create functional prototypes using available tools and technologies\n• Conduct user research and validate solution concepts with target audiences\n• Develop compelling presentations and pitch ideas to stakeholders\n• Understand the innovation ecosystem and pathways from idea to implementation\n• Build networks with peers, mentors, and industry professionals\n• Gain experience in rapid prototyping and iterative development processes\n• Learn project management skills for innovation and product development\n• Develop critical thinking and problem-solving capabilities\n• Understand intellectual property basics and innovation protection\n• Explore entrepreneurship opportunities and startup development pathways",
+        "prerequisites": "Open to all students regardless of academic background. No specific technical skills required as teams should have diverse skill sets. Strong motivation to solve problems and willingness to collaborate in team environment. Basic communication skills and openness to learning new approaches.",
+        "what_to_bring": "Laptop or mobile device for research and development, notebook and writing materials for brainstorming, any specific skills or expertise to contribute to team, willingness to think creatively and take on challenges, comfortable clothing for hands-on prototyping activities, and enthusiasm for collaborative problem-solving and innovation.",
+        "registration_type": "free",
         "registration_mode": "team",
-        "registration_fee": 15000.0,
-        "fee_description": "The registration fee of ₹15,000 per team (₹3,000 per participant for 5-member teams) covers all five days of intensive startup training and resources. The fee includes access to premium business development tools and software licenses, comprehensive startup resource library including templates, frameworks, and guides, mentorship sessions with successful entrepreneurs and venture capital partners, mock investor pitch sessions with real feedback from industry experts, certificates of completion and startup readiness validation, exclusive startup toolkit with legal templates, financial models, and business plan frameworks, all meals and refreshments throughout the 5-day intensive program, networking dinner with investors, successful founders, and startup ecosystem leaders, cloud computing credits and development resources for MVP building, and three months of post-bootcamp mentorship and support. Teams also receive priority access to startup accelerator programs, potential investor introductions and follow-up meetings, and lifetime access to exclusive entrepreneur alumni network. Early bird discount of 25% available for registrations before August 15th. Additional team member discounts available for teams larger than 5 members.",
-        "max_participants": 100,
-        "min_participants": 15,
+        "registration_fee": 0.0,
+        "fee_description": "This Innovation Challenge is completely free for all participants as part of our commitment to fostering student innovation and creativity. All teams receive access to mentorship sessions with industry experts, comprehensive resource library including templates, tools, and guides, prototyping materials and 3D printing access, software licenses and development tools, all meals and refreshments throughout the 3-day challenge, certificates of participation and achievement for all team members, networking opportunities with industry professionals and potential employers, access to innovation workshops and skill-building sessions, and follow-up support for teams interested in further developing their solutions. Top teams also receive special recognition, potential incubator program invitations, and ongoing mentorship opportunities with successful entrepreneurs and innovators.",
+        "max_participants": 120,
+        "min_participants": 30,
         "team_size_min": 3,
-        "team_size_max": 6,
-        "certificate_template_path": "s:\\Projects\\UCG_v2\\Admin\\data\\sample_certificate_template.html",
+        "team_size_max": 5,
+        "certificate_template_path": "s:\\Projects\\UCG_v2\\Admin\\data\\technical_2.html",
         "asset_files": [
             "s:\\Projects\\UCG_v2\\Admin\\data\\sample_asset1.txt"
         ]

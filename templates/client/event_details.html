@@ -145,10 +145,20 @@
     mask-composite: exclude;
     -webkit-mask-composite: xor;
   }
-    /* Fix UI Scale Issues */
+  /* Fix UI Scale Issues */
   .container {
     max-width: 100%;
     margin: 0 auto;
+  }
+  
+  @media (min-width: 1024px) {
+    .grid-cols-\[1fr\,1fr\] {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    }
+    .flex-col > * {
+      width: 100%;
+      max-width: 100%;
+    }
   }
   
   .hero-section {
@@ -240,7 +250,6 @@
   .bg-white\/90 {
     backdrop-filter: blur(10px);
   }
-
   /* Additional responsive adjustments */
   @media (max-width: 768px) {
     .read-more-content.collapsed {
@@ -249,6 +258,21 @@
     
     .read-more-content.collapsed::after {
       height: 30px;
+    }
+  }
+
+  /* Debug grid layout */
+  @media (min-width: 1024px) {
+    .debug-grid-container {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr !important;
+      gap: 2rem !important;
+    }
+    .debug-left-col {
+      grid-column: 1 / 2 !important;
+    }
+    .debug-right-col {
+      grid-column: 2 / 3 !important;
     }
   }
 </style>
@@ -315,23 +339,21 @@
           
           <!-- Event Badge -->
           {% if event.event_type or event.category %}
-          <div class="inline-flex items-center px-3 py-1.5 bg-white/15 backdrop-blur-sm rounded-full text-sm font-medium border border-white/20 hover:bg-white/20 transition-all duration-300">
+          <div class="inline-flex items-center px-2 py-1.5 bg-white/15 backdrop-blur-sm rounded-full text-sm font-medium border border-white/20 hover:bg-white/20 transition-all duration-300">
             <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
               <path fill-rule="evenodd" d="M17.707 9.293a1 1 0 010 1.414l-7 7a1 1 0 01-1.414 0l-7-7A.997.997 0 012 10V5a3 3 0 013-3h5c.256 0 .512.098.707.293l7 7zM5 6a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
             </svg>
             {{ event.event_type or event.category }}
           </div>
-          {% endif %}
-          
-          <!-- Event Title with Animation -->
-          <h1 class="text-3xl lg:text-5xl font-bold mb-4 bg-gradient-to-r from-white via-blue-100 to-white bg-clip-text text-transparent leading-tight animate-title-glow">
-            {{ event.name if event.name else event.title if event.title else "Event Details" }}
+          {% endif %}          <!-- Event Title with Animation -->
+          <h1 class="text-4xl lg:text-5xl font-bold mb-4 py-2.5 bg-gradient-to-r from-white via-blue-100 to-white bg-clip-text text-transparent leading-normal animate-title-glow">
+            {{ event.event_name if event.event_name else event.name if event.name else event.title if event.title else "Event Details" }}
           </h1>
           
           <!-- Enhanced Description Preview -->
           {% if event.short_description %}
           <div class="relative">
-            <p class="text-lg lg:text-xl text-blue-100 leading-relaxed max-w-4xl font-light relative z-10">{{ event.short_description }}</p>
+            <p class="text-lg lg:text-xl text-blue-100 -my-1 py-3 leading-relaxed max-w-4xl font-light relative z-10">{{ event.short_description }}</p>
             <div class="absolute inset-0 bg-gradient-to-r from-blue-400/10 to-purple-400/10 rounded-xl -z-0 blur-xl"></div>
           </div>
           {% elif event.description %}
@@ -349,7 +371,7 @@
           {% endif %}
           
           <!-- Enhanced Quick Info Cards -->
-          <div class="flex flex-wrap gap-3 mt-6">
+          <div class="flex flex-wrap gap-3 my-3 mt-6">
             {% if event.venue %}
             <div class="group flex items-center bg-white/10 backdrop-blur-sm rounded-xl px-4 py-2 border border-white/20 hover:bg-white/15 transition-all duration-300 hover:scale-105 transform">
               <div class="w-8 h-8 bg-emerald-500/20 rounded-full flex items-center justify-center mr-3 group-hover:bg-emerald-500/30 transition-colors">
@@ -604,453 +626,134 @@
   </div>
 </div>
 
-<!-- Event Details Section -->
-<div class="container mx-auto max-w-5xl px-4 py-8">
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-      <!-- Left Column - Event Description and Target Goals -->
-    <div class="space-y-6">      <!-- Event Description Card -->
-      <div class="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-blue-100 p-6 h-fit">
-        <div class="flex items-center mb-4">
-          <div class="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center mr-3">
-            <svg class="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-              <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/>
-            </svg>
-          </div>
-          <h2 class="text-xl font-bold text-gray-800">Event Description</h2>
-        </div>
-        
-        <div class="prose prose-gray max-w-none">
-          {% if event.description %}            <div class="read-more-wrapper" data-word-limit="50">
-              <div class="read-more-content text-gray-700 leading-relaxed whitespace-pre-line">{{ event.description }}</div>
-              <span class="read-more-link hidden text-blue-500 hover:text-blue-600">
-                <span class="link-text">Read more</span>
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="12" height="12">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                </svg>
-              </span>
-            </div>
-          {% elif event.detailed_description %}            <div class="read-more-wrapper" data-word-limit="50">
-              <div class="read-more-content text-gray-700 leading-relaxed">{{ event.detailed_description }}</div>              <span class="read-more-link hidden text-blue-500 hover:text-blue-600">
-                <span class="link-text">Read more</span>
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="12" height="12">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                </svg>
-              </div>
-            </div>
-          {% else %}
-            <div class="text-gray-500 italic">No description available for this event.</div>
+<!-- Smart Content Formatting Macro -->
+{% macro format_smart_content(content, color, section_title, icon_type='check', word_limit=40) %}
+  <div class="read-more-wrapper" data-word-limit="{{ word_limit }}">
+    <div class="read-more-content bg-{{ color }}-50 p-4 rounded-lg border border-{{ color }}-200">
+      {% if content %}
+        {% set content_lines = content.strip().split('\n') %}
+        {% set has_structured_bullets = false %}
+        {% set bullet_counter = 1 %}
+          <!-- Check if content has any bullet points or numbered lists -->
+        {% for line in content_lines %}
+          {% if line.strip() %}
+            {% set stripped = line.strip() %}
+            {% if stripped.startswith('•') or stripped.startswith('-') or stripped.startswith('*') or 
+                 stripped.startswith('▪') or stripped.startswith('◦') or stripped.startswith('‣') or
+                 stripped.startswith('○') or stripped.startswith('●') or
+                 (stripped[:2] and stripped[0].isdigit() and stripped[1] == '.') or
+                 (stripped[:3] and stripped[0].isalpha() and stripped[1] == '.') or
+                 (stripped[:3] and stripped[0].isalpha() and stripped[1] == ')') %}
+              {% set has_structured_bullets = true %}
+            {% endif %}
           {% endif %}
-        </div>
+        {% endfor %}
         
-        {% if event.objectives or event.agenda %}
-          <div class="mt-6 pt-6 border-t border-gray-200">            {% if event.objectives %}
-              <h3 class="text-lg font-semibold text-gray-800 mb-3">Objectives</h3>              <div class="read-more-wrapper" data-word-limit="40">
-                <div class="read-more-content text-gray-700 leading-relaxed mb-4 whitespace-pre-line">{{ event.objectives }}</div>
-                <span class="read-more-link hidden text-gray-500 hover:text-gray-600">
-                  <span class="link-text">Read more</span>
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="12" height="12">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                  </svg>
-                </span>
-              </div>
+        {% if has_structured_bullets %}
+          <!-- Process content with explicit bullets -->
+          {% for line in content_lines %}
+            {% if line.strip() %}
+              {% set stripped = line.strip() %}
+              {% set is_bullet = false %}
+              {% set bullet_content = stripped %}
+              {% set bullet_type = 'check' %}
+              {% set bullet_number = '' %}
+                <!-- Detect different bullet formats -->
+              {% if stripped.startswith('•') or stripped.startswith('-') or stripped.startswith('*') or 
+                   stripped.startswith('▪') or stripped.startswith('◦') or stripped.startswith('‣') or
+                   stripped.startswith('○') or stripped.startswith('●') %}
+                {% set is_bullet = true %}
+                {% set bullet_content = stripped[1:].strip() %}
+                {% set bullet_type = 'check' %}
+              {% elif stripped[:2] and stripped[0].isdigit() and stripped[1] == '.' %}
+                {% set is_bullet = true %}
+                {% set bullet_content = stripped[2:].strip() %}
+                {% set bullet_type = 'number' %}
+                {% set bullet_number = stripped[0] %}
+              {% elif stripped[:3] and stripped[0].isalpha() and stripped[1] == '.' %}
+                {% set is_bullet = true %}
+                {% set bullet_content = stripped[2:].strip() %}
+                {% set bullet_type = 'letter' %}
+                {% set bullet_number = stripped[0] %}
+              {% elif stripped[:3] and stripped[0].isalpha() and stripped[1] == ')' %}
+                {% set is_bullet = true %}
+                {% set bullet_content = stripped[2:].strip() %}
+                {% set bullet_type = 'letter' %}
+                {% set bullet_number = stripped[0] %}
+              {% endif %}
+                {% if is_bullet %}
+                <!-- Simple bullet point -->
+                <div class="flex items-start space-x-3 mb-2">
+                  <div class="w-5 h-5 bg-{{ color }}-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                    <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                    </svg>
+                  </div>
+                  <div class="text-gray-700 leading-relaxed flex-1">
+                    {{ bullet_content }}
+                  </div>
+                </div>
+              {% else %}
+                <!-- Simple text -->
+                <div class="text-gray-700 leading-relaxed mb-2">
+                  {{ stripped }}
+                </div>
+              {% endif %}
             {% endif %}
-              {% if event.agenda %}
-              <h3 class="text-lg font-semibold text-gray-800 mb-3">Agenda</h3>              <div class="read-more-wrapper" data-word-limit="40">
-                <div class="read-more-content text-gray-700 leading-relaxed whitespace-pre-line">{{ event.agenda }}</div>
-                <span class="read-more-link hidden text-gray-500 hover:text-gray-600">
-                  <span class="link-text">Read more</span>
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="12" height="12">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                  </svg>
-                </span>
-              </div>
-            {% endif %}
-          </div>
-        {% endif %}
-      </div>        <!-- Smart Content Formatting Macro -->      {% macro format_smart_content(content, color, section_title, icon_type='check', word_limit=40) %}
-        <div class="read-more-wrapper" data-word-limit="{{ word_limit }}">
-          <div class="read-more-content bg-{{ color }}-50 p-4 rounded-lg border border-{{ color }}-200">
-            {% if content %}
-              {% set content_lines = content.strip().split('\n') %}
-              {% set has_structured_bullets = false %}
-              {% set bullet_counter = 1 %}
-                <!-- Check if content has any bullet points or numbered lists -->
-              {% for line in content_lines %}
-                {% if line.strip() %}
-                  {% set stripped = line.strip() %}
-                  {% if stripped.startswith('•') or stripped.startswith('-') or stripped.startswith('*') or 
-                       stripped.startswith('▪') or stripped.startswith('◦') or stripped.startswith('‣') or
-                       stripped.startswith('○') or stripped.startswith('●') or
-                       (stripped[:2] and stripped[0].isdigit() and stripped[1] == '.') or
-                       (stripped[:3] and stripped[0].isalpha() and stripped[1] == '.') or
-                       (stripped[:3] and stripped[0].isalpha() and stripped[1] == ')') %}
-                    {% set has_structured_bullets = true %}
-                  {% endif %}
+          {% endfor %}
+        {% else %}
+          <!-- Auto-bullet creation for paragraph content without structure -->
+          {% if content_lines | length == 1 %}
+            {% set single_content = content_lines[0].strip() %}
+            {% if '. ' in single_content and single_content.count('. ') > 1 %}
+              <!-- Split by sentences and create bullets -->
+              {% set sentences = single_content.split('. ') %}
+              {% for sentence in sentences %}
+                {% if sentence.strip() and sentence.strip() != '.' %}
+                  <div class="flex items-start space-x-3 mb-3">
+                    <div class="w-5 h-5 bg-{{ color }}-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                      <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                      </svg>
+                    </div>
+                    <div class="text-gray-700 leading-relaxed flex-1">
+                      {{ sentence.strip() }}{% if not sentence.strip().endswith('.') %}.{% endif %}
+                    </div>
+                  </div>
                 {% endif %}
               {% endfor %}
-              
-              {% if has_structured_bullets %}
-                <!-- Process content with explicit bullets -->
-                {% for line in content_lines %}
-                  {% if line.strip() %}
-                    {% set stripped = line.strip() %}
-                    {% set is_bullet = false %}
-                    {% set bullet_content = stripped %}
-                    {% set bullet_type = 'check' %}
-                    {% set bullet_number = '' %}
-                      <!-- Detect different bullet formats -->
-                    {% if stripped.startswith('•') or stripped.startswith('-') or stripped.startswith('*') or 
-                         stripped.startswith('▪') or stripped.startswith('◦') or stripped.startswith('‣') or
-                         stripped.startswith('○') or stripped.startswith('●') %}
-                      {% set is_bullet = true %}
-                      {% set bullet_content = stripped[1:].strip() %}
-                      {% set bullet_type = 'check' %}
-                    {% elif stripped[:2] and stripped[0].isdigit() and stripped[1] == '.' %}
-                      {% set is_bullet = true %}
-                      {% set bullet_content = stripped[2:].strip() %}
-                      {% set bullet_type = 'number' %}
-                      {% set bullet_number = stripped[0] %}
-                    {% elif stripped[:3] and stripped[0].isalpha() and stripped[1] == '.' %}
-                      {% set is_bullet = true %}
-                      {% set bullet_content = stripped[2:].strip() %}
-                      {% set bullet_type = 'letter' %}
-                      {% set bullet_number = stripped[0] %}
-                    {% elif stripped[:3] and stripped[0].isalpha() and stripped[1] == ')' %}
-                      {% set is_bullet = true %}
-                      {% set bullet_content = stripped[2:].strip() %}
-                      {% set bullet_type = 'letter' %}
-                      {% set bullet_number = stripped[0] %}
-                    {% endif %}
-                      {% if is_bullet %}
-                      <!-- Simple bullet point -->
-                      <div class="flex items-start space-x-3 mb-2">
-                        <div class="w-5 h-5 bg-{{ color }}-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                          <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                          </svg>
-                        </div>
-                        <div class="text-gray-700 leading-relaxed flex-1">
-                          {{ bullet_content }}
-                        </div>
-                      </div>                    {% else %}
-                      <!-- Simple text -->
-                      <div class="text-gray-700 leading-relaxed mb-2">
-                        {{ stripped }}
-                      </div>
-                    {% endif %}
-                  {% endif %}
-                {% endfor %}
-              {% else %}
-                <!-- Auto-bullet creation for paragraph content without structure -->
-                {% if content_lines | length == 1 %}
-                  {% set single_content = content_lines[0].strip() %}
-                  {% if '. ' in single_content and single_content.count('. ') > 1 %}
-                    <!-- Split by sentences and create bullets -->
-                    {% set sentences = single_content.split('. ') %}
-                    {% for sentence in sentences %}
-                      {% if sentence.strip() and sentence.strip() != '.' %}
-                        <div class="flex items-start space-x-3 mb-3">
-                          <div class="w-5 h-5 bg-{{ color }}-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                            <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                            </svg>
-                          </div>
-                          <div class="text-gray-700 leading-relaxed flex-1">
-                            {{ sentence.strip() }}{% if not sentence.strip().endswith('.') %}.{% endif %}
-                          </div>
-                        </div>
-                      {% endif %}
-                    {% endfor %}
-                  {% else %}
-                    <!-- Single paragraph without sentence structure - display as simple text -->
-                    <div class="text-gray-700 leading-relaxed">
-                      {{ single_content }}
-                    </div>
-                  {% endif %}
-                {% else %}
-                  <!-- Multiple lines without bullets - display each line -->
-                  {% for line in content_lines %}
-                    {% if line.strip() %}
-                      <div class="text-gray-700 leading-relaxed mb-2">
-                        {{ line.strip() }}
-                      </div>
-                    {% endif %}
-                  {% endfor %}
-                {% endif %}
-              {% endif %}
+            {% else %}
+              <!-- Single paragraph without sentence structure - display as simple text -->
+              <div class="text-gray-700 leading-relaxed">
+                {{ single_content }}
+              </div>
             {% endif %}
-          </div>          <span class="read-more-link hidden text-{{ color }}-500 hover:text-{{ color }}-600">
-            <span class="link-text">Read more</span>
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="12" height="12">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-            </svg>
-          </span>
-        </div>
-      {% endmacro %}<!-- Target Goals & Outcomes Cards -->
-      {% if event.target_goals or event.target_outcomes or event.expected_outcomes or event.learning_outcomes or event.success_metrics %}
-        
-        {% if event.target_goals %}
-        <div class="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-amber-100 p-6 h-fit">
-          <div class="flex items-center mb-4">
-            <div class="w-8 h-8 bg-amber-500/20 rounded-full flex items-center justify-center mr-3">
-              <svg class="w-4 h-4 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-              </svg>
-            </div>
-            <h2 class="text-xl font-bold text-gray-800">Target Goals</h2>
-          </div>
-          {{ format_smart_content(event.target_goals, 'amber', '', '') }}
-        </div>
+          {% else %}
+            <!-- Multiple lines without bullets - display each line -->
+            {% for line in content_lines %}
+              {% if line.strip() %}
+                <div class="text-gray-700 leading-relaxed mb-2">
+                  {{ line.strip() }}
+                </div>
+              {% endif %}
+            {% endfor %}
+          {% endif %}
         {% endif %}
-          {% if event.target_outcomes %}
-        <div class="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-orange-100 p-6 h-fit">
-          <div class="flex items-center mb-4">
-            <div class="w-8 h-8 bg-orange-500/20 rounded-full flex items-center justify-center mr-3">
-              <svg class="w-4 h-4 text-orange-600" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-              </svg>
-            </div>
-            <h2 class="text-xl font-bold text-gray-800">Target Outcomes</h2>
-          </div>
-          {{ format_smart_content(event.target_outcomes, 'orange', '', '', 35) }}
-        </div>
-        {% endif %}
-        
-        {% if event.expected_outcomes %}
-        <div class="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-green-100 p-6 h-fit">
-          <div class="flex items-center mb-4">
-            <div class="w-8 h-8 bg-green-500/20 rounded-full flex items-center justify-center mr-3">
-              <svg class="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-              </svg>
-            </div>
-            <h2 class="text-xl font-bold text-gray-800">Expected Outcomes</h2>
-          </div>
-          {{ format_smart_content(event.expected_outcomes, 'green', '', '') }}
-        </div>
-        {% endif %}
-        
-        {% if event.learning_outcomes %}
-        <div class="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-blue-100 p-6 h-fit">
-          <div class="flex items-center mb-4">
-            <div class="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center mr-3">
-              <svg class="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-              </svg>
-            </div>
-            <h2 class="text-xl font-bold text-gray-800">Learning Outcomes</h2>
-          </div>
-          {{ format_smart_content(event.learning_outcomes, 'blue', '', '') }}
-        </div>
-        {% endif %}
-          {% if event.success_metrics %}
-        <div class="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-purple-100 p-6 h-fit">
-          <div class="flex items-center mb-4">
-            <div class="w-8 h-8 bg-purple-500/20 rounded-full flex items-center justify-center mr-3">
-              <svg class="w-4 h-4 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-              </svg>
-            </div>
-            <h2 class="text-xl font-bold text-gray-800">Success Metrics</h2>
-          </div>
-          {{ format_smart_content(event.success_metrics, 'purple', '', '') }}
-        </div>
-        {% endif %}
-          <!-- What to Bring -->
-        {% if event.what_to_bring %}
-        <div class="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-cyan-100 p-6 h-fit">
-          <div class="flex items-center mb-4">
-            <div class="w-8 h-8 bg-cyan-500/20 rounded-full flex items-center justify-center mr-3">
-              <svg class="w-4 h-4 text-cyan-600" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 2a4 4 0 00-4 4v1H5a1 1 0 00-.994.89l-1 9A1 1 0 004 18h12a1 1 0 00.994-1.11l-1-9A1 1 0 0015 7h-1V6a4 4 0 00-4-4zM8 6a2 2 0 114 0v1H8V6z" clip-rule="evenodd"/>
-              </svg>
-            </div>
-            <h2 class="text-xl font-bold text-gray-800">What to Bring</h2>
-          </div>
-          {{ format_smart_content(event.what_to_bring, 'cyan', '', 'package', 30) }}
-        </div>
-        {% endif %}
-      {% else %}
-        <!-- Default Target Goals Card when no specific goals are defined -->
-        <div class="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-amber-100 p-6 h-fit">
-          <div class="flex items-center mb-4">
-            <div class="w-8 h-8 bg-amber-500/20 rounded-full flex items-center justify-center mr-3">
-              <svg class="w-4 h-4 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-              </svg>
-            </div>
-            <h2 class="text-xl font-bold text-gray-800">Event Goals</h2>
-          </div>
-          <!-- Default goals when no specific goals are defined -->
-          <div class="space-y-3">
-            <div class="flex items-start space-x-3 p-3 bg-amber-50 rounded-lg border border-amber-200">
-              <div class="w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span class="text-white text-xs font-bold">1</span>
-              </div>
-              <div>
-                <div class="font-medium text-gray-800">Knowledge Enhancement</div>
-                <div class="text-sm text-gray-600 mt-1">Participants will gain valuable insights and knowledge in the event domain</div>
-              </div>
-            </div>
-            
-            <div class="flex items-start space-x-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <div class="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span class="text-white text-xs font-bold">2</span>
-              </div>
-              <div>
-                <div class="font-medium text-gray-800">Skill Development</div>
-                <div class="text-sm text-gray-600 mt-1">Hands-on experience and practical skills relevant to the event topic</div>
-              </div>
-            </div>
-            
-            <div class="flex items-start space-x-3 p-3 bg-green-50 rounded-lg border border-green-200">
-              <div class="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span class="text-white text-xs font-bold">3</span>
-              </div>
-              <div>
-                <div class="font-medium text-gray-800">Networking & Collaboration</div>
-                <div class="text-sm text-gray-600 mt-1">Connect with like-minded individuals and build professional relationships</div>
-              </div>
-            </div>
-          </div>
-        </div>
       {% endif %}
     </div>
-    
-    <!-- Right Column - Registration & Organizer Details -->
-    <div class="space-y-6 h-fit">
-      
-      <!-- Registration Details -->
-      <div class="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-green-100 p-6">
-        <div class="flex items-center mb-4">
-          <div class="w-8 h-8 bg-green-500/20 rounded-full flex items-center justify-center mr-3">
-            <svg class="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-              <path fill-rule="evenodd" d="M10 2a4 4 0 00-4 4v1H5a1 1 0 00-.994.89l-1 9A1 1 0 004 18h12a1 1 0 00.994-1.11l-1-9A1 1 0 0015 7h-1V6a4 4 0 00-4-4zM8 6a2 2 0 114 0v1H8V6z" clip-rule="evenodd"/>
-            </svg>
-          </div>
-          <h2 class="text-xl font-bold text-gray-800">Registration Details</h2>
-        </div>
-        
-        <div class="space-y-4">
-          <!-- Registration Mode -->
-          <div class="flex justify-between items-center py-2 border-b border-gray-100">
-            <span class="text-sm font-medium text-gray-600">Mode</span>
-            <span class="text-sm font-semibold text-gray-800">
-              {% if event.mode %}
-                {% if event.mode == 'online' %}🌐 Online
-                {% elif event.mode == 'offline' %}📍 Offline
-                {% elif event.mode == 'hybrid' %}🔄 Hybrid
-                {% else %}{{ event.mode|title }}
-                {% endif %}
-              {% else %}Not specified
-              {% endif %}
-            </span>
-          </div>
-            <!-- Registration Type -->
-          <div class="flex justify-between items-center py-2 border-b border-gray-100">
-            <span class="text-sm font-medium text-gray-600">Type</span>
-            <span class="text-sm font-semibold text-gray-800">
-              {% if event.registration_type %}
-                {% if event.registration_type == 'free' %}🆓 Free
-                {% elif event.registration_type == 'paid' %}💰 Paid
-                {% else %}{{ event.registration_type|title }}
-                {% endif %}
-              {% else %}Not specified
-              {% endif %}
-            </span>
-          </div>
-          
-          <!-- Registration Mode -->
-          {% if event.registration_mode %}
-          <div class="flex justify-between items-center py-2 border-b border-gray-100">
-            <span class="text-sm font-medium text-gray-600">Registration Mode</span>
-            <span class="text-sm font-semibold text-gray-800">
-              {% if event.registration_mode == 'individual' %}👤 Individual
-              {% elif event.registration_mode == 'team' %}👥 Team Based
-              {% else %}{{ event.registration_mode|title }}
-              {% endif %}
-            </span>
-          </div>
-          {% endif %}
-          
-          <!-- Team Size (only for team-based registration) -->
-          {% if event.registration_mode == 'team' and (event.team_size_min or event.team_size_max) %}
-          <div class="flex justify-between items-center py-2 border-b border-gray-100">
-            <span class="text-sm font-medium text-gray-600">Team Size</span>
-            <span class="text-sm font-semibold text-gray-800">
-              {% if event.team_size_min and event.team_size_max %}
-                {{ event.team_size_min }} - {{ event.team_size_max }} members
-              {% elif event.team_size_min %}
-                Min: {{ event.team_size_min }} members
-              {% elif event.team_size_max %}
-                Max: {{ event.team_size_max }} members
-              {% endif %}
-            </span>
-          </div>
-          {% endif %}
-          
-          <!-- Registration Fee -->
-          {% if event.registration_fee and event.registration_fee > 0 %}
-          <div class="flex justify-between items-center py-2 border-b border-gray-100">
-            <span class="text-sm font-medium text-gray-600">Fee</span>
-            <span class="text-sm font-semibold text-green-600">₹{{ event.registration_fee }}</span>
-          </div>
-          {% endif %}
-          
-          <!-- Participants Range -->
-          <div class="flex justify-between items-center py-2 border-b border-gray-100">
-            <span class="text-sm font-medium text-gray-600">Participants</span>
-            <span class="text-sm font-semibold text-gray-800">
-              {% if event.min_participants or event.max_participants %}
-                {% if event.min_participants and event.max_participants %}
-                  {{ event.min_participants }} - {{ event.max_participants }}
-                {% elif event.min_participants %}
-                  Min: {{ event.min_participants }}
-                {% elif event.max_participants %}
-                  Max: {{ event.max_participants }}
-                {% endif %}
-              {% else %}
-                No limit specified
-              {% endif %}
-            </span>
-          </div>
-            <!-- Current Registrations -->
-          {% if registration_stats and registration_stats.total_registrations is defined %}
-          <div class="flex justify-between items-center py-2 border-b border-gray-100">
-            <span class="text-sm font-medium text-gray-600">Registered</span>
-            <span class="text-sm font-semibold text-blue-600">{{ registration_stats.total_registrations }} participants</span>
-          </div>
-          {% endif %}
-            <!-- Fee Details -->
-          {% if event.registration_fee and event.registration_fee > 0 %}
-          <div class="py-2">
-            <span class="text-sm font-medium text-gray-600 block mb-2">Fee Details</span>
-            <div class="text-sm text-gray-700 bg-green-50 p-3 rounded-lg border border-green-200">
-              <div class="flex justify-between items-center mb-2">
-                <span class="font-medium">Registration Fee:</span>
-                <span class="text-green-600 font-bold">₹{{ event.registration_fee }}</span>
-              </div>
-              {% if event.fee_description %}
-              <div class="text-xs text-gray-600 mt-2">
-                <span class="font-medium">Description:</span> {{ event.fee_description }}
-              </div>
-              {% endif %}
-              {% if event.fee_includes %}
-              <div class="text-xs text-gray-600 mt-2">
-                <span class="font-medium">Includes:</span> {{ event.fee_includes }}
-              </div>
-              {% endif %}
-              {% if event.payment_method %}
-              <div class="text-xs text-gray-600 mt-1">
-                <span class="font-medium">Payment Method:</span> {{ event.payment_method }}
-              </div>
-              {% endif %}
-            </div>
-          </div>
-          {% endif %}
-        </div>
-      </div>
-        <!-- Organizer Details -->
+    <span class="read-more-link hidden text-{{ color }}-500 hover:text-{{ color }}-600">
+      <span class="link-text">Read more</span>
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="12" height="12">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+      </svg>
+    </span>
+  </div>
+{% endmacro %}  <!-- Event Details Section -->
+<div class="container mx-auto max-w-5xl px-4 py-8">
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <!-- Left Column - Event Organizers, Event Description, What to Bring -->
+    <div class="flex flex-col space-y-8">
+      <!-- Organizer Details -->
       <div class="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-purple-100 p-6">
         <div class="flex items-center mb-4">
           <div class="w-8 h-8 bg-purple-500/20 rounded-full flex items-center justify-center mr-3">
@@ -1058,12 +761,13 @@
               <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
             </svg>
           </div>
-          <h2 class="text-xl font-bold text-gray-800">Organizer Details</h2>
-        </div>        <div class="space-y-4">
+          <h2 class="text-xl font-bold text-gray-800">Event Organizers</h2>
+        </div>
+        <div class="space-y-4">
           <!-- Event Organizers Section -->
           {% if event.organizers or event.organizer_name or event.contacts %}
             <div class="space-y-3">
-              <div class="text-sm font-medium text-gray-800 mb-3">Event Organizers</div>
+              <div class="text-sm font-medium text-gray-800 mb-3">Organizing Team</div>
               
               {% if event.organizers %}
                 <!-- Display organizers from array -->
@@ -1202,7 +906,9 @@
                 {% endfor %}
               {% endif %}
             </div>
-          {% endif %}          <!-- Organization -->
+          {% endif %}
+          
+          <!-- Organization -->
           {% if event.organization %}
           <div class="bg-purple-50 p-3 rounded-lg border border-purple-200 mt-4">
             <div class="text-sm font-medium text-purple-800 mb-1">Organization</div>
@@ -1216,8 +922,289 @@
             <div class="text-sm font-medium text-gray-800 mb-1">Additional Information</div>
             <div class="text-sm text-gray-700">{{ event.organizer_notes }}</div>
           </div>
-          {% endif %}        </div>
+          {% endif %}
+        </div>      </div>
+      
+      <!-- Event Description Card -->
+      <div class="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-blue-100 p-6 h-fit">
+        <div class="flex items-center mb-4">
+          <div class="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center mr-3">
+            <svg class="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/>
+            </svg>
+          </div>
+          <h2 class="text-xl font-bold text-gray-800">Event Description</h2>
+        </div>
+        
+        <div class="prose prose-gray max-w-none">
+          {% if event.description %}            <div class="read-more-wrapper" data-word-limit="50">
+              <div class="read-more-content text-gray-700 leading-relaxed whitespace-pre-line">{{ event.description }}</div>
+              <span class="read-more-link hidden text-blue-500 hover:text-blue-600">
+                <span class="link-text">Read more</span>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="12" height="12">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+              </span>
+            </div>
+          {% elif event.detailed_description %}            <div class="read-more-wrapper" data-word-limit="50">
+              <div class="read-more-content text-gray-700 leading-relaxed">{{ event.detailed_description }}</div>              <span class="read-more-link hidden text-blue-500 hover:text-blue-600">
+                <span class="link-text">Read more</span>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="12" height="12">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+              </div>
+            </div>
+          {% else %}
+            <div class="text-gray-500 italic">No description available for this event.</div>
+          {% endif %}
+        </div>
+        
+        {% if event.objectives or event.agenda %}
+          <div class="mt-6 pt-6 border-t border-gray-200">            {% if event.objectives %}
+              <h3 class="text-lg font-semibold text-gray-800 mb-3">Objectives</h3>              <div class="read-more-wrapper" data-word-limit="40">
+                <div class="read-more-content text-gray-700 leading-relaxed mb-4 whitespace-pre-line">{{ event.objectives }}</div>
+                <span class="read-more-link hidden text-gray-500 hover:text-gray-600">
+                  <span class="link-text">Read more</span>
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="12" height="12">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                  </svg>
+                </span>
+              </div>
+            {% endif %}
+              {% if event.agenda %}
+              <h3 class="text-lg font-semibold text-gray-800 mb-3">Agenda</h3>              <div class="read-more-wrapper" data-word-limit="40">
+                <div class="read-more-content text-gray-700 leading-relaxed whitespace-pre-line">{{ event.agenda }}</div>
+                <span class="read-more-link hidden text-gray-500 hover:text-gray-600">
+                  <span class="link-text">Read more</span>
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="12" height="12">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                  </svg>
+                </span>
+              </div>            {% endif %}          </div>
+        {% endif %}
       </div>
+      
+      <!-- What to Bring -->
+      {% if event.what_to_bring %}
+      <div class="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-cyan-100 p-6">
+        <div class="flex items-center mb-4">
+          <div class="w-8 h-8 bg-cyan-500/20 rounded-full flex items-center justify-center mr-3">
+            <svg class="w-4 h-4 text-cyan-600" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 2a4 4 0 00-4 4v1H5a1 1 0 00-.994.89l-1 9A1 1 0 004 18h12a1 1 0 00.994-1.11l-1-9A1 1 0 0015 7h-1V6a4 4 0 00-4-4zM8 6a2 2 0 114 0v1H8V6z" clip-rule="evenodd"/>
+            </svg>
+          </div>
+          <h2 class="text-xl font-bold text-gray-800">What to Bring</h2>
+        </div>
+        {{ format_smart_content(event.what_to_bring, 'cyan', '', 'package', 30) }}
+      </div>      {% endif %}
+    </div>
+
+    <!-- Right Column - Registration Details, Target Outcomes, Prerequisites -->
+    <div class="flex flex-col space-y-8">
+      
+      <!-- Registration Details -->
+      <div class="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-green-100 p-6 w-full max-w-full">
+        <div class="flex items-center mb-4">
+          <div class="w-8 h-8 bg-green-500/20 rounded-full flex items-center justify-center mr-3">
+            <svg class="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 2a4 4 0 00-4 4v1H5a1 1 0 00-.994.89l-1 9A1 1 0 004 18h12a1 1 0 00.994-1.11l-1-9A1 1 0 0015 7h-1V6a4 4 0 00-4-4zM8 6a2 2 0 114 0v1H8V6z" clip-rule="evenodd"/>
+            </svg>
+          </div>
+          <h2 class="text-xl font-bold text-gray-800">Registration Details</h2>
+        </div>
+        
+        <div class="space-y-4">
+          <!-- Registration Mode -->
+          <div class="flex justify-between items-center py-2 border-b border-gray-100">
+            <span class="text-sm font-medium text-gray-600">Mode</span>
+            <span class="text-sm font-semibold text-gray-800">
+              {% if event.mode %}
+                {% if event.mode == 'online' %}🌐 Online
+                {% elif event.mode == 'offline' %}📍 Offline
+                {% elif event.mode == 'hybrid' %}🔄 Hybrid
+                {% else %}{{ event.mode|title }}
+                {% endif %}
+              {% else %}Not specified
+              {% endif %}
+            </span>
+          </div>
+            <!-- Registration Type -->
+          <div class="flex justify-between items-center py-2 border-b border-gray-100">
+            <span class="text-sm font-medium text-gray-600">Type</span>
+            <span class="text-sm font-semibold text-gray-800">
+              {% if event.registration_type %}
+                {% if event.registration_type == 'free' %}🆓 Free
+                {% elif event.registration_type == 'paid' %}💰 Paid
+                {% else %}{{ event.registration_type|title }}
+                {% endif %}
+              {% else %}Not specified
+              {% endif %}
+            </span>
+          </div>
+          
+          <!-- Registration Mode -->
+          {% if event.registration_mode %}
+          <div class="flex justify-between items-center py-2 border-b border-gray-100">
+            <span class="text-sm font-medium text-gray-600">Registration Mode</span>
+            <span class="text-sm font-semibold text-gray-800">
+              {% if event.registration_mode == 'individual' %}👤 Individual
+              {% elif event.registration_mode == 'team' %}👥 Team Based
+              {% else %}{{ event.registration_mode|title }}
+              {% endif %}
+            </span>
+          </div>
+          {% endif %}
+          
+          <!-- Team Size (only for team-based registration) -->
+          {% if event.registration_mode == 'team' and (event.team_size_min or event.team_size_max) %}
+          <div class="flex justify-between items-center py-2 border-b border-gray-100">
+            <span class="text-sm font-medium text-gray-600">Team Size</span>
+            <span class="text-sm font-semibold text-gray-800">
+              {% if event.team_size_min and event.team_size_max %}
+                {{ event.team_size_min }} - {{ event.team_size_max }} members
+              {% elif event.team_size_min %}
+                Min: {{ event.team_size_min }} members
+              {% elif event.team_size_max %}
+                Max: {{ event.team_size_max }} members
+              {% endif %}
+            </span>
+          </div>
+          {% endif %}
+          
+          <!-- Registration Fee -->
+          {% if event.registration_fee and event.registration_fee > 0 %}
+          <div class="flex justify-between items-center py-2 border-b border-gray-100">
+            <span class="text-sm font-medium text-gray-600">Fee</span>
+            <span class="text-sm font-semibold text-green-600">₹{{ event.registration_fee }}</span>
+          </div>
+          {% endif %}
+          
+          <!-- Participants Range -->
+          <div class="flex justify-between items-center py-2 border-b border-gray-100">
+            <span class="text-sm font-medium text-gray-600">Participants</span>
+            <span class="text-sm font-semibold text-gray-800">
+              {% if event.min_participants or event.max_participants %}
+                {% if event.min_participants and event.max_participants %}
+                  {{ event.min_participants }} - {{ event.max_participants }}
+                {% elif event.min_participants %}
+                  Min: {{ event.min_participants }}
+                {% elif event.max_participants %}
+                  Max: {{ event.max_participants }}
+                {% endif %}
+              {% else %}
+                No limit specified
+              {% endif %}
+            </span>
+          </div>
+            <!-- Current Registrations -->
+          {% if registration_stats and registration_stats.total_registrations is defined %}
+          <div class="flex justify-between items-center py-2 border-b border-gray-100">
+            <span class="text-sm font-medium text-gray-600">Registered</span>
+            <span class="text-sm font-semibold text-blue-600">{{ registration_stats.total_registrations }} participants</span>
+          </div>
+          {% endif %}
+            <!-- Fee Details -->
+          {% if event.registration_fee and event.registration_fee > 0 %}
+          <div class="py-2">
+            <span class="text-sm font-medium text-gray-600 block mb-2">Fee Details</span>
+            <div class="text-sm text-gray-700 bg-green-50 p-3 rounded-lg border border-green-200">
+              <div class="flex justify-between items-center mb-2">
+                <span class="font-medium">Registration Fee:</span>
+                <span class="text-green-600 font-bold">₹{{ event.registration_fee }}</span>
+              </div>
+              {% if event.fee_description %}
+              <div class="text-xs text-gray-600 mt-2">
+                <span class="font-medium">Description:</span> {{ event.fee_description }}
+              </div>
+              {% endif %}
+              {% if event.fee_includes %}
+              <div class="text-xs text-gray-600 mt-2">
+                <span class="font-medium">Includes:</span> {{ event.fee_includes }}
+              </div>
+              {% endif %}
+              {% if event.payment_method %}
+              <div class="text-xs text-gray-600 mt-1">
+                <span class="font-medium">Payment Method:</span> {{ event.payment_method }}
+              </div>
+              {% endif %}
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      
+      <!-- Target Goals & Outcomes Cards -->
+      {% if event.target_goals or event.target_outcomes or event.expected_outcomes or event.learning_outcomes or event.success_metrics %}
+        
+        {% if event.target_goals %}
+        <div class="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-amber-100 p-6">
+          <div class="flex items-center mb-4">
+            <div class="w-8 h-8 bg-amber-500/20 rounded-full flex items-center justify-center mr-3">
+              <svg class="w-4 h-4 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+              </svg>
+            </div>
+            <h2 class="text-xl font-bold text-gray-800">Target Goals</h2>
+          </div>
+          {{ format_smart_content(event.target_goals, 'amber', '', '') }}
+        </div>
+        {% endif %}
+          
+        {% if event.target_outcomes %}
+        <div class="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-orange-100 p-6">
+          <div class="flex items-center mb-4">
+            <div class="w-8 h-8 bg-orange-500/20 rounded-full flex items-center justify-center mr-3">
+              <svg class="w-4 h-4 text-orange-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+              </svg>
+            </div>
+            <h2 class="text-xl font-bold text-gray-800">Target Outcomes</h2>
+          </div>
+          {{ format_smart_content(event.target_outcomes, 'orange', '', '', 35) }}
+        </div>
+        {% endif %}
+        
+        {% if event.expected_outcomes %}
+        <div class="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-green-100 p-6">
+          <div class="flex items-center mb-4">
+            <div class="w-8 h-8 bg-green-500/20 rounded-full flex items-center justify-center mr-3">
+              <svg class="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+              </svg>
+            </div>
+            <h2 class="text-xl font-bold text-gray-800">Expected Outcomes</h2>
+          </div>
+          {{ format_smart_content(event.expected_outcomes, 'green', '', '') }}
+        </div>
+        {% endif %}
+        
+        {% if event.learning_outcomes %}
+        <div class="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-blue-100 p-6">
+          <div class="flex items-center mb-4">
+            <div class="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center mr-3">
+              <svg class="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+              </svg>
+            </div>
+            <h2 class="text-xl font-bold text-gray-800">Learning Outcomes</h2>
+          </div>
+          {{ format_smart_content(event.learning_outcomes, 'blue', '', '') }}
+        </div>
+        {% endif %}
+          
+        {% if event.success_metrics %}
+        <div class="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-purple-100 p-6">
+          <div class="flex items-center mb-4">
+            <div class="w-8 h-8 bg-purple-500/20 rounded-full flex items-center justify-center mr-3">
+              <svg class="w-4 h-4 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+              </svg>
+            </div>
+            <h2 class="text-xl font-bold text-gray-800">Success Metrics</h2>
+          </div>
+          {{ format_smart_content(event.success_metrics, 'purple', '', '') }}
+        </div>
+        {% endif %}      {% endif %}
       
       <!-- Prerequisites Card -->
       {% if event.prerequisites %}
