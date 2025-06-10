@@ -37,8 +37,7 @@ async def show_feedback_form(request: Request, event_id: str, student: Student =
         student_data = await DatabaseOperations.find_one("students", {"enrollment_no": student.enrollment_no})
         if not student_data:
             raise HTTPException(status_code=404, detail="Student data not found")
-        
-        # Check if student is registered for this event using event_participations
+          # Check if student is registered for this event using event_participations
         event_participations = student_data.get('event_participations', {})
         if event_id not in event_participations:
             return templates.TemplateResponse(
@@ -47,7 +46,9 @@ async def show_feedback_form(request: Request, event_id: str, student: Student =
                     "request": request,
                     "event": event,
                     "student": student,
-                    "error": "You must be registered for this event to provide feedback"
+                    "error": "You must be registered for this event to provide feedback",
+                    "is_student_logged_in": True,
+                    "student_data": student.model_dump()
                 }
             )
         
@@ -65,15 +66,16 @@ async def show_feedback_form(request: Request, event_id: str, student: Student =
                 "department": student_data.get("department", ""),
                 "semester": student_data.get("semester", "")
             }
-            
             return templates.TemplateResponse(
-                "client/feedback_form.html",
+            "client/feedback_form.html",
                 {
                     "request": request,
                     "event": event,
                     "student": student,
                     "registration": registration,
-                    "error": "Invalid registration - registration ID not found"
+                    "error": "Invalid registration - registration ID not found",
+                    "is_student_logged_in": True,
+                    "student_data": student.model_dump()
                 }
             )
           # Verify attendance_id is not null (student must have attended)
@@ -87,7 +89,6 @@ async def show_feedback_form(request: Request, event_id: str, student: Student =
                 "department": student_data.get("department", ""),
                 "semester": student_data.get("semester", "")
             }
-            
             return templates.TemplateResponse(
                 "client/feedback_form.html",
                 {
@@ -95,7 +96,9 @@ async def show_feedback_form(request: Request, event_id: str, student: Student =
                     "event": event,
                     "student": student,
                     "registration": registration,
-                    "error": "You must have attended this event to provide feedback"
+                    "error": "You must have attended this event to provide feedback",
+                    "is_student_logged_in": True,
+                    "student_data": student.model_dump()
                 }
             )
           # Check if student already submitted feedback
@@ -120,15 +123,16 @@ async def show_feedback_form(request: Request, event_id: str, student: Student =
         # Add conditional properties for template based on event data
         event['is_team_based'] = event.get('registration_mode') == 'team'
         event['is_paid'] = (event.get('registration_type') == 'paid' and 
-                           event.get('registration_fee', 0) > 0)
-
+                           event.get('registration_fee', 0) > 0)        
         return templates.TemplateResponse(
             "client/feedback_form.html",
             {
                 "request": request,
                 "event": event,
                 "student": student,
-                "registration": registration
+                "registration": registration,
+                "is_student_logged_in": True,
+                "student_data": student.model_dump()
             }
         )
 
@@ -164,8 +168,7 @@ async def submit_feedback(request: Request, event_id: str, student: Student = De
         student_data = await DatabaseOperations.find_one("students", {"enrollment_no": student.enrollment_no})
         if not student_data:
             raise HTTPException(status_code=404, detail="Student data not found")
-        
-        # Check if student is registered for this event using event_participations
+          # Check if student is registered for this event using event_participations
         event_participations = student_data.get('event_participations', {})
         if event_id not in event_participations:
             return templates.TemplateResponse(
@@ -174,7 +177,9 @@ async def submit_feedback(request: Request, event_id: str, student: Student = De
                     "request": request,
                     "event": event,
                     "student": student,
-                    "error": "You must be registered for this event to provide feedback"
+                    "error": "You must be registered for this event to provide feedback",
+                    "is_student_logged_in": True,
+                    "student_data": student.model_dump()
                 },
                 status_code=400
             )
@@ -389,8 +394,7 @@ async def show_feature_development(request: Request, event_id: str, student: Stu
         event = await EventStatusManager.get_event_by_id(event_id)
         if not event:
             raise HTTPException(status_code=404, detail="Event not found")
-        
-        # Get registration record
+          # Get registration record
         event_collection = await Database.get_event_collection(event_id)
         if event_collection is None:
             raise HTTPException(status_code=500, detail="Event collection not found")
@@ -405,8 +409,9 @@ async def show_feature_development(request: Request, event_id: str, student: Stu
                 {
                     "request": request,
                     "event": event,
-                    "student": student
-                }
+                    "student": student,
+                    "is_student_logged_in": True,
+                    "student_data": student.model_dump()                }
             )
 
         return templates.TemplateResponse(
@@ -415,7 +420,9 @@ async def show_feature_development(request: Request, event_id: str, student: Stu
                 "request": request,
                 "event": event,
                 "student": student,
-                "registration": registration
+                "registration": registration,
+                "is_student_logged_in": True,
+                "student_data": student.model_dump()
             }
         )
 

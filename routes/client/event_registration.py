@@ -140,13 +140,16 @@ async def show_registration_form(request: Request, event_id: str, student: Stude
                         return templates.TemplateResponse("client/existing_registration.html", {
                             "request": request,
                             "event": serialized_event,
-                            "student": student,                            "registration": {
+                            "student": student,
+                            "registration": {
                                 "registrar_id": existing_participation.get('registration_id'), 
                                 "registration_type": existing_participation.get('registration_type', 'individual'),
                                 "registration_datetime": existing_participation.get('registration_date'),
                                 "enrollment_no": student.enrollment_no
                             },
-                            "datetime": datetime
+                            "datetime": datetime,
+                            "is_student_logged_in": True,
+                            "student_data": student.model_dump()
                         })
         
         # Get current status using Event Status Manager
@@ -167,7 +170,9 @@ async def show_registration_form(request: Request, event_id: str, student: Stude
                     "student": student,
                     "error": "Registration has not started yet",
                     "start_date": registration_start,
-                    "datetime": datetime
+                    "datetime": datetime,
+                    "is_student_logged_in": True,
+                    "student_data": student.model_dump()
                 }
             )
         elif sub_status != "registration_open":
@@ -179,7 +184,9 @@ async def show_registration_form(request: Request, event_id: str, student: Stude
                     "event": event,
                     "student": student,
                     "error": "Registration deadline has passed",
-                    "datetime": datetime
+                    "datetime": datetime,
+                    "is_student_logged_in": True,
+                    "student_data": student.model_dump()
                 }
             )        # Registration is open - show the form with pre-filled student data
         # Check registration mode and add event constraints to template context
@@ -190,7 +197,9 @@ async def show_registration_form(request: Request, event_id: str, student: Stude
             "datetime": datetime,
             "is_team_registration": event.get('registration_mode') == 'team',
             "team_size_min": event.get('team_size_min', 2),
-            "team_size_max": event.get('team_size_max', 5)
+            "team_size_max": event.get('team_size_max', 5),
+            "is_student_logged_in": True,
+            "student_data": student.model_dump()
         }
           # For individual registration events, only check if already registered for THIS specific event
         # Students should be allowed to register for multiple different events
@@ -214,7 +223,9 @@ async def show_registration_form(request: Request, event_id: str, student: Stude
                             "registration_datetime": existing_participation.get('registration_date'),
                             "enrollment_no": student.enrollment_no
                         },
-                        "datetime": datetime
+                        "datetime": datetime,
+                        "is_student_logged_in": True,
+                        "student_data": student.model_dump()
                     })
         
         return templates.TemplateResponse(
@@ -258,7 +269,9 @@ async def submit_registration(request: Request, event_id: str, student: Student 
             "datetime": datetime,
             "is_team_registration": is_team_registration,
             "team_size_min": event.get('team_size_min', 2),
-            "team_size_max": event.get('team_size_max', 5)
+            "team_size_max": event.get('team_size_max', 5),
+            "is_student_logged_in": True,
+            "student_data": student.model_dump()
         }
 
         # Use authenticated student's data to pre-fill/validate enrollment number
@@ -437,7 +450,9 @@ async def save_individual_registration(registration: RegistrationForm, event_id:
                 "registration_datetime": existing_participation.get('registration_date'),
                 "enrollment_no": student.enrollment_no
             },
-            "datetime": datetime
+            "datetime": datetime,
+            "is_student_logged_in": True,
+            "student_data": student.model_dump()
         })
 
     # Generate only registration ID at registration time
@@ -473,9 +488,7 @@ async def save_individual_registration(registration: RegistrationForm, event_id:
         "events",
         {"event_id": event_id},
         {"$set": {f"registrations.{registration_id}": student.enrollment_no}}
-    )
-
-    # Check if event is paid
+    )    # Check if event is paid
     if event.get('registration_type') == 'paid' and event.get('registration_fee', 0) > 0:
         # Redirect to payment page
         return templates.TemplateResponse("client/payment_page.html", {
@@ -485,7 +498,9 @@ async def save_individual_registration(registration: RegistrationForm, event_id:
             "total_amount": event.get('registration_fee', 0),
             "student_name": registration.full_name,
             "enrollment_no": registration.enrollment_no,
-            "is_team_registration": False
+            "is_team_registration": False,
+            "is_student_logged_in": True,
+            "student_data": student.model_dump()
         })
 
     # Send registration confirmation email for free events
@@ -507,7 +522,9 @@ async def save_individual_registration(registration: RegistrationForm, event_id:
         "request": request,
         "registrar_id": registration_id,
         "event_name": event.get("event_name", event_id),
-        "is_team_registration": False
+        "is_team_registration": False,
+        "is_student_logged_in": True,
+        "student_data": student.model_dump()
     })
 
 async def save_team_registration(team_registration: TeamRegistrationForm, event_id: str, event: dict, student, valid_participants: list, request: Request):
@@ -630,7 +647,10 @@ async def save_team_registration(team_registration: TeamRegistrationForm, event_
                 "leader_name": team_registration.full_name,
                 "leader_enrollment": team_registration.enrollment_no,
                 "participants": valid_participants
-            }        })    # Send registration confirmation emails for free team events
+            },
+            "is_student_logged_in": True,
+            "student_data": student.model_dump()
+        })    # Send registration confirmation emails for free team events
     try:
         # Send email to team leader
         await email_service.send_registration_confirmation(
@@ -662,13 +682,8 @@ async def save_team_registration(team_registration: TeamRegistrationForm, event_
         "registrar_id": team_registration_id,
         "event_name": event.get("event_name", event_id),
         "is_team_registration": True,
-        "team_info": {
-            "team_name": team_registration.team_name,
-            "participant_count": team_registration.total_team_size,
-            "leader_name": team_registration.full_name,
-            "leader_enrollment": team_registration.enrollment_no,
-            "participants": valid_participants
-        }
+        "is_student_logged_in": True,
+        "student_data": student.model_dump()
     })
 
 @router.get("/api/validate-participant")
@@ -831,13 +846,15 @@ async def confirm_payment(request: Request, event_id: str, student: Student = De
                         "participants": participants                    }
         
         # Redirect to success page with payment completion message
-        return templates.TemplateResponse("client/registration_success.html", {
+            return templates.TemplateResponse("client/registration_success.html", {
             "request": request,
             "registrar_id": registration_id,
             "event_name": event.get("event_name", event_id),
             "is_team_registration": is_team_registration,
             "team_info": team_info,
-            "payment_completed": True
+            "payment_completed": True,
+            "is_student_logged_in": True,
+            "student_data": student_data
         })
         
         # Send payment confirmation email
@@ -867,7 +884,9 @@ async def confirm_payment(request: Request, event_id: str, student: Student = De
             "event_name": event.get("event_name", event_id),
             "is_team_registration": is_team_registration,
             "team_info": team_info,
-            "payment_completed": True
+            "payment_completed": True,
+            "is_student_logged_in": True,
+            "student_data": student_data
         })
         
     except HTTPException:
@@ -1086,8 +1105,7 @@ async def manage_team_get(request: Request, event_id: str, student: Student = De
                 participant_enrollments = team_details.get('participants', [])
                 for enrollment in participant_enrollments:
                     participant_data = await DatabaseOperations.find_one("students", {"enrollment_no": enrollment})
-                    if participant_data:
-                        team_participants.append({
+                    if participant_data:                        team_participants.append({
                             "enrollment_no": enrollment,
                             "full_name": participant_data.get('full_name', ''),
                             "email": participant_data.get('email', ''),
@@ -1095,7 +1113,46 @@ async def manage_team_get(request: Request, event_id: str, student: Student = De
                             "department": participant_data.get('department', ''),
                             "semester": participant_data.get('semester', '')
                         })
-          # Serialize ObjectIDs in event data to avoid JSON serialization issues
+        
+        # Create team_info structure that matches template expectations
+        team_info = None
+        if team_details:
+            # Get leader data
+            leader_data = await DatabaseOperations.find_one("students", {"enrollment_no": student.enrollment_no})
+            participant_count = len(team_participants) + 1  # +1 for leader
+            
+            # Calculate departments count
+            departments = set()
+            if leader_data and leader_data.get('department'):
+                departments.add(leader_data.get('department'))
+            for participant in team_participants:
+                if participant.get('department'):
+                    departments.add(participant.get('department'))
+            departments_count = len(departments) if departments else 1
+              # Format registration date
+            registration_date = team_details.get('registration_date')
+            if registration_date:
+                if isinstance(registration_date, str):
+                    formatted_date = registration_date[:10]  # Just the date part
+                elif hasattr(registration_date, 'strftime'):  # datetime object
+                    formatted_date = registration_date.strftime('%Y-%m-%d')
+                else:
+                    formatted_date = str(registration_date)  # Convert anything else to string
+            else:
+                formatted_date = 'N/A'
+            
+            team_info = {
+                "team_name": team_details.get('team_name', 'Unknown Team'),
+                "leader_name": leader_data.get('full_name', student.full_name) if leader_data else student.full_name,
+                "leader_enrollment": student.enrollment_no,
+                "leader_department": leader_data.get('department', 'N/A') if leader_data else 'N/A',
+                "leader_email": leader_data.get('email', student.email) if leader_data else student.email,
+                "leader_mobile": leader_data.get('mobile_no', 'N/A') if leader_data else 'N/A',
+                "participant_count": participant_count,
+                "departments_count": departments_count,
+                "registration_date": formatted_date,
+                "participants": team_participants
+            }        # Serialize ObjectIDs in event data to avoid JSON serialization issues
         serialized_event = {}
         for key, value in event.items():
             if isinstance(value, ObjectId):
@@ -1109,9 +1166,12 @@ async def manage_team_get(request: Request, event_id: str, student: Student = De
             "student": student,
             "team_details": team_details,
             "team_participants": team_participants,
+            "team_info": team_info,
             "team_registration_id": team_registration_id,
             "success": request.query_params.get("success"),
-            "error": request.query_params.get("error")
+            "error": request.query_params.get("error"),
+            "is_student_logged_in": True,
+            "student_data": student.model_dump()
         })
         
     except HTTPException:

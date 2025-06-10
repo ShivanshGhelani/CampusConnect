@@ -429,12 +429,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     <input type="text" name="participant_${participantCount}_department" id="participant_${participantCount}_department"
                         class="participant-department block w-full px-3 py-2 text-gray-900 border border-gray-300 rounded-md shadow-sm bg-gray-100"
                         readonly placeholder="Will be auto-filled">
-                </div>
+                </div>                
                 <div>
-                    <label for="participant_${participantCount}_semester" class="block text-sm font-semibold text-gray-700 mb-2">Semester</label>
-                    <input type="text" name="participant_${participantCount}_semester" id="participant_${participantCount}_semester"
-                        class="participant-semester block w-full px-3 py-2 text-gray-900 border border-gray-300 rounded-md shadow-sm bg-gray-100"
-                        readonly placeholder="Will be auto-filled">
+                    <label for="participant_${participantCount}_semester" class="block text-sm font-semibold text-gray-700 mb-2">Semester & Year</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <input type="text" name="participant_${participantCount}_semester" id="participant_${participantCount}_semester"
+                            class="participant-semester block w-full px-3 py-2 text-gray-900 border border-gray-300 rounded-md shadow-sm bg-gray-100"
+                            readonly placeholder="Semester">
+                        <input type="text" name="participant_${participantCount}_year" id="participant_${participantCount}_year"
+                            class="participant-year block w-full px-3 py-2 text-gray-900 border border-gray-300 rounded-md shadow-sm bg-gray-100"
+                            readonly placeholder="Year">
+                    </div>
                 </div>
             </div>
         `;
@@ -508,13 +513,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const mobileInput = document.getElementById(`participant_${participantId}_mobile`);
         const departmentInput = document.getElementById(`participant_${participantId}_department`);
         const semesterInput = document.getElementById(`participant_${participantId}_semester`);
-        const errorDiv = input.nextElementSibling;
-          // Clear previous data
+        const yearInput = document.getElementById(`participant_${participantId}_year`);
+        const errorDiv = input.nextElementSibling;        // Clear previous data
         if (nameInput) nameInput.value = '';
         if (emailInput) emailInput.value = '';
         if (mobileInput) mobileInput.value = '';
         if (departmentInput) departmentInput.value = '';
         if (semesterInput) semesterInput.value = '';
+        if (yearInput) yearInput.value = '';
         if (statusElement) statusElement.textContent = '';
         if (errorDiv) errorDiv.classList.add('hidden');
         
@@ -553,13 +559,20 @@ document.addEventListener('DOMContentLoaded', function() {
             const data = await response.json();
             
             console.log('Validation response:', data);
-              if (data.success) {
-                // Always fill in the data regardless of department
+              if (data.success) {                // Always fill in the data regardless of department
                 if (nameInput) nameInput.value = data.student.full_name || '';
                 if (emailInput) emailInput.value = data.student.email || '';
                 if (mobileInput) mobileInput.value = data.student.mobile_no || '';
                 if (departmentInput) departmentInput.value = data.student.department || '';
                 if (semesterInput) semesterInput.value = data.student.semester || '';
+                
+                // Calculate and set year from semester
+                if (yearInput && data.student.semester) {
+                    const semester = parseInt(data.student.semester);
+                    const year = (semester >= 1 && semester <= 8) ? Math.floor((semester - 1) / 2) + 1 : '';
+                    yearInput.value = year;
+                }
+                
                 if (statusElement) statusElement.innerHTML = '<span class="text-green-600">(✓ Valid)</span>';
                 
                 // Log successful data filling for debugging
@@ -568,7 +581,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     email: data.student.email,
                     mobile: data.student.mobile_no,
                     department: data.student.department,
-                    semester: data.student.semester
+                    semester: data.student.semester,
+                    calculated_year: yearInput ? yearInput.value : 'N/A'
                 });
                   // Check for registration conflicts
                 if (data.has_conflict && data.conflicts) {

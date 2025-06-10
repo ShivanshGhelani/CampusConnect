@@ -1421,7 +1421,7 @@ async def mark_attendance_post(request: Request, event_id: str, student: Student
                     "request": request,
                     "event": event,
                     "student": student,
-                    "error": f"Invalid registration ID. Your registration ID for this event is: {student_registration_id}",
+                    "error": "Invalid registration - registration ID not found",
                     "form_data": {"student_name": student_name, "registration_id": registration_id},
                     "is_student_logged_in": True,
                     "student_data": student.model_dump() if student else None
@@ -1511,8 +1511,7 @@ async def mark_attendance_post(request: Request, event_id: str, student: Student
                     "request": request,
                     "event": event,
                     "student": student,
-                    "error": message or "Failed to mark attendance. Please try again.",
-                    "form_data": {"student_name": student_name, "registration_id": registration_id},
+                    "error": message,
                     "is_student_logged_in": True,
                     "student_data": student.model_dump() if student else None
                 }
