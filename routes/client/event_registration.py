@@ -15,7 +15,7 @@ from models.event import TeamRegistration
 from config.database import Database
 from utils.template_context import get_template_context
 from utils.id_generator import generate_registration_id, generate_team_registration_id, generate_attendance_id, generate_feedback_id, generate_certificate_id
-from dependencies.auth import require_student_login
+from dependencies.auth import require_student_login, get_current_student_optional
 
 router = APIRouter(prefix="/client")
 templates = Jinja2Templates(directory="templates")
@@ -140,20 +140,22 @@ async def show_registration_form(request: Request, event_id: str, student: Stude
                         return templates.TemplateResponse("client/existing_registration.html", {
                             "request": request,
                             "event": serialized_event,
-                            "student": student,                            "registration": {
+                            "student": student,
+                            "registration": {
                                 "registrar_id": existing_participation.get('registration_id'), 
                                 "registration_type": existing_participation.get('registration_type', 'individual'),
                                 "registration_datetime": existing_participation.get('registration_date'),
                                 "enrollment_no": student.enrollment_no
                             },
-                            "datetime": datetime
+                            "datetime": datetime,
+                            "is_student_logged_in": True,
+                            "student_data": student.model_dump() if student else None
                         })
         
         # Get current status using Event Status Manager
         current_time = datetime.now()
         status, sub_status = await EventStatusManager._calculate_event_status(event, current_time)
-        
-        # Check if registration is allowed
+          # Check if registration is allowed
         if sub_status == "registration_not_started":
             registration_start = event.get('registration_start_date')
             if isinstance(registration_start, str):
@@ -167,7 +169,9 @@ async def show_registration_form(request: Request, event_id: str, student: Stude
                     "student": student,
                     "error": "Registration has not started yet",
                     "start_date": registration_start,
-                    "datetime": datetime
+                    "datetime": datetime,
+                    "is_student_logged_in": True,
+                    "student_data": student.model_dump() if student else None
                 }
             )
         elif sub_status != "registration_open":
@@ -179,10 +183,13 @@ async def show_registration_form(request: Request, event_id: str, student: Stude
                     "event": event,
                     "student": student,
                     "error": "Registration deadline has passed",
-                    "datetime": datetime
+                    "datetime": datetime,
+                    "is_student_logged_in": True,
+                    "student_data": student.model_dump() if student else None
                 }
-            )        # Registration is open - show the form with pre-filled student data
-        # Check registration mode and add event constraints to template context
+            )
+        
+        # Registration is open - show the form with pre-filled student data        # Check registration mode and add event constraints to template context
         template_context = {
             "request": request,
             "event": event,
@@ -190,7 +197,9 @@ async def show_registration_form(request: Request, event_id: str, student: Stude
             "datetime": datetime,
             "is_team_registration": event.get('registration_mode') == 'team',
             "team_size_min": event.get('team_size_min', 2),
-            "team_size_max": event.get('team_size_max', 5)
+            "team_size_max": event.get('team_size_max', 5),
+            "is_student_logged_in": True,
+            "student_data": student.model_dump() if student else None
         }
           # For individual registration events, only check if already registered for THIS specific event
         # Students should be allowed to register for multiple different events
@@ -201,8 +210,7 @@ async def show_registration_form(request: Request, event_id: str, student: Stude
                 event_participations = student_data.get('event_participations', {})
                 if event_id in event_participations:
                     # Student is already registered for THIS event - show existing registration
-                    existing_participation = event_participations[event_id]
-                      # Convert datetime objects to ISO format strings for template
+                    existing_participation = event_participations[event_id]                    # Convert datetime objects to ISO format strings for template
                     serialized_event = {k: v.isoformat() if isinstance(v, datetime) else v for k, v in event.items()}
                     return templates.TemplateResponse("client/existing_registration.html", {
                         "request": request,
@@ -214,7 +222,9 @@ async def show_registration_form(request: Request, event_id: str, student: Stude
                             "registration_datetime": existing_participation.get('registration_date'),
                             "enrollment_no": student.enrollment_no
                         },
-                        "datetime": datetime
+                        "datetime": datetime,
+                        "is_student_logged_in": True,
+                        "student_data": student.model_dump() if student else None
                     })
         
         return templates.TemplateResponse(
@@ -248,8 +258,7 @@ async def submit_registration(request: Request, event_id: str, student: Student 
 
         # Check if it's team or individual registration
         is_team_registration = event.get('registration_mode') == 'team'
-        
-        # Create template context for error responses
+          # Create template context for error responses
         template_context = {
             "request": request,
             "event": event,
@@ -258,7 +267,9 @@ async def submit_registration(request: Request, event_id: str, student: Student 
             "datetime": datetime,
             "is_team_registration": is_team_registration,
             "team_size_min": event.get('team_size_min', 2),
-            "team_size_max": event.get('team_size_max', 5)
+            "team_size_max": event.get('team_size_max', 5),
+            "is_student_logged_in": True,
+            "student_data": student.model_dump() if student else None
         }
 
         # Use authenticated student's data to pre-fill/validate enrollment number
@@ -437,7 +448,9 @@ async def save_individual_registration(registration: RegistrationForm, event_id:
                 "registration_datetime": existing_participation.get('registration_date'),
                 "enrollment_no": student.enrollment_no
             },
-            "datetime": datetime
+            "datetime": datetime,
+            "is_student_logged_in": True,
+            "student_data": student.model_dump() if student else None
         })
 
     # Generate only registration ID at registration time
@@ -476,8 +489,7 @@ async def save_individual_registration(registration: RegistrationForm, event_id:
     )
 
     # Check if event is paid
-    if event.get('registration_type') == 'paid' and event.get('registration_fee', 0) > 0:
-        # Redirect to payment page
+    if event.get('registration_type') == 'paid' and event.get('registration_fee', 0) > 0:        # Redirect to payment page
         return templates.TemplateResponse("client/payment_page.html", {
             "request": request,
             "event": event,
@@ -485,7 +497,9 @@ async def save_individual_registration(registration: RegistrationForm, event_id:
             "total_amount": event.get('registration_fee', 0),
             "student_name": registration.full_name,
             "enrollment_no": registration.enrollment_no,
-            "is_team_registration": False
+            "is_team_registration": False,
+            "is_student_logged_in": True,
+            "student_data": student.model_dump() if student else None
         })
 
     # Send registration confirmation email for free events
@@ -497,7 +511,7 @@ async def save_individual_registration(registration: RegistrationForm, event_id:
             event_date=event.get("start_date"),
             event_venue=event.get("location"),
             registration_id=registration_id
-        )
+        )    
     except Exception as e:
         print(f"Failed to send registration confirmation email: {str(e)}")
         # Continue with the response even if email fails
@@ -507,7 +521,9 @@ async def save_individual_registration(registration: RegistrationForm, event_id:
         "request": request,
         "registrar_id": registration_id,
         "event_name": event.get("event_name", event_id),
-        "is_team_registration": False
+        "is_team_registration": False,
+        "is_student_logged_in": True,
+        "student_data": student.model_dump() if student else None
     })
 
 async def save_team_registration(team_registration: TeamRegistrationForm, event_id: str, event: dict, student, valid_participants: list, request: Request):
@@ -614,8 +630,7 @@ async def save_team_registration(team_registration: TeamRegistrationForm, event_
     if event.get('registration_type') == 'paid' and event.get('registration_fee', 0) > 0:
         # Calculate total amount for team (fee per member)
         total_amount = event.get('registration_fee', 0) * team_registration.total_team_size
-        
-        # Redirect to payment page
+          # Redirect to payment page
         return templates.TemplateResponse("client/payment_page.html", {
             "request": request,
             "event": event,
@@ -630,7 +645,10 @@ async def save_team_registration(team_registration: TeamRegistrationForm, event_
                 "leader_name": team_registration.full_name,
                 "leader_enrollment": team_registration.enrollment_no,
                 "participants": valid_participants
-            }        })    # Send registration confirmation emails for free team events
+            },
+            "is_student_logged_in": True,
+            "student_data": student.model_dump() if student else None
+        })# Send registration confirmation emails for free team events
     try:
         # Send email to team leader
         await email_service.send_registration_confirmation(
@@ -654,9 +672,7 @@ async def save_team_registration(team_registration: TeamRegistrationForm, event_
                 )
     except Exception as e:
         print(f"Failed to send team registration confirmation emails: {str(e)}")
-        # Continue with the response even if email fails
-
-    # For free events, show success page directly
+        # Continue with the response even if email fails    # For free events, show success page directly
     return templates.TemplateResponse("client/registration_success.html", {
         "request": request,
         "registrar_id": team_registration_id,
@@ -668,7 +684,9 @@ async def save_team_registration(team_registration: TeamRegistrationForm, event_
             "leader_name": team_registration.full_name,
             "leader_enrollment": team_registration.enrollment_no,
             "participants": valid_participants
-        }
+        },
+        "is_student_logged_in": True,
+        "student_data": student.model_dump() if student else None
     })
 
 @router.get("/api/validate-participant")
@@ -829,16 +847,17 @@ async def confirm_payment(request: Request, event_id: str, student: Student = De
                         "leader_name": student_data.get('full_name'),
                         "leader_enrollment": enrollment_no,
                         "participants": participants                    }
-        
-        # Redirect to success page with payment completion message
-        return templates.TemplateResponse("client/registration_success.html", {
-            "request": request,
-            "registrar_id": registration_id,
-            "event_name": event.get("event_name", event_id),
-            "is_team_registration": is_team_registration,
-            "team_info": team_info,
-            "payment_completed": True
-        })
+          # Redirect to success page with payment completion message
+            return templates.TemplateResponse("client/registration_success.html", {
+                "request": request,
+                "registrar_id": registration_id,
+                "event_name": event.get("event_name", event_id),
+                "is_team_registration": is_team_registration,
+                "team_info": team_info,
+                "payment_completed": True,
+                "is_student_logged_in": True,
+                "student_data": student_data
+            })
         
         # Send payment confirmation email
         try:
@@ -860,14 +879,15 @@ async def confirm_payment(request: Request, event_id: str, student: Student = De
         except Exception as e:
             print(f"Failed to send payment confirmation email: {str(e)}")
             # Continue even if email fails
-        
         return templates.TemplateResponse("client/registration_success.html", {
             "request": request,
             "registrar_id": registration_id,
             "event_name": event.get("event_name", event_id),
             "is_team_registration": is_team_registration,
             "team_info": team_info,
-            "payment_completed": True
+            "payment_completed": True,
+            "is_student_logged_in": True,
+            "student_data": student_data
         })
         
     except HTTPException:
@@ -1346,4 +1366,43 @@ async def update_team_participant(event_id: str, team_registration_id: str, form
             {"enrollment_no": enrollment_no},
             {"$set": student_data_updates}
         )
+        
+@router.get("/debug/auth")
+async def debug_auth(request: Request):
+    """Debug route to test authentication context"""
+    try:
+        # Test authentication
+        student = await get_current_student_optional(request)
+        is_student_logged_in = student is not None
+        
+        # Create debug context
+        debug_info = {
+            "session": dict(request.session) if hasattr(request, 'session') else {},
+            "is_student_logged_in": is_student_logged_in,
+            "student_data": student.model_dump() if student else None,
+            "student_object": str(student) if student else None
+        }
+        
+        # Simple HTML response
+        html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Authentication Debug</title>
+        </head>
+        <body>
+            <h1>Authentication Debug Info</h1>
+            <pre>{debug_info}</pre>
+            <hr>
+            <p>Navigation should show: {'Profile Menu' if is_student_logged_in else 'Login/Register Buttons'}</p>
+            <a href="/client/events">Back to Events</a>
+        </body>
+        </html>
+        """
+        
+        from fastapi.responses import HTMLResponse
+        return HTMLResponse(content=html)
+        
+    except Exception as e:
+        return HTMLResponse(content=f"<h1>Debug Error</h1><p>{str(e)}</p>")
 

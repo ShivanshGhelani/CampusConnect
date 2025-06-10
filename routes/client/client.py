@@ -3,7 +3,7 @@ import re
 import logging
 from fastapi import APIRouter, Request, HTTPException, Response, Depends, status, Form
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, HTMLResponse
 from datetime import datetime, timedelta
 from utils.db_operations import DatabaseOperations
 from utils.email_service import EmailService
@@ -76,7 +76,8 @@ async def index(request: Request):
         
         upcoming_events.sort(key=lambda x: safe_sort_key(x, 'start_datetime'))
         ongoing_events.sort(key=lambda x: safe_sort_key(x, 'end_datetime'))
-          # Calculate event type counts for the homepage
+        
+        # Calculate event type counts for the homepage
         all_events = upcoming_events + ongoing_events
         event_type_counts = {}
         for event in all_events:
@@ -85,15 +86,14 @@ async def index(request: Request):
         
         # Get real platform statistics from database
         platform_stats = await StatisticsManager.get_platform_statistics()
-        
-        # Format statistics for display
+          # Format statistics for display
         formatted_stats = {
             "total_events": StatisticsManager.format_stat_number(platform_stats["total_events"]),
             "active_students": StatisticsManager.format_stat_number(platform_stats["active_students"]),
             "certificates_issued": StatisticsManager.format_stat_number(platform_stats["certificates_issued"]),
             "platform_rating": StatisticsManager.format_rating(platform_stats["platform_rating"])
         }
-          
+        
         # Get template context
         template_context = await get_template_context(request)
         
@@ -171,9 +171,10 @@ async def list_events(request: Request, filter: str = "upcoming"):
                     try:
                         event[date_field] = datetime.fromisoformat(value.replace('Z', '+00:00'))
                     except (ValueError, AttributeError) as e:
-                        event[date_field] = current_date  # Fallback to current date
-                elif value is None:
-                    event[date_field] = current_date  # Handle None values        # Sort events with safe key function
+                        event[date_field] = current_date  # Fallback to current date                elif value is None:
+                    event[date_field] = current_date  # Handle None values
+        
+        # Sort events with safe key function
         def safe_sort_key(event, field):
             value = event.get(field, current_date)
             # Always return a datetime object
@@ -187,7 +188,8 @@ async def list_events(request: Request, filter: str = "upcoming"):
                     return current_date
             else:
                 return current_date
-          # Sort events
+        
+        # Sort events
         try:
             if filter in ["upcoming", "all"]:
                 # For upcoming events or all events, sort by start date
@@ -213,10 +215,10 @@ async def list_events(request: Request, filter: str = "upcoming"):
                         try:
                             event[date_field] = datetime.fromisoformat(event[date_field].replace('Z', '+00:00'))
                         except (ValueError, AttributeError):
-                            event[date_field] = current_date  # Fallback to current date
-                    elif event.get(date_field) is None:
-                        event[date_field] = current_date  # Handle None values
-              # Calculate event type counts
+                            event[date_field] = current_date  # Fallback to current date                elif event.get(date_field) is None:
+                    event[date_field] = current_date  # Handle None values
+            
+            # Calculate event type counts
             event_type_counts = {}
             for event in all_events:
                 event_type = event.get('event_type', 'other').lower()
@@ -1205,19 +1207,19 @@ async def mark_attendance_get(request: Request, event_id: str, student: Student 
         if not event:
             raise HTTPException(status_code=404, detail="Event not found")
         
-        # Check if event is currently ongoing and attendance is available
-        if event.get('sub_status') != EventSubStatus.EVENT_STARTED.value:
+        # Check if event is currently ongoing and attendance is available        if event.get('sub_status') != EventSubStatus.EVENT_STARTED.value:
             return templates.TemplateResponse(
                 "client/mark_attendance.html",
                 {
                     "request": request,
                     "event": event,
                     "student": student,
-                    "error": "Attendance marking is only available during the event period"
+                    "error": "Attendance marking is only available during the event period",
+                    "is_student_logged_in": True,
+                    "student_data": student.model_dump() if student else None
                 }
             )
-        
-        # Check if student is registered for this event using new event_participations structure
+          # Check if student is registered for this event using new event_participations structure
         student_data = await DatabaseOperations.find_one("students", {"enrollment_no": student.enrollment_no})
         if not student_data:
             return templates.TemplateResponse(
@@ -1226,7 +1228,9 @@ async def mark_attendance_get(request: Request, event_id: str, student: Student 
                     "request": request,
                     "event": event,
                     "student": student,
-                    "error": "Student data not found"
+                    "error": "Student data not found",
+                    "is_student_logged_in": True,
+                    "student_data": student.model_dump() if student else None
                 }
             )
           # Check event_participations for this event
@@ -1239,6 +1243,7 @@ async def mark_attendance_get(request: Request, event_id: str, student: Student 
                     "request": request,
                     "event": event,
                     "student": student,
+                    "is_student_logged_in": True,
                     "page_context": "attendance"
                 }
             )
@@ -1247,15 +1252,16 @@ async def mark_attendance_get(request: Request, event_id: str, student: Student 
         participation = event_participations[event_id]
         registration_id = participation.get('registration_id')
         
-        # Verify registration_id is not null
-        if not registration_id:
-            return templates.TemplateResponse(
+        # Verify registration_id is not null        if not registration_id:
+        return templates.TemplateResponse(
                 "client/mark_attendance.html",
                 {
                     "request": request,
                     "event": event,
                     "student": student,
-                    "error": "Invalid registration - registration ID not found"
+                    "error": "Invalid registration - registration ID not found",
+                    "is_student_logged_in": True,
+                    "student_data": student.model_dump() if student else None
                 }
             )
         
@@ -1271,8 +1277,7 @@ async def mark_attendance_get(request: Request, event_id: str, student: Student 
                 "mobile_no": student_data.get("mobile_no", ""),
                 "department": student_data.get("department", ""),
                 "semester": student_data.get("semester", ""),
-                "registration_type": participation.get("registration_type", "individual")
-            }
+                "registration_type": participation.get("registration_type", "individual")            }
             
             return templates.TemplateResponse(
                 "client/attendance_confirmation.html",
@@ -1282,7 +1287,9 @@ async def mark_attendance_get(request: Request, event_id: str, student: Student 
                     "student": student,
                     "registration": registration,
                     "attendance": {"attendance_id": existing_attendance_id},
-                    "already_marked": True
+                    "already_marked": True,
+                    "is_student_logged_in": True,
+                    "student_data": student.model_dump() if student else None
                 }
             )
         
@@ -1297,7 +1304,6 @@ async def mark_attendance_get(request: Request, event_id: str, student: Student 
             "semester": student_data.get("semester", ""),
             "registration_type": participation.get("registration_type", "individual")
         }
-        
         return templates.TemplateResponse(
             "client/mark_attendance.html",
             {
@@ -1305,7 +1311,9 @@ async def mark_attendance_get(request: Request, event_id: str, student: Student 
                 "event": event,
                 "student": student,
                 "registration": registration,
-                "auto_filled": True  # Indicate form should be auto-filled
+                "auto_filled": True,  # Indicate form should be auto-filled
+                "is_student_logged_in": True,
+                "student_data": student.model_dump() if student else None
             }
         )
         
@@ -1341,8 +1349,7 @@ async def mark_attendance_post(request: Request, event_id: str, student: Student
         if not event:
             raise HTTPException(status_code=404, detail="Event not found")
         
-        # Check if event is currently ongoing
-        if event.get('sub_status') != EventSubStatus.EVENT_STARTED.value:
+        # Check if event is currently ongoing        if event.get('sub_status') != EventSubStatus.EVENT_STARTED.value:
             return templates.TemplateResponse(
                 "client/mark_attendance.html",
                 {
@@ -1350,12 +1357,13 @@ async def mark_attendance_post(request: Request, event_id: str, student: Student
                     "event": event,
                     "student": student,
                     "error": "Attendance marking is only available during the event period",
-                    "form_data": {"student_name": student_name, "registration_id": registration_id}
+                    "form_data": {"student_name": student_name, "registration_id": registration_id},
+                    "is_student_logged_in": True,
+                    "student_data": student.model_dump() if student else None
                 }
             )
         
-        # Validate input
-        if not student_name or not registration_id:
+        # Validate input        if not student_name or not registration_id:
             return templates.TemplateResponse(
                 "client/mark_attendance.html",
                 {
@@ -1363,11 +1371,11 @@ async def mark_attendance_post(request: Request, event_id: str, student: Student
                     "event": event,
                     "student": student,
                     "error": "Please fill in all required fields",
-                    "form_data": {"student_name": student_name, "registration_id": registration_id}
+                    "form_data": {"student_name": student_name, "registration_id": registration_id},
+                    "is_student_logged_in": True,
+                    "student_data": student.model_dump() if student else None
                 }
-            )
-
-        # Get student data to access participation details
+            )        # Get student data to access participation details
         db_ops = DatabaseOperations()
         student_data = await db_ops.find_one("students", {"enrollment_no": student.enrollment_no})
         if not student_data:
@@ -1378,9 +1386,12 @@ async def mark_attendance_post(request: Request, event_id: str, student: Student
                     "event": event,
                     "student": student,
                     "error": "Student data not found",
-                    "form_data": {"student_name": student_name, "registration_id": registration_id}
-                }
-            )        # Check if student is registered for this event
+                    "form_data": {"student_name": student_name, "registration_id": registration_id},
+                    "is_student_logged_in": True,
+                    "student_data": student.model_dump() if student else None            }
+            )
+        
+        # Check if student is registered for this event
         event_participations = student_data.get('event_participations', {})
         if event_id not in event_participations:
             # Redirect to user-friendly not registered page
@@ -1390,7 +1401,9 @@ async def mark_attendance_post(request: Request, event_id: str, student: Student
                     "request": request,
                     "event": event,
                     "student": student,
-                    "page_context": "attendance"
+                    "page_context": "attendance",
+                    "is_student_logged_in": True,
+                    "student_data": student.model_dump() if student else None
                 }
             )
         
@@ -1406,7 +1419,9 @@ async def mark_attendance_post(request: Request, event_id: str, student: Student
                     "event": event,
                     "student": student,
                     "error": f"Invalid registration ID. Your registration ID for this event is: {student_registration_id}",
-                    "form_data": {"student_name": student_name, "registration_id": registration_id}
+                    "form_data": {"student_name": student_name, "registration_id": registration_id},
+                    "is_student_logged_in": True,
+                    "student_data": student.model_dump() if student else None
                 }
             )
         
@@ -1420,9 +1435,7 @@ async def mark_attendance_post(request: Request, event_id: str, student: Student
             "department": student_data.get("department", ""),
             "semester": student_data.get("semester", ""),
             "registration_type": participation.get("registration_type", "individual")
-        }
-
-        # Verify student name matches registration
+        }        # Verify student name matches registration
         registered_name = registration.get("full_name", "").strip().lower()
         provided_name = student_name.strip().lower()
         
@@ -1434,11 +1447,11 @@ async def mark_attendance_post(request: Request, event_id: str, student: Student
                     "event": event,
                     "student": student,
                     "error": f"Name mismatch. Registered name: {registration.get('full_name')}",
-                    "form_data": {"student_name": student_name, "registration_id": registration_id}
+                    "form_data": {"student_name": student_name, "registration_id": registration_id},
+                    "is_student_logged_in": True,
+                    "student_data": student.model_dump() if student else None
                 }
-            )
-
-        # Check if attendance already marked
+            )        # Check if attendance already marked
         existing_attendance_id = participation.get('attendance_id')
         if existing_attendance_id:
             return templates.TemplateResponse(
@@ -1449,7 +1462,9 @@ async def mark_attendance_post(request: Request, event_id: str, student: Student
                     "student": student,
                     "registration": registration,
                     "attendance": {"attendance_id": existing_attendance_id},
-                    "already_marked": True
+                    "already_marked": True,
+                    "is_student_logged_in": True,
+                    "student_data": student.model_dump() if student else None
                 }
             )
         
@@ -1478,8 +1493,7 @@ async def mark_attendance_post(request: Request, event_id: str, student: Student
             enrollment_no=student.enrollment_no,
             full_name=registration.get("full_name"),
             event_id=event_id
-        )
-        
+        )        
         # Mark attendance in both student and event data
         success, attendance_id, message = await mark_attendance(
             enrollment_no=student.enrollment_no,
@@ -1495,7 +1509,9 @@ async def mark_attendance_post(request: Request, event_id: str, student: Student
                     "event": event,
                     "student": student,
                     "error": message or "Failed to mark attendance. Please try again.",
-                    "form_data": {"student_name": student_name, "registration_id": registration_id}
+                    "form_data": {"student_name": student_name, "registration_id": registration_id},
+                    "is_student_logged_in": True,
+                    "student_data": student.model_dump() if student else None
                 }
             )
         
@@ -1513,8 +1529,7 @@ async def mark_attendance_post(request: Request, event_id: str, student: Student
         except Exception as e:
             print(f"Failed to send attendance confirmation email: {str(e)}")
             # Continue even if email fails
-        
-        # Return success response
+          # Return success response
         return templates.TemplateResponse(
             "client/attendance_success.html",
             {
@@ -1522,8 +1537,10 @@ async def mark_attendance_post(request: Request, event_id: str, student: Student
                 "event": event,
                 "student": student,
                 "registration": registration,
-                "attendance": attendance_record,
-                "attendance_time": attendance_time
+                "attendance": attendance_record,                
+                "attendance_time": attendance_time,
+                "is_student_logged_in": True,
+                "student_data": student.model_dump() if student else None
             }
         )
         
@@ -1544,7 +1561,9 @@ async def mark_attendance_post(request: Request, event_id: str, student: Student
                 "event": event if 'event' in locals() else None,
                 "student": student,
                 "error": "An unexpected error occurred. Please try again.",
-                "form_data": {"student_name": form_data.get("student_name", ""), "registration_id": form_data.get("registration_id", "")}
+                "form_data": {"student_name": form_data.get("student_name", ""), "registration_id": form_data.get("registration_id", "")},
+                "is_student_logged_in": True,
+                "student_data": student.model_dump() if student else None
             }
         )
 
@@ -1599,3 +1618,92 @@ async def validate_registration_api(request: Request, registration_id: str, even
     except Exception as e:
         print(f"Error in validate_registration_api: {str(e)}")
         return {"success": False, "message": "An error occurred while validating registration"}
+   
+
+# Add debug route for testing authentication
+@router.get("/debug/auth")
+async def debug_auth_route(request: Request):
+    """Debug endpoint to check authentication state"""
+    
+    print("=== DEBUG AUTH ENDPOINT ===")
+    print(f"Session keys: {list(request.session.keys())}")
+    print(f"Session data: {dict(request.session)}")
+    
+    # Test our auth function
+    try:
+        student = await get_current_student_optional(request)
+        print(f"get_current_student_optional result: {student}")
+        is_logged_in_auth = student is not None
+        student_data_auth = student.model_dump() if student else None
+    except Exception as e:
+        print(f"Error with get_current_student_optional: {e}")
+        is_logged_in_auth = False
+        student_data_auth = None
+    
+    # Test template context utility
+    try:
+        template_context = await get_template_context(request)
+        print(f"Template context: {template_context}")
+        is_logged_in_template = template_context.get("is_student_logged_in", False)
+        student_data_template = template_context.get("student_data")
+    except Exception as e:
+        print(f"Error with get_template_context: {e}")
+        is_logged_in_template = False
+        student_data_template = None
+    
+    debug_info = {
+        "session_keys": list(request.session.keys()),
+        "session_has_student": "student" in request.session,
+        "session_has_student_enrollment": "student_enrollment" in request.session,
+        "auth_function_logged_in": is_logged_in_auth,
+        "template_context_logged_in": is_logged_in_template,
+        "auth_student_data": str(student_data_auth),
+        "template_student_data": str(student_data_template),
+    }
+    
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Authentication Debug</title>
+        <style>
+            body {{ font-family: Arial, sans-serif; margin: 20px; }}
+            .debug-section {{ margin: 20px 0; padding: 15px; border: 1px solid #ccc; }}
+            .true {{ color: green; font-weight: bold; }}
+            .false {{ color: red; font-weight: bold; }}
+            pre {{ background: #f5f5f5; padding: 10px; overflow-x: auto; }}
+        </style>
+    </head>
+    <body>
+        <h1>Authentication Debug Information</h1>
+        
+        <div class="debug-section">
+            <h2>Session Information</h2>
+            <p>Session Keys: {debug_info['session_keys']}</p>
+            <p>Has 'student' key: <span class="{'true' if debug_info['session_has_student'] else 'false'}">{debug_info['session_has_student']}</span></p>
+            <p>Has 'student_enrollment' key: <span class="{'true' if debug_info['session_has_student_enrollment'] else 'false'}">{debug_info['session_has_student_enrollment']}</span></p>
+        </div>
+        
+        <div class="debug-section">
+            <h2>Authentication Function Results</h2>
+            <p>get_current_student_optional logged in: <span class="{'true' if debug_info['auth_function_logged_in'] else 'false'}">{debug_info['auth_function_logged_in']}</span></p>
+            <p>Student data: {debug_info['auth_student_data']}</p>
+        </div>
+        
+        <div class="debug-section">
+            <h2>Template Context Results</h2>
+            <p>Template context logged in: <span class="{'true' if debug_info['template_context_logged_in'] else 'false'}">{debug_info['template_context_logged_in']}</span></p>
+            <p>Student data: {debug_info['template_student_data']}</p>
+        </div>
+        
+        <div class="debug-section">
+            <h2>Test Links</h2>
+            <p><a href="/client/events">Go to Events Page</a></p>
+            <p><a href="/client/login">Go to Login Page</a></p>
+            <p><a href="/client/logout">Logout</a></p>
+        </div>
+    </body>
+    </html>
+    """
+    
+    return HTMLResponse(content=html_content)
