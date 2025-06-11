@@ -546,8 +546,8 @@ async def save_individual_registration(registration: RegistrationForm, event_id:
             student_email=registration.email,
             student_name=registration.full_name,
             event_title=event.get("event_name", event_id),
-            event_date=event.get("start_date"),
-            event_venue=event.get("location"),
+            event_date=event.get("start_datetime"),
+            event_venue=event.get("venue"),
             registration_id=registration_id
         )
     except Exception as e:
@@ -694,8 +694,8 @@ async def save_team_registration(team_registration: TeamRegistrationForm, event_
             student_email=team_registration.email,
             student_name=team_registration.full_name,
             event_title=event.get("event_name", event_id),
-            event_date=event.get("start_date"),
-            event_venue=event.get("location"),
+            event_date=event.get("start_datetime"),
+            event_venue=event.get("venue"),
             registration_id=team_registration_id
         )
           # Send emails to team participants
@@ -705,8 +705,8 @@ async def save_team_registration(team_registration: TeamRegistrationForm, event_
                     student_email=participant.email,
                     student_name=participant.full_name,
                     event_title=event.get("event_name", event_id),
-                    event_date=event.get("start_date"),
-                    event_venue=event.get("location"),
+                    event_date=event.get("start_datetime"),
+                    event_venue=event.get("venue"),
                     registration_id=team_registration_id
                 )
     except Exception as e:
@@ -902,9 +902,9 @@ async def confirm_payment(request: Request, event_id: str, student: Student = De
                     student_email=student_email,
                     student_name=student_data.get('full_name', ''),
                     event_title=event.get("event_name", event_id),
-                    event_date=event.get("start_date"),
-                    event_time=event.get("start_time"),
-                    event_location=event.get("location"),
+                    event_date=event.get("start_datetime"),
+                    event_time=event.get("start_datetime").strftime("%H:%M"),
+                    event_location=event.get("venue"),
                     registration_id=registration_id,
                     amount_paid=event.get('registration_fee', 0),
                     payment_method="Online Payment",

@@ -322,7 +322,7 @@ async def submit_feedback(request: Request, event_id: str, student: Student = De
                 student_email=student_data.get("email"),
                 student_name=student_data.get("full_name"),
                 event_title=event.get("event_name", event_id),
-                event_date=event.get("start_date")
+                event_date=event.get("start_datetime")
             )
         except Exception as e:
             print(f"Failed to send feedback confirmation email: {str(e)}")

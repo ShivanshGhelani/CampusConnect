@@ -136,7 +136,7 @@ class EmailService:
         student_email: str, 
         student_name: str, 
         event_title: str, 
-        event_date: str, 
+        start_datetime: str, 
         venue: str,
         registration_id: Optional[str] = None
     ) -> bool:
@@ -148,7 +148,7 @@ class EmailService:
                 'registration_confirmation.html',
                 student_name=student_name,
                 event_title=event_title,
-                event_date=event_date,
+                event_date=start_datetime,
                 event_venue=venue,
                 registration_id=registration_id
             )
