@@ -122,8 +122,7 @@ async def index(request: Request):
             {
                 "request": request,
                 "upcoming_events": serialized_upcoming_events,
-                "ongoing_events": serialized_ongoing_events,
-                "current_datetime": datetime.now(),
+                "ongoing_events": serialized_ongoing_events,                "current_datetime": datetime.now(),
                 "event_type_counts": event_type_counts,
                 "platform_stats": formatted_stats,
                 **template_context
@@ -131,6 +130,7 @@ async def index(request: Request):
         )
     except Exception as e:
         logger.error(f"Error in client index: {str(e)}")
+        template_context = await get_template_context(request)
         return templates.TemplateResponse(
             "client/index.html",
             {
@@ -138,7 +138,8 @@ async def index(request: Request):
                 "upcoming_events": [],
                 "ongoing_events": [],
                 "current_datetime": datetime.now(),
-                "error": str(e)
+                "error": str(e),
+                **template_context
             }
         )
 
@@ -257,8 +258,7 @@ async def list_events(request: Request, filter: str = "upcoming"):
             "client/events.html",
             {
                 "request": request,
-                "events": serialized_events,
-                "filter": filter,
+                "events": serialized_events,                "filter": filter,
                 "current_datetime": current_datetime_str,
                 "event_type_counts": event_type_counts,
                 **serialized_template_context
@@ -268,6 +268,8 @@ async def list_events(request: Request, filter: str = "upcoming"):
         print(f"Error in client events: {str(e)}")
         # Ensure consistent datetime serialization in error case
         current_datetime_str = datetime.now().isoformat()
+        # Get template context for error case
+        template_context = await get_template_context(request)
         return templates.TemplateResponse(
             "client/events.html",
             {
@@ -275,7 +277,8 @@ async def list_events(request: Request, filter: str = "upcoming"):
                 "events": [],
                 "filter": filter,
                 "current_datetime": current_datetime_str,
-                "error": str(e)
+                "error": str(e),
+                **template_context
             }
         )
 
@@ -468,9 +471,13 @@ async def authenticate_student(enrollment_no: str, password: str) -> Student:
 @router.get("/login")
 async def student_login_page(request: Request):
     """Show student login page"""
+    template_context = await get_template_context(request)
     return templates.TemplateResponse(
         "client/student_login.html",
-        {"request": request}
+        {
+            "request": request,
+            **template_context
+        }
     )
 
 @router.post("/login")
@@ -482,16 +489,17 @@ async def student_login(request: Request):
     redirect_url = form_data.get("redirect", "/client/dashboard")
     
     print(f"[DEBUG] Login attempt for: {enrollment_no} with redirect to: {redirect_url}")
-    
-    # Validate required fields
+      # Validate required fields
     if not all([enrollment_no, password]):
         print("[DEBUG] Missing enrollment or password")
+        template_context = await get_template_context(request)
         return templates.TemplateResponse(
             "client/student_login.html",
             {
                 "request": request,
                 "error": "Both enrollment number and password are required",
-                "form_data": form_data
+                "form_data": form_data,
+                **template_context
             },
             status_code=400
         )
@@ -500,12 +508,14 @@ async def student_login(request: Request):
     student = await authenticate_student(enrollment_no, password)
     if not student:
         print(f"[DEBUG] Authentication failed for {enrollment_no}")
+        template_context = await get_template_context(request)
         return templates.TemplateResponse(
             "client/student_login.html",
             {
                 "request": request,
                 "error": "Invalid enrollment number or password. Please try again.",
-                "form_data": form_data
+                "form_data": form_data,
+                **template_context
             },
             status_code=401
         )
@@ -853,9 +863,13 @@ async def profile_edit(request: Request, student: Student = Depends(require_stud
 @router.get("/register")
 async def student_register_page(request: Request):
     """Show student registration page"""
+    template_context = await get_template_context(request)
     return templates.TemplateResponse(
         "client/register.html",
-        {"request": request}
+        {
+            "request": request,
+            **template_context
+        }
     )
 
 @router.post("/register")
@@ -918,7 +932,6 @@ async def student_register(request: Request):
                 # Adjust age if birthday hasn't occurred this year
                 if today.month < birth_date.month or (today.month == birth_date.month and today.day < birth_date.day):
                     age -= 1
-                
                 if age < 15:
                     errors.append("You must be at least 15 years old to register")
                 elif age > 100:
@@ -927,12 +940,14 @@ async def student_register(request: Request):
                 errors.append("Please enter a valid date of birth")
         
         if errors:
+            template_context = await get_template_context(request)
             return templates.TemplateResponse(
                 "client/register.html",
                 {
                     "request": request,
                     "error": "; ".join(errors),
-                    "form_data": form_data
+                    "form_data": form_data,
+                    **template_context
                 },
                 status_code=400
             )
@@ -954,14 +969,15 @@ async def student_register(request: Request):
                 errors.append("Student with this email already exists")
             elif existing_student.get("mobile_no") == mobile_no:
                 errors.append("Student with this mobile number already exists")
-        
         if errors:
+            template_context = await get_template_context(request)
             return templates.TemplateResponse(
                 "client/register.html",
                 {
                     "request": request,
                     "error": "; ".join(errors),
-                    "form_data": form_data
+                    "form_data": form_data,
+                    **template_context
                 },
                 status_code=400
             )
@@ -986,34 +1002,38 @@ async def student_register(request: Request):
         
         # Save to database
         result = await DatabaseOperations.insert_one("students", student_data)
-        
         if result:
+            template_context = await get_template_context(request)
             return templates.TemplateResponse(
                 "client/register.html",
                 {
                     "request": request,
-                    "success": "Account created successfully! You can now login with your credentials."
+                    "success": "Account created successfully! You can now login with your credentials.",
+                    **template_context
                 }
             )
         else:
+            template_context = await get_template_context(request)
             return templates.TemplateResponse(
                 "client/register.html",
                 {
                     "request": request,
                     "error": "Failed to create account. Please try again.",
-                    "form_data": form_data
-                },
-                status_code=500
+                    "form_data": form_data,
+                    **template_context
+                },                status_code=500
             )
             
     except Exception as e:
         print(f"Registration error: {e}")
+        template_context = await get_template_context(request)
         return templates.TemplateResponse(
             "client/register.html",
             {
                 "request": request,
                 "error": "An error occurred during registration. Please try again.",
-                "form_data": form_data if 'form_data' in locals() else {}
+                "form_data": form_data if 'form_data' in locals() else {},
+                **template_context
             },
             status_code=500
         )
@@ -1048,8 +1068,7 @@ async def download_certificate(request: Request, event_id: str, student: Student
             raise HTTPException(
                 status_code=400, 
                 detail="Certificates are not available for this event at this time"
-            )
-          # Check if student is registered for this event and has attended using the new data structure
+            )        # Check if student is registered for this event and has attended using the new data structure
         student_data = await DatabaseOperations.find_one("students", {"enrollment_no": student.enrollment_no})
         if not student_data:
             return templates.TemplateResponse(
@@ -1058,7 +1077,9 @@ async def download_certificate(request: Request, event_id: str, student: Student
                     "request": request,
                     "event": event,
                     "student": student,
-                    "error": "Student data not found"
+                    "error": "Student data not found",
+                    "is_student_logged_in": True,
+                    "student_data": student.model_dump()
                 }
             )
         
@@ -1072,7 +1093,9 @@ async def download_certificate(request: Request, event_id: str, student: Student
                     "request": request,
                     "event": event,
                     "student": student,
-                    "error": "You must be registered for this event to download a certificate"
+                    "error": "You must be registered for this event to download a certificate",
+                    "is_student_logged_in": True,
+                    "student_data": student.model_dump()
                 }
             )
         
@@ -1084,7 +1107,9 @@ async def download_certificate(request: Request, event_id: str, student: Student
                     "request": request,
                     "event": event,
                     "student": student,
-                    "error": "You must have attended this event to download a certificate"
+                    "error": "You must have attended this event to download a certificate",
+                    "is_student_logged_in": True,
+                    "student_data": student.model_dump()
                 }
             )
         
@@ -1138,8 +1163,7 @@ async def download_certificate(request: Request, event_id: str, student: Student
         
         attendance = {
             "attendance_id": participation.get('attendance_id')
-        }
-          # Return certificate download page with validated=True
+        }        # Return certificate download page with validated=True
         return templates.TemplateResponse(
             "client/certificate_download.html",
             {
@@ -1150,6 +1174,8 @@ async def download_certificate(request: Request, event_id: str, student: Student
                 "registration": registration,
                 "attendance": attendance,
                 "validated": True,  # All requirements are met
+                "is_student_logged_in": True,
+                "student_data": student.model_dump(),
                 "message": "Your certificate is ready for download!"
             }
         )

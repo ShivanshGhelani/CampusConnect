@@ -198,7 +198,6 @@ async def submit_feedback(request: Request, event_id: str, student: Student = De
                 "department": student_data.get("department", ""),
                 "semester": student_data.get("semester", "")
             }
-            
             return templates.TemplateResponse(
                 "client/feedback_form.html",
                 {
@@ -206,7 +205,9 @@ async def submit_feedback(request: Request, event_id: str, student: Student = De
                     "event": event,
                     "student": student,
                     "registration": registration,
-                    "error": "Invalid registration - registration ID not found"
+                    "error": "Invalid registration - registration ID not found",
+                    "is_student_logged_in": True,
+                    "student_data": student.model_dump()
                 },
                 status_code=400
             )
@@ -220,7 +221,6 @@ async def submit_feedback(request: Request, event_id: str, student: Student = De
                 "department": student_data.get("department", ""),
                 "semester": student_data.get("semester", "")
             }
-            
             return templates.TemplateResponse(
                 "client/feedback_form.html",
                 {
@@ -228,15 +228,16 @@ async def submit_feedback(request: Request, event_id: str, student: Student = De
                     "event": event,
                     "student": student,
                     "registration": registration,
-                    "error": "You must have attended this event to provide feedback"
+                    "error": "You must have attended this event to provide feedback",
+                    "is_student_logged_in": True,
+                    "student_data": student.model_dump()
                 },
                 status_code=400
             )
         
         # Check if feedback already submitted
         existing_feedback_id = participation.get('feedback_id')
-        if existing_feedback_id:
-            return templates.TemplateResponse(
+        if existing_feedback_id:            return templates.TemplateResponse(
                 "client/feedback_confirmation.html",
                 {
                     "request": request,
@@ -244,6 +245,8 @@ async def submit_feedback(request: Request, event_id: str, student: Student = De
                     "student": student,
                     "registration_id": registration_id,
                     "feedback_id": existing_feedback_id,
+                    "is_student_logged_in": True,
+                    "student_data": student.model_dump(),
                     "message": "You have already submitted feedback for this event"
                 }
             )
@@ -335,8 +338,7 @@ async def submit_feedback(request: Request, event_id: str, student: Student = De
             "full_name": student_data.get("full_name", ""),
             "email": student_data.get("email", "")
         }
-        
-        # Show success page
+          # Show success page
         return templates.TemplateResponse(
             "client/feedback_success.html",
             {
@@ -344,6 +346,8 @@ async def submit_feedback(request: Request, event_id: str, student: Student = De
                 "event": event,
                 "student": student,
                 "registration": registration,
+                "is_student_logged_in": True,
+                "student_data": student.model_dump(),
                 "feedback": feedback_data
             }
         )
@@ -369,7 +373,6 @@ async def submit_feedback(request: Request, event_id: str, student: Student = De
             "department": student_data.get("department", ""),
             "semester": student_data.get("semester", "")
         }
-        
         return templates.TemplateResponse(
             "client/feedback_form.html",
             {
@@ -378,7 +381,9 @@ async def submit_feedback(request: Request, event_id: str, student: Student = De
                 "student": student,
                 "registration": registration,
                 "error": str(ve),
-                "form_data": form_data if 'form_data' in locals() else {}
+                "form_data": form_data if 'form_data' in locals() else {},
+                "is_student_logged_in": True,
+                "student_data": student.model_dump()
             },
             status_code=422
         )
