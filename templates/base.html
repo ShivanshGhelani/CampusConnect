@@ -288,6 +288,58 @@
     <!-- Universal Back Button System -->
     <script src="/static/js/universal-back-button.js"></script>
     
+    <!-- Certificate Generation Libraries - Preloaded for immediate availability -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" 
+            crossorigin="anonymous" 
+            onload="console.log('jsPDF library preloaded successfully')"
+            onerror="console.warn('Primary jsPDF CDN failed, will try fallback')"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" 
+            crossorigin="anonymous"
+            onload="console.log('html2canvas library preloaded successfully')"
+            onerror="console.warn('Primary html2canvas CDN failed, will try fallback')"></script>
+    
+    <!-- Fallback CDNs for certificate generation libraries -->
+    <script>
+        // Fallback loading for jsPDF if primary fails
+        window.addEventListener('load', function() {
+            if (typeof window.jsPDF === 'undefined') {
+                console.log('Loading jsPDF fallback...');
+                const script = document.createElement('script');
+                script.src = 'https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js';
+                script.crossOrigin = 'anonymous';
+                script.onload = () => console.log('jsPDF fallback loaded successfully');
+                script.onerror = () => {
+                    // Try third fallback
+                    const script2 = document.createElement('script');
+                    script2.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
+                    script2.crossOrigin = 'anonymous';
+                    script2.onload = () => console.log('jsPDF third fallback loaded successfully');
+                    script2.onerror = () => console.error('All jsPDF CDN sources failed');
+                    document.head.appendChild(script2);
+                };
+                document.head.appendChild(script);
+            }
+            
+            if (typeof window.html2canvas === 'undefined') {
+                console.log('Loading html2canvas fallback...');
+                const script = document.createElement('script');
+                script.src = 'https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js';
+                script.crossOrigin = 'anonymous';
+                script.onload = () => console.log('html2canvas fallback loaded successfully');
+                script.onerror = () => {
+                    // Try third fallback
+                    const script2 = document.createElement('script');
+                    script2.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+                    script2.crossOrigin = 'anonymous';
+                    script2.onload = () => console.log('html2canvas third fallback loaded successfully');
+                    script2.onerror = () => console.error('All html2canvas CDN sources failed');
+                    document.head.appendChild(script2);
+                };
+                document.head.appendChild(script);
+            }
+        });
+    </script>
+    
     {% block head %}{% endblock %}
 </head>
 <body class="bg-gradient-to-br from-seafoam-50 to-sky-50 min-h-screen flex flex-col">

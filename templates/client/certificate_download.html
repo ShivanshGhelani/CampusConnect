@@ -143,73 +143,175 @@
             <svg class="w-4 h-4 mr-2 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
             </svg>
-            Back to Dashboard
-        </a>
-    </div>
+            Back to Dashboard    </div>
 </div>
 
 <!-- JavaScript for Certificate Download -->
 {% if event.registration_mode == 'individual' and event.registration_type in ['free', 'paid'] %}
-<script src="/static/js/certificate-generator-v2.js"></script>
+<!-- Load certificate generator scripts -->
+<script src="/static/js/certificate-generator-js.js"></script>
+<script src="/static/js/certificate-generator.js"></script>
+
 <script>
+// Set event ID for the certificate generator
+window.currentEventId = '{{ event.event_id }}';
+
+// Fallback script loading if static files fail
+if (typeof window.CertificateGeneratorJS === 'undefined') {
+    console.log('Loading certificate generator from alternative path...');
+    // Wait a moment for the initial scripts to potentially load
+    setTimeout(() => {
+        if (typeof window.CertificateGeneratorJS === 'undefined') {
+            console.log('Initial scripts failed, retrying with direct static path...');
+            const script1 = document.createElement('script');
+            script1.src = '/static/js/certificate-generator-js.js';
+            script1.onload = () => {
+                const script2 = document.createElement('script');
+                script2.src = '/static/js/certificate-generator.js';
+                document.head.appendChild(script2);
+            };
+            script1.onerror = () => {
+                console.error('Failed to load certificate generator scripts');
+            };
+            document.head.appendChild(script1);
+        }
+    }, 1000);
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const downloadBtn = document.getElementById('downloadCertificateBtn');
     const downloadText = document.getElementById('downloadText');
     
     if (downloadBtn) {
-        downloadBtn.addEventListener('click', async function() {
-            // Disable button and show loading state
-            downloadBtn.disabled = true;
-            downloadBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
-            downloadBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
-            downloadText.textContent = 'Generating Certificate...';
-              try {
-                // Use the new V2 JavaScript certificate generator
-                const eventId = '{{ event.event_id }}';
-                const enrollmentNo = '{{ student.enrollment_no }}';
-                
-                // Call the V2 generator function
-                await generateCertificateV2(eventId, enrollmentNo);
-                
-                // Update button text
-                downloadText.textContent = 'Certificate Generated!';
-                
-            } catch (error) {
-                console.error('Error generating certificate:', error);
-                downloadText.textContent = 'Generation Failed';
-                
-                // Create error message
-                const errorDiv = document.createElement('div');
-                errorDiv.className = 'bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4';
-                errorDiv.innerHTML = `
-                    <div class="flex items-center">
-                        <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                        </svg>
-                        <div>
-                            <p class="font-medium">Certificate Generation Failed</p>
-                            <p class="text-sm text-red-600">${error.message}</p>
-                        </div>
-                    </div>
-                `;
-                
-                // Insert error message
-                const certificateStatusDiv = document.querySelector('.bg-gradient-to-r.from-blue-50');
-                if (certificateStatusDiv) {
-                    certificateStatusDiv.parentNode.insertBefore(errorDiv, certificateStatusDiv);
-                }
-            } finally {
-                // Reset button after delay
-                setTimeout(() => {
-                    downloadBtn.disabled = false;
-                    downloadBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
-                    downloadBtn.classList.add('bg-green-600', 'hover:bg-green-700');
-                    downloadText.textContent = 'Download Certificate';
-                }, 3000);
+        // Use JavaScript-based certificate generation
+        downloadBtn.addEventListener('click', function() {
+            // Check if certificate generator is available
+            if (typeof handleCertificateDownload === 'function') {
+                handleCertificateDownload();
+            } else {
+                // Fallback to manual library loading and simple certificate generation
+                console.error('Certificate generator not loaded, attempting fallback...');
+                fallbackCertificateGeneration();
             }
         });
+        
+        console.log('JavaScript certificate generator initialized for event: {{ event.event_id }}');
     }
 });
+
+// Fallback certificate generation without external libraries
+function fallbackCertificateGeneration() {
+    const downloadBtn = document.getElementById('downloadCertificateBtn');
+    const downloadText = document.getElementById('downloadText');
+    
+    // Update UI
+    downloadBtn.disabled = true;
+    downloadBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+    downloadBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
+    downloadText.textContent = 'Generating Certificate...';
+    
+    // Use the original Python-based approach as fallback
+    fetch(`/client/events/{{ event.event_id }}/certificate/download`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => {
+        if (response.ok) {
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/pdf')) {
+                return response.blob().then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'certificate.pdf';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                    
+                    downloadText.textContent = 'Certificate Downloaded!';
+                    showSuccessMessage('Certificate downloaded successfully!');
+                });
+            } else {
+                return response.json().then(result => {
+                    throw new Error(result.message || 'Failed to generate certificate');
+                });
+            }
+        } else {
+            return response.json().then(result => {
+                throw new Error(result.message || `HTTP ${response.status}: ${response.statusText}`);
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Fallback certificate generation failed:', error);
+        downloadText.textContent = 'Download Failed';
+        showErrorMessage(error.message);
+    })
+    .finally(() => {
+        // Reset button after delay
+        setTimeout(() => {
+            downloadBtn.disabled = false;
+            downloadBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
+            downloadBtn.classList.add('bg-green-600', 'hover:bg-green-700');
+            downloadText.textContent = 'Download Certificate';
+        }, 3000);
+    });
+}
+
+// Helper functions for showing messages
+function showSuccessMessage(message) {
+    const successDiv = document.createElement('div');
+    successDiv.className = 'bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4';
+    successDiv.innerHTML = `
+        <div class="flex items-center">
+            <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+            </svg>
+            <div>
+                <p class="font-medium">✓ ${message}</p>
+            </div>
+        </div>
+    `;
+    
+    const certificateStatusDiv = document.querySelector('.bg-gradient-to-r.from-blue-50');
+    if (certificateStatusDiv) {
+        certificateStatusDiv.parentNode.insertBefore(successDiv, certificateStatusDiv);
+        setTimeout(() => {
+            if (successDiv.parentNode) {
+                successDiv.parentNode.removeChild(successDiv);
+            }
+        }, 5000);
+    }
+}
+
+function showErrorMessage(message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4';
+    errorDiv.innerHTML = `
+        <div class="flex items-center">
+            <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+            </svg>
+            <div>
+                <p class="font-medium">Certificate Generation Failed</p>
+                <p class="text-sm text-red-600">${message}</p>
+            </div>
+        </div>
+    `;
+    
+    const certificateStatusDiv = document.querySelector('.bg-gradient-to-r.from-blue-50');
+    if (certificateStatusDiv) {
+        certificateStatusDiv.parentNode.insertBefore(errorDiv, certificateStatusDiv);
+        setTimeout(() => {
+            if (errorDiv.parentNode) {
+                errorDiv.parentNode.removeChild(errorDiv);
+            }
+        }, 8000);
+    }
+}
 </script>
 {% endif %}
 
