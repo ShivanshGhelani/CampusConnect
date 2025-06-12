@@ -148,10 +148,14 @@
 
 <!-- JavaScript for Certificate Download -->
 {% if event.registration_mode == 'individual' and event.registration_type in ['free', 'paid'] %}
+<<<<<<< HEAD
 <!-- Load certificate generator scripts -->
 <script src="/static/js/certificate-generator-js.js"></script>
 <script src="/static/js/certificate-generator.js"></script>
 
+=======
+<script src="/static/js/certificate-generator-v2.js"></script>
+>>>>>>> f9fe659 (feat: Implement JavaScript Certificate Generator with PDF generation and email notification)
 <script>
 // Set event ID for the certificate generator
 window.currentEventId = '{{ event.event_id }}';
@@ -183,6 +187,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const downloadText = document.getElementById('downloadText');
     
     if (downloadBtn) {
+<<<<<<< HEAD
         // Use JavaScript-based certificate generation
         downloadBtn.addEventListener('click', function() {
             // Check if certificate generator is available
@@ -192,6 +197,57 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Fallback to manual library loading and simple certificate generation
                 console.error('Certificate generator not loaded, attempting fallback...');
                 fallbackCertificateGeneration();
+=======
+        downloadBtn.addEventListener('click', async function() {
+            // Disable button and show loading state
+            downloadBtn.disabled = true;
+            downloadBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+            downloadBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
+            downloadText.textContent = 'Generating Certificate...';
+              try {
+                // Use the new V2 JavaScript certificate generator
+                const eventId = '{{ event.event_id }}';
+                const enrollmentNo = '{{ student.enrollment_no }}';
+                
+                // Call the V2 generator function
+                await generateCertificateV2(eventId, enrollmentNo);
+                
+                // Update button text
+                downloadText.textContent = 'Certificate Generated!';
+                
+            } catch (error) {
+                console.error('Error generating certificate:', error);
+                downloadText.textContent = 'Generation Failed';
+                
+                // Create error message
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4';
+                errorDiv.innerHTML = `
+                    <div class="flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                        </svg>
+                        <div>
+                            <p class="font-medium">Certificate Generation Failed</p>
+                            <p class="text-sm text-red-600">${error.message}</p>
+                        </div>
+                    </div>
+                `;
+                
+                // Insert error message
+                const certificateStatusDiv = document.querySelector('.bg-gradient-to-r.from-blue-50');
+                if (certificateStatusDiv) {
+                    certificateStatusDiv.parentNode.insertBefore(errorDiv, certificateStatusDiv);
+                }
+            } finally {
+                // Reset button after delay
+                setTimeout(() => {
+                    downloadBtn.disabled = false;
+                    downloadBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
+                    downloadBtn.classList.add('bg-green-600', 'hover:bg-green-700');
+                    downloadText.textContent = 'Download Certificate';
+                }, 3000);
+>>>>>>> f9fe659 (feat: Implement JavaScript Certificate Generator with PDF generation and email notification)
             }
         });
         

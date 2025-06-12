@@ -1,7 +1,7 @@
 /**
- * Enhanced Certificate Generator - JavaScript Integration
- * Uses JavaScript-based PDF generation to avoid OS dependencies
- * Supports concurrent downloads and thread-safe operations
+ * Enhanced Certificate Generator - JavaScript Integration V2 FINAL
+ * Uses JavaScript-based PDF generation with preloaded libraries
+ * Eliminates OS dependencies and timeout errors for certificate generation
  */
 
 // Global certificate generator instance
@@ -58,27 +58,12 @@ async function downloadCertificateJS(eventId, enrollmentNo = null) {
     }
 
     try {
-        // Update UI to show generating state
-        certificateGeneratorJS.updateUI(downloadBtn, 'generating');
-
-        // Generate certificate using JavaScript
-        const result = await certificateGeneratorJS.generateCertificate(eventId, enrollmentNo);
-
-        if (result.success) {
-            // Update UI to show success
-            certificateGeneratorJS.updateUI(downloadBtn, 'success');
-            console.log(`Certificate generated successfully: ${result.filename}`);
-        } else {
-            // Update UI to show error
-            certificateGeneratorJS.updateUI(downloadBtn, 'error');
-            certificateGeneratorJS.showErrorMessage(result.message);
-            console.error('Certificate generation failed:', result.message);
-        }
+        // Generate certificate using JavaScript V2
+        await certificateGeneratorJS.generateCertificate(eventId, enrollmentNo);
 
     } catch (error) {
         console.error('Certificate download error:', error);
-        certificateGeneratorJS.updateUI(downloadBtn, 'error');
-        certificateGeneratorJS.showErrorMessage(`Unexpected error: ${error.message}`);
+        certificateGeneratorJS.showError(`Unexpected error: ${error.message}`);
     }
 }
 

@@ -1,28 +1,37 @@
 /**
- * JavaScript Certificate Generator V2 (Preloaded Libraries Version) - FINAL
+ * JavaScript Certificate Generator V2
  * Fixed version that generates proper PDF files
  * Eliminates OS dependencies for certificate generation
- * Uses preloaded libraries from base.html for immediate availability
  */
 
-class CertificateGeneratorJS {
+class CertificateGeneratorV2 {
     constructor() {
         this.isGenerating = false;
-        this.librariesLoaded = false;
-        // Libraries are now preloaded in base.html
-        this.checkLibrariesAvailability();
+        this.loadLibraries();
     }
 
-    checkLibrariesAvailability() {
-        // Check immediately since libraries should be preloaded
-        if (window.jsPDF && window.html2canvas) {
-            this.librariesLoaded = true;
-            console.log('✅ Certificate generation libraries are available (preloaded)');
-        } else {
-            console.warn('⚠️ Libraries not yet available, waiting...');
-            // Libraries should be preloaded, but wait a moment if needed
-            setTimeout(() => this.checkLibrariesAvailability(), 100);
+    async loadLibraries() {
+        // Load jsPDF library dynamically
+        if (typeof window.jspdf === 'undefined') {
+            await this.loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
         }
+
+        // Load html2canvas for HTML to image conversion
+        if (typeof html2canvas === 'undefined') {
+            await this.loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+        }
+
+        console.log('✅ Certificate Generator V2: Libraries loaded successfully');
+    }
+
+    loadScript(src) {
+        return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = src;
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
     }
 
     async generateCertificate(eventId, enrollmentNo) {
@@ -31,15 +40,8 @@ class CertificateGeneratorJS {
             return;
         }
 
-        // Ensure libraries are available
-        if (!this.librariesLoaded) {
-            console.log('⏳ Waiting for libraries to be available...');
-            setTimeout(() => this.generateCertificate(eventId, enrollmentNo), 500);
-            return;
-        }
-
         this.isGenerating = true;
-        console.log(`🚀 Starting certificate generation for event: ${eventId}, student: ${enrollmentNo}`);
+        console.log(`🎯 Starting certificate generation for event: ${eventId}, student: ${enrollmentNo}`);
 
         try {
             // Show loading state
@@ -90,7 +92,7 @@ class CertificateGeneratorJS {
     }
 
     async fetchCertificateData(eventId, enrollmentNo) {
-        console.log('🔄 Fetching certificate data from backend...');
+        console.log('📡 Fetching certificate data from backend...');
         
         const response = await fetch('/client/api/certificate-data', {
             method: 'POST',
@@ -104,13 +106,13 @@ class CertificateGeneratorJS {
         });
 
         const data = await response.json();
-        console.log('🔄 Backend response:', data);
+        console.log('📡 Backend response:', data);
         
         return data;
     }
 
     async generateProcessedHtml(certificateData) {
-        console.log('🔧 Processing HTML template...');
+        console.log('🔄 Processing HTML template...');
         
         const { template_html, student_data, event_data, team_data } = certificateData;
         
@@ -123,9 +125,7 @@ class CertificateGeneratorJS {
             '{{event_name}}': event_data.event_name,
             '{{event_date}}': this.formatDate(event_data.event_date),
             '{{issue_date}}': this.formatDate(new Date()),
-        };
-
-        // Add team name for team events
+        };        // Add team name for team events
         if (team_data && team_data.team_name) {
             replacements['{{team_name}}'] = team_data.team_name;
         }
@@ -148,7 +148,7 @@ class CertificateGeneratorJS {
     }
 
     async convertHtmlToPdfImproved(htmlContent, certificateData) {
-        console.log('🔧 Converting HTML to PDF (Improved Method)...');
+        console.log('📄 Converting HTML to PDF (Improved Method)...');
 
         // Create a hidden iframe for proper CSS rendering
         const iframe = document.createElement('iframe');
@@ -168,8 +168,7 @@ class CertificateGeneratorJS {
 
         try {
             const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-            
-            // Prepare full HTML document with proper styling
+              // Prepare full HTML document with proper styling
             const fullHtml = `
                 <!DOCTYPE html>
                 <html lang="en">
@@ -292,7 +291,7 @@ class CertificateGeneratorJS {
             });
 
             // Create PDF with proper settings
-            const { jsPDF } = window.jsPDF;
+            const { jsPDF } = window.jspdf;
             const pdf = new jsPDF({
                 orientation: 'landscape',
                 unit: 'mm',
@@ -334,12 +333,10 @@ class CertificateGeneratorJS {
             };
             checkLoad();
         });
-    }
-
-    async createSimplePdf(certificateData) {
-        console.log('🔧 Creating simple PDF as fallback...');
+    }    async createSimplePdf(certificateData) {
+        console.log('📄 Creating simple PDF as fallback...');
         
-        const { jsPDF } = window.jsPDF;
+        const { jsPDF } = window.jspdf;
         const pdf = new jsPDF({
             orientation: 'landscape',
             unit: 'mm',
@@ -522,7 +519,7 @@ class CertificateGeneratorJS {
     }
 
     async handleCertificateComplete(pdfBlob, certificateData) {
-        console.log('🎯 Handling certificate completion...');
+        console.log('🎉 Handling certificate completion...');
 
         // Generate filename
         const fileName = this.generateFileName(certificateData);
@@ -704,26 +701,23 @@ class CertificateGeneratorJS {
     }
 }
 
-// Global function to trigger certificate generation (updated for preloaded libraries)
-window.generateCertificateJS = async function(eventId, enrollmentNo) {
-    if (!window.certificateGeneratorJS) {
-        window.certificateGeneratorJS = new CertificateGeneratorJS();
+// Global function to trigger certificate generation V2
+window.generateCertificateV2 = async function(eventId, enrollmentNo) {
+    if (!window.certificateGeneratorV2) {
+        window.certificateGeneratorV2 = new CertificateGeneratorV2();
     }
     
-    await window.certificateGeneratorJS.generateCertificate(eventId, enrollmentNo);
+    await window.certificateGeneratorV2.generateCertificate(eventId, enrollmentNo);
 };
-
-// Expose the class for integration
-window.CertificateGeneratorJS = CertificateGeneratorJS;
 
 // Auto-initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 Certificate Generator V2 (Preloaded): DOM loaded');
+    console.log('🎯 Certificate Generator V2: DOM loaded');
     
     // Pre-load the certificate generator on client pages
     if (window.location.pathname.startsWith('/client')) {
-        window.certificateGeneratorJS = new CertificateGeneratorJS();
+        window.certificateGeneratorV2 = new CertificateGeneratorV2();
     }
 });
 
-console.log('✅ Certificate Generator V2 (Preloaded Libraries) JavaScript loaded');
+console.log('✅ Certificate Generator V2 JavaScript loaded');

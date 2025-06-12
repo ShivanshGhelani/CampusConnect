@@ -1728,9 +1728,66 @@ async def debug_auth_route(request: Request):
             <p><a href="/client/events">Go to Events Page</a></p>
             <p><a href="/client/login">Go to Login Page</a></p>
             <p><a href="/client/logout">Logout</a></p>
-        </div>
-    </body>
+        </div>    </body>
     </html>
     """
     
     return HTMLResponse(content=html_content)
+
+
+# JavaScript Certificate Generator API Endpoints
+@router.post("/api/certificate-data")
+async def get_certificate_data_api(request: Request, student: Student = Depends(require_student_login)):
+    """API endpoint to get certificate data for JavaScript generator"""
+    try:
+        from utils.js_certificate_generator import get_certificate_data_for_js
+        
+        data = await request.json()
+        event_id = data.get("event_id")
+        enrollment_no = data.get("enrollment_no")
+        
+        if not event_id or not enrollment_no:
+            return {"success": False, "message": "Event ID and enrollment number are required"}
+        
+        # Verify the logged-in student matches the requested enrollment
+        if student.enrollment_no != enrollment_no:
+            return {"success": False, "message": "Unauthorized: You can only generate certificates for your own enrollment"}
+        
+        success, message, certificate_data = await get_certificate_data_for_js(event_id, enrollment_no)
+        
+        if success:
+            return {"success": True, "message": message, "data": certificate_data}
+        else:
+            return {"success": False, "message": message}
+            
+    except Exception as e:
+        print(f"Error in get_certificate_data_api: {str(e)}")
+        return {"success": False, "message": f"Error retrieving certificate data: {str(e)}"}
+
+
+@router.post("/api/send-certificate-email")
+async def send_certificate_email_api(request: Request, student: Student = Depends(require_student_login)):
+    """API endpoint to send certificate email from JavaScript-generated PDF"""
+    try:
+        from utils.js_certificate_generator import send_certificate_email_from_js
+        
+        data = await request.json()
+        event_id = data.get("event_id")
+        enrollment_no = data.get("enrollment_no")
+        pdf_base64 = data.get("pdf_base64")
+        file_name = data.get("file_name")
+        
+        if not all([event_id, enrollment_no, pdf_base64, file_name]):
+            return {"success": False, "message": "All fields are required"}
+        
+        # Verify the logged-in student matches the requested enrollment
+        if student.enrollment_no != enrollment_no:
+            return {"success": False, "message": "Unauthorized: You can only send certificates for your own enrollment"}
+        
+        success, message = await send_certificate_email_from_js(event_id, enrollment_no, pdf_base64, file_name)
+        
+        return {"success": success, "message": message}
+            
+    except Exception as e:
+        print(f"Error in send_certificate_email_api: {str(e)}")
+        return {"success": False, "message": f"Error sending certificate email: {str(e)}"}
