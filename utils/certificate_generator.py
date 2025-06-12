@@ -47,14 +47,13 @@ class CertificateGenerator:
             if not event:
                 return False, "Event not found", None
 
-            print(f"DEBUG: Event found: {event.get('event_name', 'Unknown')}")
-            # Check if event qualifies for certificate generation
+            print(f"DEBUG: Event found: {event.get('event_name', 'Unknown')}")            # Check if event qualifies for certificate generation
             if not self._is_eligible_event(event):
                 registration_type = event.get("registration_type", "unknown")
                 registration_mode = event.get("registration_mode", "unknown")
                 return (
                     False,
-                    f"Certificate generation is under development for {registration_type.title()} {registration_mode.title()} events. Currently only supports Individual events (Free or Paid).",
+                    f"Certificate generation is not yet supported for {registration_type.title()} {registration_mode.title()} events. Currently supports Individual and Team events (Free or Paid).",
                     None,
                 )
 
@@ -102,9 +101,8 @@ class CertificateGenerator:
             if email_success:
                 print(f"DEBUG: Email with PDF attachment sent successfully")
             else:
-                print(f"DEBUG: Email sending failed, but continuing with download")
-
-            # Return PDF data for client download            return True, "Certificate generated and emailed successfully!", pdf_bytes
+                print(f"DEBUG: Email sending failed, but continuing with download")            # Return PDF data for client download
+            return True, "Certificate generated and emailed successfully!", pdf_bytes
 
         except Exception as e:
             print(f"DEBUG: Exception in certificate generation: {str(e)}")
@@ -115,11 +113,11 @@ class CertificateGenerator:
         registration_type = event.get("registration_type", "").lower()
         registration_mode = event.get("registration_mode", "").lower()
 
-        # Support both free and paid individual events
-        return registration_mode == "individual" and registration_type in [
-            "free",
-            "paid",
-        ]
+        # Support both free and paid events for both individual and team modes
+        return (
+            registration_mode in ["individual", "team"] and 
+            registration_type in ["free", "paid"]
+        )
 
     async def _validate_participation(
         self, student: Dict, event_id: str
@@ -177,9 +175,7 @@ class CertificateGenerator:
 
             print(
                 f"DEBUG: Template content loaded, length: {len(template_content)} characters"
-            )
-
-            # Get student details
+            )            # Get student details
             participation = student.get("event_participations", {}).get(
                 event["event_id"], {}
             )
@@ -187,15 +183,31 @@ class CertificateGenerator:
             full_name = student_data.get(
                 "full_name", student.get("full_name", enrollment_no)
             )
-            department = student.get("department", "Unknown Department")
+            department = student.get("department", "Unknown Department")            # Get team name for team events
+            team_name = None
+            if event.get("registration_mode", "").lower() == "team":
+                # Check if this is a team registration
+                student_data_in_participation = participation.get("student_data", {})
+                team_name = student_data_in_participation.get("team_name")
+                
+                # If not found in participation data, try to get from team registration ID
+                if not team_name:
+                    team_registration_id = participation.get("team_registration_id")
+                    if team_registration_id:
+                        # Get team details from event data
+                        event_doc = await DatabaseOperations.find_one("events", {"event_id": event["event_id"]})
+                        if event_doc:
+                            team_registrations = event_doc.get("team_registrations", {})
+                            team_details = team_registrations.get(team_registration_id, {})
+                            team_name = team_details.get("team_name")
 
             print(
-                f"DEBUG: Student details - Name: {full_name}, Department: {department}"
+                f"DEBUG: Student details - Name: {full_name}, Department: {department}, Team: {team_name or 'N/A'}"
             )
 
             # Replace placeholders
             processed_content = self._replace_placeholders(
-                template_content, full_name, department, event
+                template_content, full_name, department, event, team_name
             )
 
             print(f"DEBUG: Placeholders replaced")
@@ -207,14 +219,14 @@ class CertificateGenerator:
                 temp_file.write(processed_content)
                 temp_html_path = temp_file.name
 
-            print(f"DEBUG: Temporary HTML file created: {temp_html_path}")
-
-            # Try multiple PDF generation methods
+            print(f"DEBUG: Temporary HTML file created: {temp_html_path}")            # Try multiple PDF generation methods
             pdf_bytes = await self._convert_html_to_pdf_multiple_methods(
                 temp_html_path,
                 processed_content,
                 full_name,
                 event.get("event_name", "Event"),
+                event,
+                team_name,
             )
 
             print(f"DEBUG: PDF conversion completed: {len(pdf_bytes)} bytes")
@@ -230,14 +242,13 @@ class CertificateGenerator:
             print(f"DEBUG: Error in PDF generation: {str(e)}")
             # Clean up temp HTML file on error
             if temp_html_path and os.path.exists(temp_html_path):
-                try:
-                    os.unlink(temp_html_path)
+                try:                os.unlink(temp_html_path)
                 except:
                     pass
             return False, f"Error generating PDF: {str(e)}", None
 
     async def _convert_html_to_pdf_multiple_methods(
-        self, html_path: str, html_content: str, student_name: str, event_name: str
+        self, html_path: str, html_content: str, student_name: str, event_name: str, event: Dict = None, team_name: str = None
     ) -> bytes:
         """Try multiple PDF generation methods with fallbacks"""
 
@@ -275,149 +286,19 @@ class CertificateGenerator:
         except ImportError:
             print("DEBUG: pdfkit not available")
         except Exception as e:
-            print(f"DEBUG: pdfkit failed: {e}")
-
-        # Method 3: Use reportlab to create PDF from scratch
-        try:
-            print("DEBUG: Trying reportlab for PDF generation...")
-            pdf_bytes = self._create_pdf_with_reportlab(student_name, event_name)
-            print(f"DEBUG: Reportlab successful, generated {len(pdf_bytes)} bytes")
-            return pdf_bytes
-        except Exception as e:
-            print(f"DEBUG: Reportlab failed: {e}")
-
-        # Method 4: Last resort - create a simple text-based PDF
-        try:
-            print("DEBUG: Using simple text-based PDF as fallback...")
-            pdf_bytes = self._create_simple_pdf(student_name, event_name)
-            print(f"DEBUG: Simple PDF successful, generated {len(pdf_bytes)} bytes")
-            return pdf_bytes
-        except Exception as e:
-            print(f"DEBUG: Simple PDF failed: {e}")
-            raise Exception("All PDF generation methods failed")
-
-    def _create_pdf_with_reportlab(self, student_name: str, event_name: str) -> bytes:
-        """Create a certificate PDF using reportlab"""
-        from reportlab.lib.pagesizes import A4
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-        from reportlab.lib.enums import TA_CENTER
-        from reportlab.lib.units import inch
-        from io import BytesIO
-
-        buffer = BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=1 * inch)
-
-        # Get styles
-        styles = getSampleStyleSheet()
-        title_style = ParagraphStyle(
-            "CustomTitle",
-            parent=styles["Title"],
-            fontSize=24,
-            spaceAfter=30,
-            alignment=TA_CENTER,
-        )
-
-        content_style = ParagraphStyle(
-            "CustomContent",
-            parent=styles["Normal"],
-            fontSize=16,
-            spaceAfter=20,
-            alignment=TA_CENTER,
-        )
-
-        # Build the certificate content
-        story = []
-
-        # Title
-        story.append(Paragraph("CERTIFICATE OF PARTICIPATION", title_style))
-        story.append(Spacer(1, 20))
-
-        # Main content
-        story.append(Paragraph("This is to certify that", content_style))
-        story.append(Spacer(1, 10))
-
-        # Student name (larger)
-        name_style = ParagraphStyle(
-            "StudentName",
-            parent=styles["Normal"],
-            fontSize=20,
-            spaceAfter=20,
-            alignment=TA_CENTER,
-            textColor="blue",
-        )
-        story.append(Paragraph(f"<b>{student_name}</b>", name_style))
-
-        # Event details
-        story.append(Paragraph(f"has successfully participated in", content_style))
-        story.append(Spacer(1, 10))
-
-        event_style = ParagraphStyle(
-            "EventName",
-            parent=styles["Normal"],
-            fontSize=18,
-            spaceAfter=20,
-            alignment=TA_CENTER,
-            textColor="darkgreen",
-        )
-        story.append(Paragraph(f"<b>{event_name}</b>", event_style))
-
-        # Date
-        story.append(Spacer(1, 30))
-        story.append(
-            Paragraph(f"Date: {datetime.now().strftime('%B %d, %Y')}", content_style)
-        )
-
-        # Build PDF
-        doc.build(story)
-        pdf_bytes = buffer.getvalue()
-        buffer.close()
-
-        return pdf_bytes
-
-    def _create_simple_pdf(self, student_name: str, event_name: str) -> bytes:
-        """Create a very simple PDF certificate as last resort"""
-        from reportlab.pdfgen import canvas
-        from reportlab.lib.pagesizes import A4
-        from io import BytesIO
-
-        buffer = BytesIO()
-        p = canvas.Canvas(buffer, pagesize=A4)
-        width, height = A4
-
-        # Title
-        p.setFont("Helvetica-Bold", 24)
-        p.drawCentredText(width / 2, height - 100, "CERTIFICATE OF PARTICIPATION")
-
-        # Content
-        p.setFont("Helvetica", 16)
-        p.drawCentredText(width / 2, height - 200, "This is to certify that")
-
-        # Student name
-        p.setFont("Helvetica-Bold", 20)
-        p.drawCentredText(width / 2, height - 250, student_name)
-
-        # Event
-        p.setFont("Helvetica", 16)
-        p.drawCentredText(width / 2, height - 300, "has successfully participated in")
-
-        p.setFont("Helvetica-Bold", 18)
-        p.drawCentredText(width / 2, height - 350, event_name)
-
-        # Date
-        p.setFont("Helvetica", 14)
-        p.drawCentredText(
-            width / 2, height - 450, f"Date: {datetime.now().strftime('%B %d, %Y')}"
-        )
-
-        p.save()
-        pdf_bytes = buffer.getvalue()
-        buffer.close()
-
-        return pdf_bytes
-
+            print(f"DEBUG: pdfkit failed: {e}")        # Method 3: All HTML-to-PDF methods failed
+            error_message = (
+                "Certificate generation failed: Unable to convert HTML template to PDF. "
+                "This requires either WeasyPrint or wkhtmltopdf (pdfkit) to be properly installed and configured. "
+                "Please install the required dependencies:\n"
+                "- WeasyPrint: pip install weasyprint\n"
+                "- OR wkhtmltopdf: Download from https://wkhtmltopdf.org/ and ensure it's in PATH\n"
+                "Professional certificates require HTML-to-PDF conversion to maintain template styling."
+            )
+            print(f"ERROR: {error_message}")
+            raise Exception(error_message)    
     def _replace_placeholders(
-        self, template_content: str, full_name: str, department: str, event: Dict
+        self, template_content: str, full_name: str, department: str, event: Dict, team_name: str = None
     ) -> str:
         """Replace placeholders in template with actual values"""
         replacements = {
@@ -427,6 +308,10 @@ class CertificateGenerator:
             "{{event_date}}": self._format_event_date(event),
             "{{issue_date}}": datetime.now().strftime("%B %d, %Y"),
         }
+
+        # Add team name placeholder for team events
+        if team_name:
+            replacements["{{team_name}}"] = team_name
 
         processed_content = template_content
         for placeholder, value in replacements.items():
