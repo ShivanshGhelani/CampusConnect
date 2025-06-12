@@ -286,58 +286,316 @@
         }    </style>
     
     <!-- Universal Back Button System -->
-    <script src="/static/js/universal-back-button.js"></script>
+    <script src="/static/js/universal-back-button.js"></script>    <!-- ===================================================================== -->
+    <!-- CERTIFICATE LIBRARIES - LOADED AT APP STARTUP WITH MULTIPLE FALLBACKS -->
+    <!-- ===================================================================== -->
     
-    <!-- Certificate Generation Libraries - Preloaded for immediate availability -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" 
-            crossorigin="anonymous" 
-            onload="console.log('jsPDF library preloaded successfully')"
-            onerror="console.warn('Primary jsPDF CDN failed, will try fallback')"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" 
-            crossorigin="anonymous"
-            onload="console.log('html2canvas library preloaded successfully')"
-            onerror="console.warn('Primary html2canvas CDN failed, will try fallback')"></script>
+    <!-- Primary PDF Libraries (loaded synchronously at startup) -->
     
-    <!-- Fallback CDNs for certificate generation libraries -->
+    <!-- 1. jsPDF - Primary PDF generation library -->
+    <script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js" crossorigin="anonymous"></script>
+    
+    <!-- 2. PDF-lib - Alternative PDF library (more reliable) -->
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js" crossorigin="anonymous"></script>
+    
+    <!-- 3. html2canvas - Screenshot library -->
+    <script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js" crossorigin="anonymous"></script>
+    
+    <!-- 4. Canvas2PDF - Direct canvas to PDF (backup) -->
+    <script src="https://unpkg.com/canvas2pdf@1.0.3/canvas2pdf.js" crossorigin="anonymous"></script>
+    
+    <!-- Critical Library Loading Manager - Ensures ALL libraries load at startup -->
     <script>
-        // Fallback loading for jsPDF if primary fails
-        window.addEventListener('load', function() {
-            if (typeof window.jsPDF === 'undefined') {
-                console.log('Loading jsPDF fallback...');
-                const script = document.createElement('script');
-                script.src = 'https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js';
-                script.crossOrigin = 'anonymous';
-                script.onload = () => console.log('jsPDF fallback loaded successfully');
-                script.onerror = () => {
-                    // Try third fallback
-                    const script2 = document.createElement('script');
-                    script2.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
-                    script2.crossOrigin = 'anonymous';
-                    script2.onload = () => console.log('jsPDF third fallback loaded successfully');
-                    script2.onerror = () => console.error('All jsPDF CDN sources failed');
-                    document.head.appendChild(script2);
-                };
-                document.head.appendChild(script);
+        console.log('🚀 Starting critical library loading at app startup...');
+        
+        // Define all required libraries with multiple CDN sources
+        const CRITICAL_LIBRARIES = {
+            jsPDF: {
+                test: () => typeof window.jsPDF !== 'undefined',
+                sources: [
+                    'https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js',
+                    'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js',
+                    'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+                    'https://unpkg.com/jspdf@2.4.0/dist/jspdf.umd.min.js' // Older stable version
+                ]
+            },
+            PDFLib: {
+                test: () => typeof window.PDFLib !== 'undefined',
+                sources: [
+                    'https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js',
+                    'https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js',
+                    'https://unpkg.com/pdf-lib@1.16.0/dist/pdf-lib.min.js'
+                ]
+            },
+            html2canvas: {
+                test: () => typeof window.html2canvas !== 'undefined',
+                sources: [
+                    'https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js',
+                    'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js',
+                    'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
+                    'https://unpkg.com/html2canvas@1.3.4/dist/html2canvas.min.js'
+                ]
+            },
+            canvas2pdf: {
+                test: () => typeof window.canvas2pdf !== 'undefined',
+                sources: [
+                    'https://unpkg.com/canvas2pdf@1.0.3/canvas2pdf.js',
+                    'https://cdn.jsdelivr.net/npm/canvas2pdf@1.0.3/canvas2pdf.js'
+                ]
             }
+        };
+        
+        // Library loading state
+        const libraryState = {
+            loaded: {},
+            loading: {},
+            failed: {},
+            allReady: false
+        };
+        
+        // Load a specific library with fallbacks
+        function loadLibrary(name, config) {
+            return new Promise((resolve, reject) => {
+                if (libraryState.loaded[name]) {
+                    resolve(name);
+                    return;
+                }
+                
+                if (config.test()) {
+                    console.log(`✅ ${name}: Already loaded`);
+                    libraryState.loaded[name] = true;
+                    resolve(name);
+                    return;
+                }
+                
+                console.log(`🔄 ${name}: Loading...`);
+                libraryState.loading[name] = true;
+                
+                let sourceIndex = 0;
+                
+                function tryNextSource() {
+                    if (sourceIndex >= config.sources.length) {
+                        console.error(`❌ ${name}: All sources failed`);
+                        libraryState.failed[name] = true;
+                        libraryState.loading[name] = false;
+                        reject(new Error(`Failed to load ${name}`));
+                        return;
+                    }
+                    
+                    const source = config.sources[sourceIndex];
+                    console.log(`🔄 ${name}: Trying source ${sourceIndex + 1}/${config.sources.length}: ${source}`);
+                    
+                    const script = document.createElement('script');
+                    script.src = source;
+                    script.crossOrigin = 'anonymous';
+                    
+                    script.onload = () => {
+                        // Wait a moment for the library to initialize
+                        setTimeout(() => {
+                            if (config.test()) {
+                                console.log(`✅ ${name}: Loaded successfully from source ${sourceIndex + 1}`);
+                                libraryState.loaded[name] = true;
+                                libraryState.loading[name] = false;
+                                resolve(name);
+                            } else {
+                                console.warn(`⚠️ ${name}: Script loaded but library not available, trying next source...`);
+                                sourceIndex++;
+                                tryNextSource();
+                            }
+                        }, 100);
+                    };
+                    
+                    script.onerror = () => {
+                        console.warn(`❌ ${name}: Source ${sourceIndex + 1} failed, trying next...`);
+                        sourceIndex++;
+                        tryNextSource();
+                    };
+                    
+                    document.head.appendChild(script);
+                }
+                
+                tryNextSource();
+            });
+        }
+        
+        // Load all critical libraries at startup
+        async function loadAllCriticalLibraries() {
+            console.log('📚 Loading all critical libraries at startup...');
             
-            if (typeof window.html2canvas === 'undefined') {
-                console.log('Loading html2canvas fallback...');
-                const script = document.createElement('script');
-                script.src = 'https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js';
-                script.crossOrigin = 'anonymous';
-                script.onload = () => console.log('html2canvas fallback loaded successfully');
-                script.onerror = () => {
-                    // Try third fallback
-                    const script2 = document.createElement('script');
-                    script2.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
-                    script2.crossOrigin = 'anonymous';
-                    script2.onload = () => console.log('html2canvas third fallback loaded successfully');
-                    script2.onerror = () => console.error('All html2canvas CDN sources failed');
-                    document.head.appendChild(script2);
-                };
-                document.head.appendChild(script);
+            const startTime = Date.now();
+            const promises = Object.entries(CRITICAL_LIBRARIES).map(([name, config]) => 
+                loadLibrary(name, config).catch(error => {
+                    console.warn(`⚠️ ${name} failed to load:`, error.message);
+                    return null; // Don't fail the entire process
+                })
+            );
+            
+            try {
+                const results = await Promise.allSettled(promises);
+                const loadTime = Date.now() - startTime;
+                
+                console.log(`📊 Library loading completed in ${loadTime}ms`);
+                
+                // Check which libraries loaded successfully
+                const loadedLibs = [];
+                const failedLibs = [];
+                
+                Object.keys(CRITICAL_LIBRARIES).forEach(name => {
+                    if (libraryState.loaded[name]) {
+                        loadedLibs.push(name);
+                    } else {
+                        failedLibs.push(name);
+                    }
+                });
+                
+                console.log('✅ Loaded libraries:', loadedLibs);
+                if (failedLibs.length > 0) {
+                    console.warn('❌ Failed libraries:', failedLibs);
+                }
+                
+                // Set ready state
+                libraryState.allReady = loadedLibs.length >= 2; // Need at least 2 libraries (PDF + canvas)
+                
+                if (libraryState.allReady) {
+                    console.log('🎉 Certificate system ready! Libraries loaded successfully.');
+                } else {
+                    console.warn('⚠️ Certificate system may have limited functionality. Some libraries failed to load.');
+                }
+                
+                // Dispatch ready event
+                window.dispatchEvent(new CustomEvent('certificateLibrariesReady', {
+                    detail: { loadedLibs, failedLibs, ready: libraryState.allReady }
+                }));
+                
+            } catch (error) {
+                console.error('❌ Critical error during library loading:', error);
+            }
+        }
+        
+        // Start loading immediately when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', loadAllCriticalLibraries);
+        } else {
+            loadAllCriticalLibraries();
+        }
+        
+        // Also try on window load as backup
+        window.addEventListener('load', () => {
+            if (!libraryState.allReady) {
+                console.log('🔄 Libraries not ready on window load, retrying...');
+                loadAllCriticalLibraries();
             }
         });
+    </script>
+      <!-- Enhanced Global Library Status Checker -->
+    <script>
+        // Enhanced global library status checker for debugging
+        window.checkCertificateLibraries = function() {
+            console.log('📊 Certificate Library Status Report (Enhanced):');
+            console.log('===============================================');
+            
+            const libraries = {
+                jsPDF: {
+                    available: typeof window.jsPDF !== 'undefined',
+                    type: typeof window.jsPDF,
+                    version: window.jsPDF?.version || (window.jsPDF ? 'detected' : 'unknown'),
+                    canCreate: false
+                },
+                PDFLib: {
+                    available: typeof window.PDFLib !== 'undefined',
+                    type: typeof window.PDFLib,
+                    version: window.PDFLib?.version || (window.PDFLib ? 'detected' : 'unknown'),
+                    canCreate: false
+                },
+                html2canvas: {
+                    available: typeof window.html2canvas !== 'undefined',
+                    type: typeof window.html2canvas,
+                    isFunction: typeof window.html2canvas === 'function'
+                },
+                canvas2pdf: {
+                    available: typeof window.canvas2pdf !== 'undefined',
+                    type: typeof window.canvas2pdf
+                }
+            };
+            
+            // Test if we can actually create instances
+            if (libraries.jsPDF.available) {
+                try {
+                    const testPdf = new window.jsPDF();
+                    libraries.jsPDF.canCreate = true;
+                    console.log('✅ jsPDF: Can create instances');
+                } catch (e) {
+                    console.warn('⚠️ jsPDF: Available but cannot create instances:', e.message);
+                }
+            }
+            
+            if (libraries.PDFLib.available) {
+                try {
+                    const test = window.PDFLib.PDFDocument;
+                    libraries.PDFLib.canCreate = !!test;
+                    console.log('✅ PDF-lib: PDFDocument available');
+                } catch (e) {
+                    console.warn('⚠️ PDF-lib: Available but PDFDocument not accessible:', e.message);
+                }
+            }
+            
+            console.table(libraries);
+            
+            // Determine capability
+            const jsPDFReady = libraries.jsPDF.available && libraries.jsPDF.canCreate;
+            const pdfLibReady = libraries.PDFLib.available && libraries.PDFLib.canCreate;
+            const html2canvasReady = libraries.html2canvas.available && libraries.html2canvas.isFunction;
+            
+            const certificateCapable = (jsPDFReady || pdfLibReady) && html2canvasReady;
+            
+            console.log('🎯 Certificate Generation Capability:');
+            console.log('=====================================');
+            console.log('PDF Generation:', jsPDFReady ? '✅ jsPDF' : (pdfLibReady ? '✅ PDF-lib' : '❌ None'));
+            console.log('Canvas Capture:', html2canvasReady ? '✅ html2canvas' : '❌ None');
+            console.log('Overall Status:', certificateCapable ? '✅ READY' : '❌ NOT READY');
+            
+            if (!certificateCapable) {
+                console.log('🔧 Troubleshooting:');
+                if (!jsPDFReady && !pdfLibReady) {
+                    console.log('  - No working PDF library. Check network/CDN connectivity.');
+                }
+                if (!html2canvasReady) {
+                    console.log('  - html2canvas not working. Check network/CDN connectivity.');
+                }
+                console.log('  - Try refreshing the page or running window.forceReloadLibraries()');
+            }
+            
+            return certificateCapable;
+        };
+        
+        // Force reload all libraries
+        window.forceReloadLibraries = function() {
+            console.log('🔄 Force reloading all certificate libraries...');
+            
+            // Remove existing libraries
+            delete window.jsPDF;
+            delete window.PDFLib;
+            delete window.html2canvas;
+            delete window.canvas2pdf;
+            
+            // Remove all library script tags
+            const scripts = document.querySelectorAll('script[src*="jspdf"], script[src*="pdf-lib"], script[src*="html2canvas"], script[src*="canvas2pdf"]');
+            scripts.forEach(script => script.remove());
+            
+            // Reload the page to restart the loading process
+            location.reload();
+        };
+        
+        // Check if we're ready for certificate generation
+        window.isCertificateSystemReady = function() {
+            return window.checkCertificateLibraries();
+        };
+        
+        console.log('💡 Available debug functions:');
+        console.log('  - window.checkCertificateLibraries()');
+        console.log('  - window.forceReloadLibraries()');
+        console.log('  - window.isCertificateSystemReady()');
+    </script>
     </script>
     
     {% block head %}{% endblock %}

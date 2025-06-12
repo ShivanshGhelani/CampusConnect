@@ -12,3 +12,4 @@ router.include_router(registration_router, tags=["registration"])
 router.include_router(feedback_router, tags=["feedback"])
 router.include_router(validation_router, tags=["validation"])
 router.include_router(certificate_api_router, tags=["certificate-api"])
+

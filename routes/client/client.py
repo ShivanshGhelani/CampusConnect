@@ -1068,7 +1068,10 @@ async def download_certificate(request: Request, event_id: str, student: Student
             raise HTTPException(
                 status_code=400, 
                 detail="Certificates are not available for this event at this time"
-            )        # Check if student is registered for this event and has attended using the new data structure
+            )        # Import settings for debug flag
+        from config.settings import settings
+        
+        # Check if student is registered for this event and has attended using the new data structure
         student_data = await DatabaseOperations.find_one("students", {"enrollment_no": student.enrollment_no})
         if not student_data:
             return templates.TemplateResponse(
@@ -1079,7 +1082,8 @@ async def download_certificate(request: Request, event_id: str, student: Student
                     "student": student,
                     "error": "Student data not found",
                     "is_student_logged_in": True,
-                    "student_data": student.model_dump()
+                    "student_data": student.model_dump(),
+                    "config": {"DEBUG": settings.DEBUG}
                 }
             )
         
@@ -1095,11 +1099,11 @@ async def download_certificate(request: Request, event_id: str, student: Student
                     "student": student,
                     "error": "You must be registered for this event to download a certificate",
                     "is_student_logged_in": True,
-                    "student_data": student.model_dump()
+                    "student_data": student.model_dump(),
+                    "config": {"DEBUG": settings.DEBUG}
                 }
             )
-        
-        # Check for attendance - must have attendance record
+          # Check for attendance - must have attendance record
         if not participation.get('attendance_id'):
             return templates.TemplateResponse(
                 "client/certificate_download.html",
@@ -1109,7 +1113,8 @@ async def download_certificate(request: Request, event_id: str, student: Student
                     "student": student,
                     "error": "You must have attended this event to download a certificate",
                     "is_student_logged_in": True,
-                    "student_data": student.model_dump()
+                    "student_data": student.model_dump(),
+                    "config": {"DEBUG": settings.DEBUG}
                 }
             )
         
@@ -1163,7 +1168,10 @@ async def download_certificate(request: Request, event_id: str, student: Student
         
         attendance = {
             "attendance_id": participation.get('attendance_id')
-        }        # Return certificate download page with validated=True
+        }        # Import settings for debug flag
+        from config.settings import settings
+        
+        # Return certificate download page with validated=True
         return templates.TemplateResponse(
             "client/certificate_download.html",
             {
@@ -1176,7 +1184,8 @@ async def download_certificate(request: Request, event_id: str, student: Student
                 "validated": True,  # All requirements are met
                 "is_student_logged_in": True,
                 "student_data": student.model_dump(),
-                "message": "Your certificate is ready for download!"
+                "message": "Your certificate is ready for download!",
+                "config": {"DEBUG": settings.DEBUG}  # Add config for debug section
             }
         )
         
@@ -1192,34 +1201,8 @@ async def download_certificate(request: Request, event_id: str, student: Student
         print(f"Error in download_certificate: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/events/{event_id}/certificate/download")
-async def download_certificate_file(request: Request, event_id: str, student: Student = Depends(require_student_login)):
-    """Download the certificate file directly to client"""
-    try:
-        from utils.certificate_generator import generate_certificate_for_student, create_certificate_download_response
-        
-        # Generate certificate for client-side download
-        success, message, pdf_bytes = await generate_certificate_for_student(event_id, student.enrollment_no)
-        
-        if success and pdf_bytes:
-            # Create filename for download
-            from datetime import datetime
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"Certificate_{student.enrollment_no}_{timestamp}.pdf"
-            
-            # Return the PDF as a downloadable file
-            return create_certificate_download_response(pdf_bytes, filename)
-        else:
-            return {
-                "success": False,
-                "message": message
-            }
-            
-    except Exception as e:
-        return {
-            "success": False,
-            "message": f"Error generating certificate: {str(e)}"
-        }
+# Old certificate route - replaced by clean JavaScript implementation
+# Use /client/certificate/download/{event_id} for new clean implementation
 
 @router.get("/events/{event_id}/mark-attendance")
 async def mark_attendance_get(request: Request, event_id: str, student: Student = Depends(require_student_login)):
@@ -1791,3 +1774,63 @@ async def send_certificate_email_api(request: Request, student: Student = Depend
     except Exception as e:
         print(f"Error in send_certificate_email_api: {str(e)}")
         return {"success": False, "message": f"Error sending certificate email: {str(e)}"}
+
+@router.get("/certificate/download/{event_id}")
+async def certificate_download_clean(
+    request: Request, 
+    event_id: str,
+    current_student: dict = Depends(get_current_student)
+):
+    """
+    Certificate download page for clean JavaScript implementation
+    """
+    try:
+        # Get event details using DatabaseOperations
+        event = await DatabaseOperations.find_one("events", {"event_id": event_id})
+        if not event:
+            raise HTTPException(status_code=404, detail="Event not found")
+            
+        # Check if student is registered for this event by looking at participations
+        student_doc = await DatabaseOperations.find_one("students", {"enrollment_no": current_student['enrollment_no']})
+        if not student_doc:
+            raise HTTPException(status_code=404, detail="Student not found")
+            
+        participations = student_doc.get("event_participations", {})
+        participation = participations.get(event_id)
+        
+        if not participation:
+            raise HTTPException(status_code=403, detail="You are not registered for this event")
+            
+        # Get team information for team-based events
+        team_info = None
+        if event.get('registration_mode', '').lower() == 'team':
+            # Check if there's team data in the participation
+            student_data = participation.get('student_data', {})
+            team_name = student_data.get('team_name')
+            
+            if team_name:
+                team_info = {
+                    'team_name': team_name,
+                    'team_id': participation.get('team_registration_id')
+                }        # Import settings for debug flag
+        from config.settings import settings
+        
+        # Prepare template context
+        context = await get_template_context(request)
+        context.update({
+            'event': event,
+            'team_info': team_info,
+            'page_title': f'Download Certificate - {event.get("event_name", "Event")}',
+            'config': {"DEBUG": settings.DEBUG}  # Add config for debug section
+        })
+        
+        return templates.TemplateResponse(
+            "client/certificate_download.html", 
+            context
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in certificate download page: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
