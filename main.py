@@ -36,8 +36,16 @@ templates = Jinja2Templates(directory="templates")
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     if exc.status_code == 401:
+        # Check if this is an API request
+        if "/api/" in request.url.path:
+            # For API endpoints, return JSON error response
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
+                status_code=401,
+                content={"success": False, "message": "Authentication required", "detail": exc.detail}
+            )
         # Check if this is a student-related route
-        if request.url.path.startswith("/client/"):
+        elif request.url.path.startswith("/client/"):
             # For student routes, redirect to student login with return URL
             return RedirectResponse(
                 url=f"/client/login?redirect={request.url.path}",

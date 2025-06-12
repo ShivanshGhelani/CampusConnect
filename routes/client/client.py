@@ -1048,17 +1048,19 @@ async def registration_not_started(request: Request):
         context
     )
 
+# Certificate download route - Updated for JavaScript implementation
 @router.get("/events/{event_id}/certificate")
 async def download_certificate(request: Request, event_id: str, student: Student = Depends(require_student_login)):
     """Download certificate for completed events - requires student login and feedback submission"""
     # Get feedback_submitted from query parameters
     feedback_submitted = request.query_params.get("feedback_submitted", "").lower() == "true"
-    """Download certificate for completed events - requires student login and feedback submission"""
+    
     try:
         from utils.event_status_manager import EventStatusManager
         from models.event import Event, EventSubStatus
-        from fastapi.responses import FileResponse
-        from pathlib import Path        # Get event details with updated status from EventStatusManager
+        from utils.js_certificate_generator import validate_certificate_eligibility
+        
+        # Get event details with updated status from EventStatusManager
         event = await EventStatusManager.get_event_by_id(event_id)
         if not event:
             raise HTTPException(status_code=404, detail="Event not found")
@@ -1068,8 +1070,27 @@ async def download_certificate(request: Request, event_id: str, student: Student
             raise HTTPException(
                 status_code=400, 
                 detail="Certificates are not available for this event at this time"
-            )        # Import settings for debug flag
+            )
+        
+        # Import settings for debug flag
         from config.settings import settings
+        
+        # Validate certificate eligibility using the new utility
+        is_eligible, eligibility_message = await validate_certificate_eligibility(event_id, student.enrollment_no)
+        
+        if not is_eligible:
+            return templates.TemplateResponse(
+                "client/certificate_download.html",
+                {
+                    "request": request,
+                    "event": event,
+                    "student": student,
+                    "error": eligibility_message,
+                    "is_student_logged_in": True,
+                    "student_data": student.model_dump(),
+                    "config": {"DEBUG": settings.DEBUG}
+                }
+            )
         
         # Check if student is registered for this event and has attended using the new data structure
         student_data = await DatabaseOperations.find_one("students", {"enrollment_no": student.enrollment_no})
@@ -1090,6 +1111,7 @@ async def download_certificate(request: Request, event_id: str, student: Student
         # Check event participation in the student record
         event_participations = student_data.get('event_participations', {})
         participation = event_participations.get(event_id)
+        
         if not participation:
             return templates.TemplateResponse(
                 "client/certificate_download.html",
@@ -1103,7 +1125,8 @@ async def download_certificate(request: Request, event_id: str, student: Student
                     "config": {"DEBUG": settings.DEBUG}
                 }
             )
-          # Check for attendance - must have attendance record
+        
+        # Check for attendance - must have attendance record
         if not participation.get('attendance_id'):
             return templates.TemplateResponse(
                 "client/certificate_download.html",
@@ -1124,10 +1147,20 @@ async def download_certificate(request: Request, event_id: str, student: Student
                 url=f"/client/events/{event_id}/feedback",
                 status_code=303,
             )
+        
+        # Get team information for team-based events
+        team_info = None
+        if event.get('registration_mode', '').lower() == 'team':
+            student_data_in_participation = participation.get('student_data', {})
+            team_name = student_data_in_participation.get('team_name')
             
-            # In a full implementation, you would also check if they attended the event
-            # if not registration.get('attended'):
-            #     return error about not attending        # Check if certificate already exists
+            if team_name:
+                team_info = {
+                    'team_name': team_name,
+                    'team_id': participation.get('team_registration_id')
+                }
+        
+        # Check if certificate already exists
         certificate_id = participation.get('certificate_id')
         
         # If no certificate yet, generate one
@@ -1150,7 +1183,8 @@ async def download_certificate(request: Request, event_id: str, student: Student
                 {"event_id": event_id},
                 {"$set": {f"certificates.{certificate_id}": student.enrollment_no}}
             )
-          # Create certificate data for the template
+        
+        # Create certificate data for the template
         certificate = {
             "certificate_id": certificate_id,
             "full_name": student_data.get("full_name", ""),
@@ -1168,7 +1202,9 @@ async def download_certificate(request: Request, event_id: str, student: Student
         
         attendance = {
             "attendance_id": participation.get('attendance_id')
-        }        # Import settings for debug flag
+        }
+        
+        # Import settings for debug flag
         from config.settings import settings
         
         # Return certificate download page with validated=True
@@ -1181,6 +1217,7 @@ async def download_certificate(request: Request, event_id: str, student: Student
                 "certificate": certificate,
                 "registration": registration,
                 "attendance": attendance,
+                "team_info": team_info,
                 "validated": True,  # All requirements are met
                 "is_student_logged_in": True,
                 "student_data": student.model_dump(),
@@ -1360,79 +1397,42 @@ async def debug_auth_route(request: Request):
 
 
 # JavaScript Certificate Generator API Endpoints
-@router.post("/api/certificate-data")
-async def get_certificate_data_api(request: Request, student: Student = Depends(require_student_login)):
-    """API endpoint to get certificate data for JavaScript generator"""
-    try:
-        from utils.js_certificate_generator import get_certificate_data_for_js
-        
-        data = await request.json()
-        event_id = data.get("event_id")
-        enrollment_no = data.get("enrollment_no")
-        
-        if not event_id or not enrollment_no:
-            return {"success": False, "message": "Event ID and enrollment number are required"}
-        
-        # Verify the logged-in student matches the requested enrollment
-        if student.enrollment_no != enrollment_no:
-            return {"success": False, "message": "Unauthorized: You can only generate certificates for your own enrollment"}
-        
-        success, message, certificate_data = await get_certificate_data_for_js(event_id, enrollment_no)
-        
-        if success:
-            return {"success": True, "message": message, "data": certificate_data}
-        else:
-            return {"success": False, "message": message}
-            
-    except Exception as e:
-        print(f"Error in get_certificate_data_api: {str(e)}")
-        return {"success": False, "message": f"Error retrieving certificate data: {str(e)}"}
-
-
-@router.post("/api/send-certificate-email")
-async def send_certificate_email_api(request: Request, student: Student = Depends(require_student_login)):
-    """API endpoint to send certificate email from JavaScript-generated PDF"""
-    try:
-        from utils.js_certificate_generator import send_certificate_email_from_js
-        
-        data = await request.json()
-        event_id = data.get("event_id")
-        enrollment_no = data.get("enrollment_no")
-        pdf_base64 = data.get("pdf_base64")
-        file_name = data.get("file_name")
-        
-        if not all([event_id, enrollment_no, pdf_base64, file_name]):
-            return {"success": False, "message": "All fields are required"}
-        
-        # Verify the logged-in student matches the requested enrollment
-        if student.enrollment_no != enrollment_no:
-            return {"success": False, "message": "Unauthorized: You can only send certificates for your own enrollment"}
-        
-        success, message = await send_certificate_email_from_js(event_id, enrollment_no, pdf_base64, file_name)
-        
-        return {"success": success, "message": message}
-            
-    except Exception as e:
-        print(f"Error in send_certificate_email_api: {str(e)}")
-        return {"success": False, "message": f"Error sending certificate email: {str(e)}"}
+# Note: Certificate API endpoints moved to certificate_api.py router
 
 @router.get("/certificate/download/{event_id}")
 async def certificate_download_clean(
     request: Request, 
     event_id: str,
-    current_student: dict = Depends(get_current_student)
+    current_student: Student = Depends(get_current_student)
 ):
     """
     Certificate download page for clean JavaScript implementation
     """
     try:
+        from utils.js_certificate_generator import validate_certificate_eligibility
+        from config.settings import settings
+        
         # Get event details using DatabaseOperations
         event = await DatabaseOperations.find_one("events", {"event_id": event_id})
         if not event:
             raise HTTPException(status_code=404, detail="Event not found")
             
+        # Validate certificate eligibility
+        enrollment_no = current_student.enrollment_no
+        is_eligible, eligibility_message = await validate_certificate_eligibility(event_id, enrollment_no)
+        
+        if not is_eligible:
+            context = await get_template_context(request)
+            context.update({
+                'event': event,
+                'error': eligibility_message,
+                'page_title': f'Certificate Not Available - {event.get("event_name", "Event")}',
+                'config': {"DEBUG": settings.DEBUG}
+            })
+            return templates.TemplateResponse("client/certificate_download.html", context)
+            
         # Check if student is registered for this event by looking at participations
-        student_doc = await DatabaseOperations.find_one("students", {"enrollment_no": current_student['enrollment_no']})
+        student_doc = await DatabaseOperations.find_one("students", {"enrollment_no": enrollment_no})
         if not student_doc:
             raise HTTPException(status_code=404, detail="Student not found")
             
@@ -1453,25 +1453,116 @@ async def certificate_download_clean(
                 team_info = {
                     'team_name': team_name,
                     'team_id': participation.get('team_registration_id')
-                }        # Import settings for debug flag
-        from config.settings import settings
-        
+                }
+                
+        # Create certificate data if it doesn't exist
+        certificate_id = participation.get('certificate_id')
+        if not certificate_id:
+            from utils.id_generator import generate_certificate_id
+            certificate_id = generate_certificate_id(enrollment_no, event_id, student_doc.get("full_name", ""))
+            
+            # Update student's event participation with the certificate ID
+            await DatabaseOperations.update_one(
+                "students",
+                {"enrollment_no": enrollment_no},
+                {"$set": {f"event_participations.{event_id}.certificate_id": certificate_id}}
+            )
+                
         # Prepare template context
         context = await get_template_context(request)
         context.update({
             'event': event,
             'team_info': team_info,
             'page_title': f'Download Certificate - {event.get("event_name", "Event")}',
-            'config': {"DEBUG": settings.DEBUG}  # Add config for debug section
+            'config': {"DEBUG": settings.DEBUG},
+            'certificate': {'certificate_id': certificate_id},
+            'validated': True  # Certificate is available for download
         })
         
-        return templates.TemplateResponse(
-            "client/certificate_download.html", 
-            context
-        )
+        return templates.TemplateResponse("client/certificate_download.html", context)
         
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error in certificate download page: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+@router.get("/api/certificate-template/{event_id}")
+async def get_certificate_template(event_id: str, current_student: Student = Depends(get_current_student)):
+    """API endpoint to get certificate template content and placeholder data"""
+    try:
+        from pathlib import Path
+        
+        # Get event data
+        event_data = await DatabaseOperations.find_one("events", {"event_id": event_id})
+        if not event_data:
+            raise HTTPException(status_code=404, detail="Event not found")
+        
+        # Get student data
+        student_data = await DatabaseOperations.find_one("students", {"enrollment_no": current_student.enrollment_no})
+        if not student_data:
+            raise HTTPException(status_code=404, detail="Student not found")
+        
+        # Check if student is registered for this event
+        event_participations = student_data.get('event_participations', {})
+        if event_id not in event_participations:
+            raise HTTPException(status_code=403, detail="Student not registered for this event")
+        
+        participation = event_participations[event_id]
+        
+        # Get certificate template path
+        certificate_template = event_data.get('certificate_template')
+        if not certificate_template:
+            return {"success": False, "message": "No certificate template configured for this event"}
+        
+        # Construct the full template path
+        template_path = Path(certificate_template)
+        
+        # Check if the file exists
+        if not template_path.exists():
+            logger.error(f"Certificate template not found: {template_path}")
+            return {"success": False, "message": f"Certificate template file not found: {certificate_template}"}
+        
+        # Read the template content
+        try:
+            with open(template_path, 'r', encoding='utf-8') as file:
+                template_content = file.read()
+        except Exception as read_error:
+            logger.error(f"Error reading template file: {str(read_error)}")
+            return {"success": False, "message": f"Error reading template file: {str(read_error)}"}
+        
+        # Prepare placeholder data
+        placeholder_data = {
+            "participant_name": student_data.get("full_name", ""),
+            "department_name": student_data.get("department", ""),
+            "event_name": event_data.get("event_name", ""),
+            "event_date": event_data.get("start_datetime", ""),
+            "certificate_id": participation.get("certificate_id", "")
+        }
+        
+        # Add team name for team-based events
+        if event_data.get('registration_mode', '').lower() == 'team':
+            student_data_in_participation = participation.get('student_data', {})
+            team_name = student_data_in_participation.get('team_name')
+            if team_name:
+                placeholder_data["team_name"] = team_name
+        
+        return {
+            "success": True,
+            "message": "Certificate template loaded successfully",
+            "template_content": template_content,
+            "placeholder_data": placeholder_data,
+            "template_path": str(template_path)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error loading certificate template: {str(e)}")
+        return {"success": False, "message": f"Error loading certificate template: {str(e)}"}
+
+# Test endpoint to verify API routing
+@router.get("/test-api")
+async def test_api():
+    """Simple test endpoint to verify API routing works"""
+    return {"success": True, "message": "API routing is working"}
