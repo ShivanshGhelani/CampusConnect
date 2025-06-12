@@ -7,6 +7,132 @@
 
 {% block title %}Certificate Download - {{ event.event_name }}{% endblock %}
 
+{% block extra_head %}
+<!-- PDF Generation Libraries with Multiple CDN Fallbacks -->
+<script>
+    // Global flag to track library loading status
+    window.librariesLoaded = false;
+    window.libraryErrors = [];
+    
+    // Load jsPDF with multiple CDN fallbacks
+    function loadJsPDF() {
+        return new Promise((resolve, reject) => {
+            const scripts = [
+                'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+                'https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js',
+                'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js'
+            ];
+            
+            let attempts = 0;
+            
+            function tryLoad() {
+                if (attempts >= scripts.length) {
+                    reject(new Error('All jsPDF CDN attempts failed'));
+                    return;
+                }
+                
+                const script = document.createElement('script');
+                script.src = scripts[attempts];
+                script.onload = () => {
+                    console.log(`✅ jsPDF loaded from: ${scripts[attempts]}`);
+                    resolve();
+                };
+                script.onerror = () => {
+                    console.warn(`❌ Failed to load jsPDF from: ${scripts[attempts]}`);
+                    attempts++;
+                    tryLoad();
+                };
+                document.head.appendChild(script);
+            }
+            
+            tryLoad();
+        });
+    }
+    
+    // Load html2canvas with multiple CDN fallbacks
+    function loadHtml2Canvas() {
+        return new Promise((resolve, reject) => {
+            const scripts = [
+                'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
+                'https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js',
+                'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js'
+            ];
+            
+            let attempts = 0;
+            
+            function tryLoad() {
+                if (attempts >= scripts.length) {
+                    reject(new Error('All html2canvas CDN attempts failed'));
+                    return;
+                }
+                
+                const script = document.createElement('script');
+                script.src = scripts[attempts];
+                script.onload = () => {
+                    console.log(`✅ html2canvas loaded from: ${scripts[attempts]}`);
+                    resolve();
+                };
+                script.onerror = () => {
+                    console.warn(`❌ Failed to load html2canvas from: ${scripts[attempts]}`);
+                    attempts++;
+                    tryLoad();
+                };
+                document.head.appendChild(script);
+            }
+            
+            tryLoad();
+        });
+    }
+    
+    // Load all libraries
+    async function loadLibraries() {
+        try {
+            console.log('🔄 Loading PDF generation libraries...');
+            
+            await Promise.all([
+                loadJsPDF(),
+                loadHtml2Canvas()
+            ]);
+            
+            window.librariesLoaded = true;
+            console.log('✅ All PDF libraries loaded successfully');
+            
+            // Initialize certificate generator if not already done
+            if (typeof initializeCertificateGenerator === 'function') {
+                initializeCertificateGenerator();
+            }
+            
+        } catch (error) {
+            console.error('❌ Failed to load PDF libraries:', error);
+            window.libraryErrors.push(error.message);
+            
+            // Show fallback message to user
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-lg mb-4';
+            errorDiv.innerHTML = `
+                <div class="flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                    </svg>
+                    <div>
+                        <p class="font-medium">⚠️ PDF Generation Issue</p>
+                        <p class="text-sm">Client-side PDF generation temporarily unavailable. Using server-side generation as fallback.</p>
+                    </div>
+                </div>
+            `;
+            
+            const container = document.querySelector('.container');
+            if (container && container.firstChild) {
+                container.insertBefore(errorDiv, container.firstChild);
+            }
+        }
+    }
+    
+    // Start loading libraries immediately
+    loadLibraries();
+</script>
+{% endblock %}
+
 {% block content %}
 <div class="container mx-auto px-4 py-8 max-w-4xl">
     <!-- Navigation -->
@@ -111,7 +237,9 @@
                 </svg>
             </div>
             <h3 class="text-xl font-semibold text-gray-800 mb-2">Certificate Ready</h3>
-            <p class="text-gray-600 mb-6">{{ message }}</p>            <!-- Certificate Download Action -->
+            <p class="text-gray-600 mb-6">{{ message }}</p>
+            
+            <!-- Certificate Download Action -->
             <div class="space-y-4">
                 {% if event.registration_mode == 'individual' and event.registration_type in ['free', 'paid'] %}
                 <!-- Available for individual events (free or paid) -->
@@ -140,23 +268,20 @@
     <!-- Back to Dashboard -->
     <div class="text-center">
         <a href="/client/dashboard" 
-           class="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium group transition-all duration-200">
-            <svg class="w-4 h-4 mr-2 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+           class="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium group transition-all duration-200">            <svg class="w-4 h-4 mr-2 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
             </svg>
-            Back to Dashboard    </div>
+            Back to Dashboard
+        </a>
+    </div>
 </div>
 
 <!-- JavaScript for Certificate Download -->
-{% if event.registration_mode == 'individual' and event.registration_type in ['free', 'paid'] %}
-<<<<<<< HEAD
-<!-- Load certificate generator scripts -->
-<script src="/static/js/certificate-generator-js.js"></script>
-<script src="/static/js/certificate-generator.js"></script>
+{% if (event.registration_mode == 'individual' or event.registration_mode == 'team') and event.registration_type in ['free', 'paid'] %}
 
-=======
-<script src="/static/js/certificate-generator-v2.js"></script>
->>>>>>> f9fe659 (feat: Implement JavaScript Certificate Generator with PDF generation and email notification)
+
+<script src="/static/js/certificate_generate.js"></script>
+
 <script>
 // Set event ID for the certificate generator
 window.currentEventId = '{{ event.event_id }}';
@@ -185,70 +310,23 @@ if (typeof window.CertificateGeneratorJS === 'undefined') {
 
 document.addEventListener('DOMContentLoaded', function() {
     const downloadBtn = document.getElementById('downloadCertificateBtn');
-    const downloadText = document.getElementById('downloadText');
     
     if (downloadBtn) {
-<<<<<<< HEAD
         // Use JavaScript-based certificate generation
         downloadBtn.addEventListener('click', function() {
+            const eventId = '{{ event.event_id }}';
+            
             // Check if certificate generator is available
-            if (typeof handleCertificateDownload === 'function') {
-                handleCertificateDownload();
+            if (window.certificateGenerator && typeof window.certificateGenerator.generateCertificate === 'function') {
+                // Use the improved JavaScript certificate generator
+                window.certificateGenerator.generateCertificate(eventId);
+            } else if (typeof generateCertificate === 'function') {
+                // Use global function if available
+                generateCertificate(eventId);
             } else {
                 // Fallback to manual library loading and simple certificate generation
                 console.error('Certificate generator not loaded, attempting fallback...');
                 fallbackCertificateGeneration();
-=======
-        downloadBtn.addEventListener('click', async function() {
-            // Disable button and show loading state
-            downloadBtn.disabled = true;
-            downloadBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
-            downloadBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
-            downloadText.textContent = 'Generating Certificate...';
-              try {
-                // Use the new V2 JavaScript certificate generator
-                const eventId = '{{ event.event_id }}';
-                const enrollmentNo = '{{ student.enrollment_no }}';
-                
-                // Call the V2 generator function
-                await generateCertificateV2(eventId, enrollmentNo);
-                
-                // Update button text
-                downloadText.textContent = 'Certificate Generated!';
-                
-            } catch (error) {
-                console.error('Error generating certificate:', error);
-                downloadText.textContent = 'Generation Failed';
-                
-                // Create error message
-                const errorDiv = document.createElement('div');
-                errorDiv.className = 'bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4';
-                errorDiv.innerHTML = `
-                    <div class="flex items-center">
-                        <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                        </svg>
-                        <div>
-                            <p class="font-medium">Certificate Generation Failed</p>
-                            <p class="text-sm text-red-600">${error.message}</p>
-                        </div>
-                    </div>
-                `;
-                
-                // Insert error message
-                const certificateStatusDiv = document.querySelector('.bg-gradient-to-r.from-blue-50');
-                if (certificateStatusDiv) {
-                    certificateStatusDiv.parentNode.insertBefore(errorDiv, certificateStatusDiv);
-                }
-            } finally {
-                // Reset button after delay
-                setTimeout(() => {
-                    downloadBtn.disabled = false;
-                    downloadBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
-                    downloadBtn.classList.add('bg-green-600', 'hover:bg-green-700');
-                    downloadText.textContent = 'Download Certificate';
-                }, 3000);
->>>>>>> f9fe659 (feat: Implement JavaScript Certificate Generator with PDF generation and email notification)
             }
         });
         

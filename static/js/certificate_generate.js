@@ -17,39 +17,52 @@ class CleanCertificateGenerator {
         };
         
         console.log('🚀 Clean Certificate Generator initialized');
-    }
-
-    /**
+    }    /**
      * Main certificate generation function
      * Handles concurrent requests with unique identifiers
      */
     async generateCertificate(eventId, enrollmentNo = null) {
-        // Create unique generation ID
+        // Create unique generation ID with enrollment and timestamp
         const generationId = `${eventId}_${enrollmentNo || 'current'}_${Date.now()}`;
         
         console.log(`🎯 Starting certificate generation [ID: ${generationId}]`);
         
         // Check if already generating for this combination
-        if (this.activeGenerations.has(generationId)) {
-            console.warn('⚠️ Certificate generation already in progress for this request');
+        const existingGenerationKey = `${eventId}_${enrollmentNo || 'current'}`;
+        const existingGeneration = Array.from(this.activeGenerations.keys()).find(key => 
+            key.startsWith(existingGenerationKey) && key !== generationId
+        );
+        
+        if (existingGeneration) {
+            console.warn('⚠️ Certificate generation already in progress for this user/event combination');
+            this.showError('Certificate generation already in progress. Please wait...');
             return;
         }
 
         // Verify libraries are loaded
         if (!this.checkLibraries()) {
-            this.showError('PDF libraries not loaded. Please refresh the page and try again.');
+            console.warn('⚠️ PDF libraries not available, using server fallback');
+            await this.generateCertificateServerFallback(eventId, enrollmentNo);
             return;
         }
 
-        // Add to active generations
+        // Add to active generations with detailed tracking
         this.activeGenerations.set(generationId, {
             status: 'starting',
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            eventId: eventId,
+            enrollmentNo: enrollmentNo
         });
 
         try {
             // Show loading state
             this.showLoadingState(generationId);
+            
+            // Update generation status
+            this.activeGenerations.set(generationId, {
+                ...this.activeGenerations.get(generationId),
+                status: 'fetching_data'
+            });
 
             // Step 1: Fetch certificate data from Python API
             const certificateData = await this.fetchCertificateData(eventId, enrollmentNo);
@@ -60,23 +73,51 @@ class CleanCertificateGenerator {
 
             console.log('✅ Certificate data fetched successfully');
             
+            // Update generation status
+            this.activeGenerations.set(generationId, {
+                ...this.activeGenerations.get(generationId),
+                status: 'generating_html'
+            });
+            
             // Step 2: Generate HTML with replaced placeholders
             const htmlContent = this.generateCertificateHTML(certificateData.data);
+            
+            // Update generation status
+            this.activeGenerations.set(generationId, {
+                ...this.activeGenerations.get(generationId),
+                status: 'converting_to_pdf'
+            });
             
             // Step 3: Convert HTML to PDF
             const pdfBlob = await this.convertHTMLToPDF(htmlContent, certificateData.data);
             
-            // Step 4: Create temporary file name
+            // Step 4: Create temporary file name using naming convention: studentName[0]_eventName[0]_timestamp
             const fileName = this.createTempFileName(certificateData.data);
+            
+            // Update generation status
+            this.activeGenerations.set(generationId, {
+                ...this.activeGenerations.get(generationId),
+                status: 'downloading'
+            });
             
             // Step 5: Download PDF
             this.downloadPDF(pdfBlob, fileName);
             
-            // Step 6: Send email (background)
-            await this.sendCertificateEmail(certificateData.data, pdfBlob, fileName);
+            // Update generation status
+            this.activeGenerations.set(generationId, {
+                ...this.activeGenerations.get(generationId),
+                status: 'sending_email'
+            });
             
-            // Step 7: Cleanup
-            this.cleanupTempFile(fileName);
+            // Step 6: Send email (background) - don't wait for completion
+            this.sendCertificateEmail(certificateData.data, pdfBlob, fileName).catch(err => {
+                console.warn('Email sending failed but certificate generation succeeded:', err);
+            });
+            
+            // Step 7: Cleanup temp file tracking
+            setTimeout(() => {
+                this.cleanupTempFile(fileName);
+            }, 5000); // Cleanup after 5 seconds
             
             console.log(`✅ Certificate generation completed [ID: ${generationId}]`);
             this.showSuccess('Certificate generated and downloaded successfully!');
@@ -247,8 +288,119 @@ class CleanCertificateGenerator {
         // Add to temp files tracking
         this.tempFiles.add(fileName);
         
-        console.log(`📁 Created temp file name: ${fileName}`);
-        return fileName;
+        console.log(`📁 Created temp file name: ${fileName}`);        return fileName;
+    }
+
+    /**
+     * Check if PDF libraries are loaded and available
+     */
+    checkLibraries() {
+        const jsPDFAvailable = typeof window.jsPDF !== 'undefined';
+        const html2canvasAvailable = typeof window.html2canvas !== 'undefined';
+        
+        console.log(`📚 Library status - jsPDF: ${jsPDFAvailable}, html2canvas: ${html2canvasAvailable}`);
+        
+        return jsPDFAvailable && html2canvasAvailable;
+    }
+
+    /**
+     * Convert HTML to PDF using jsPDF and html2canvas
+     */
+    async convertHTMLToPDF(htmlContent, data) {
+        console.log('🔄 Converting HTML to PDF...');
+        
+        try {
+            // Create a temporary container for the HTML
+            const tempContainer = document.createElement('div');
+            tempContainer.style.position = 'absolute';
+            tempContainer.style.left = '-9999px';
+            tempContainer.style.top = '-9999px';
+            tempContainer.style.width = '714px';
+            tempContainer.style.height = '1083px';
+            tempContainer.innerHTML = htmlContent;
+            
+            document.body.appendChild(tempContainer);
+            
+            // Convert HTML to canvas
+            const canvas = await window.html2canvas(tempContainer, {
+                width: 714,
+                height: 1083,
+                scale: 2,
+                useCORS: true,
+                allowTaint: true,
+                backgroundColor: '#ffffff'
+            });
+            
+            // Clean up temporary container
+            document.body.removeChild(tempContainer);
+            
+            // Create PDF
+            const { jsPDF } = window.jsPDF;
+            const pdf = new jsPDF({
+                orientation: 'portrait',
+                unit: 'px',
+                format: [714, 1083]
+            });
+            
+            // Add the canvas as image to PDF
+            const imgData = canvas.toDataURL('image/png');
+            pdf.addImage(imgData, 'PNG', 0, 0, 714, 1083);
+            
+            // Return PDF as blob
+            const pdfBlob = pdf.output('blob');
+            console.log('✅ PDF conversion completed');
+            
+            return pdfBlob;
+            
+        } catch (error) {
+            console.error('❌ PDF conversion failed:', error);
+            throw new Error(`PDF conversion failed: ${error.message}`);
+        }
+    }
+
+    /**
+     * Server-side certificate generation fallback
+     */
+    async generateCertificateServerFallback(eventId, enrollmentNo) {
+        console.log('🔄 Using server-side certificate generation fallback...');
+        
+        try {
+            this.showLoadingState('server_fallback');
+            
+            const response = await fetch('/client/api/generate-certificate-server', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    event_id: eventId,
+                    enrollment_no: enrollmentNo
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Server generation failed: ${response.status} ${response.statusText}`);
+            }
+            
+            // Get the PDF blob from response
+            const pdfBlob = await response.blob();
+            
+            // Create filename
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const fileName = `certificate_${eventId}_${enrollmentNo || 'current'}_${timestamp}.pdf`;
+            
+            // Download the file
+            await this.downloadPDF(pdfBlob, fileName);
+            
+            this.showSuccess('Certificate downloaded successfully using server generation!');
+            console.log('✅ Server-side certificate generation completed');
+            
+        } catch (error) {
+            console.error('❌ Server-side certificate generation failed:', error);
+            this.showError(`Certificate generation failed: ${error.message}`);
+        } finally {
+            this.hideLoadingState();
+        }
     }
 
     /**
@@ -525,24 +677,38 @@ window.certificateGenerator = null;
 
 // Initialize when libraries are ready
 function initializeCertificateGenerator() {
-    if (typeof window.jsPDF !== 'undefined' && typeof window.html2canvas !== 'undefined') {
+    // Check if libraries are available
+    const jsPDFAvailable = typeof window.jsPDF !== 'undefined';
+    const html2canvasAvailable = typeof window.html2canvas !== 'undefined';
+    
+    console.log(`📚 Initializing - jsPDF: ${jsPDFAvailable}, html2canvas: ${html2canvasAvailable}`);
+    
+    if (!window.certificateGenerator) {
         window.certificateGenerator = new CleanCertificateGenerator();
-        console.log('✅ Clean Certificate Generator ready for use');
+        console.log('✅ Clean Certificate Generator initialized');
+        
+        if (jsPDFAvailable && html2canvasAvailable) {
+            console.log('✅ All PDF libraries available - client-side generation enabled');
+        } else {
+            console.log('⚠️ Some PDF libraries missing - will use server fallback when needed');
+        }
+        
         return true;
     }
+    
     return false;
 }
 
 // Global function for button clicks
 function generateCertificate(eventId, enrollmentNo) {
     if (!window.certificateGenerator) {
-        if (initializeCertificateGenerator()) {
-            window.certificateGenerator.generateCertificate(eventId, enrollmentNo);
-        } else {
-            alert('Certificate libraries not loaded. Please refresh the page and try again.');
-        }
-    } else {
+        initializeCertificateGenerator();
+    }
+    
+    if (window.certificateGenerator) {
         window.certificateGenerator.generateCertificate(eventId, enrollmentNo);
+    } else {
+        alert('Certificate generator not available. Please refresh the page and try again.');
     }
 }
 

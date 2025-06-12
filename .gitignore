@@ -25,6 +25,7 @@ venv/
 env/
 ENV/
 admin/
+node_modueles/
 
 # Environment Variables
 .env
