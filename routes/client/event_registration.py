@@ -541,13 +541,12 @@ async def save_individual_registration(registration: RegistrationForm, event_id:
         })
 
     # Send registration confirmation email for free events
-    try:
-        await email_service.send_registration_confirmation(
+    try:        await email_service.send_registration_confirmation(
             student_email=registration.email,
             student_name=registration.full_name,
             event_title=event.get("event_name", event_id),
-            event_date=event.get("start_datetime"),
-            event_venue=event.get("venue"),
+            start_datetime=event.get("start_datetime"),
+            venue=event.get("venue"),
             registration_id=registration_id
         )
     except Exception as e:
@@ -686,8 +685,9 @@ async def save_team_registration(team_registration: TeamRegistrationForm, event_
                 "participants": valid_participants
             },
             "is_student_logged_in": True,
-            "student_data": student.model_dump()
-        })    # Send registration confirmation emails for free team events
+            "student_data": student.model_dump()        })    
+    
+    # Send registration confirmation emails for free team events
     try:
         # Prepare team member data for email
         team_members_for_email = [
@@ -724,20 +724,18 @@ async def save_team_registration(team_registration: TeamRegistrationForm, event_
         )
         print(f"Team registration confirmation emails sent for team: {team_registration.team_name}")
         
-    except Exception as e:
-        print(f"Failed to send team registration confirmation emails: {str(e)}")
-        # Continue with the response even if email fails
-          # Send emails to team participants
+        # Send emails to team participants
         for participant in team_registration.team_participants:
             if participant.email:  # Only send if email is available
                 await email_service.send_registration_confirmation(
                     student_email=participant.email,
                     student_name=participant.full_name,
                     event_title=event.get("event_name", event_id),
-                    event_date=event.get("start_datetime"),
-                    event_venue=event.get("venue"),
+                    start_datetime=event.get("start_datetime"),
+                    venue=event.get("venue"),
                     registration_id=team_registration_id
                 )
+                
     except Exception as e:
         print(f"Failed to send team registration confirmation emails: {str(e)}")
         # Continue with the response even if email fails

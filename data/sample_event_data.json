@@ -4,59 +4,58 @@
         "password": "Shiv@9090"
     },
     "event_data": {
-        "event_id": "INNOVATION_CHALLENGE_2025",
-        "event_name": "Student Innovation Challenge 2025",
+        "event_id": "INDIVIDUAL_CODE_CHALLENGE_2025",
+        "event_name": "Campus Individual Coding Challenge 2025",
         "event_type": "competition",
-        "short_description": "A free team-based innovation challenge where student teams collaborate to solve real-world problems using creative thinking and technology.",
-        "detailed_description": "Join the ultimate Student Innovation Challenge 2025, where creativity meets technology to solve tomorrow's problems today! This exciting free competition brings together diverse student teams to tackle real-world challenges through innovative solutions. Teams will work collaboratively over three intensive days to identify problems, brainstorm solutions, prototype ideas, and present their innovations to a panel of industry experts and judges. The challenge covers multiple domains including sustainable technology, social impact solutions, healthcare innovations, educational technology, environmental conservation, and digital transformation. Participants will have access to mentorship from industry professionals, startup founders, and academic experts throughout the event. The program includes ideation workshops, design thinking sessions, rapid prototyping labs, technical development support, and presentation skills training. Teams will learn problem-solving methodologies, user-centered design principles, market validation techniques, and effective collaboration strategies. The challenge provides access to cutting-edge tools, software licenses, prototyping materials, 3D printing facilities, and technical resources. Expert mentors will guide teams through the innovation process, helping them refine their ideas and develop compelling presentations. The event culminates in a grand finale where teams pitch their solutions to judges from leading technology companies, venture capital firms, and social impact organizations. Winners receive recognition, certificates, mentorship opportunities, and potential pathways to further develop their innovations through incubator programs and startup accelerators.",
-        "organizing_department": "Department of Innovation & Entrepreneurship",
+        "short_description": "An exciting individual coding competition where students can showcase their programming talent and problem-solving skills through a series of technical challenges.",
+        "detailed_description": "Welcome to the Campus Individual Coding Challenge 2025, the premier solo programming competition for university students! This intensive event brings together passionate coders, algorithmic thinkers, and tech enthusiasts to demonstrate their individual programming prowess in a supportive yet competitive environment. Each participant will tackle a series of challenging coding problems that test their knowledge of algorithms, data structures, optimization techniques, and creative problem-solving. The competition offers challenges across multiple difficulty levels from beginner to advanced, ensuring every student can find appropriate problems to solve. Participants will work on algorithmic puzzles, debugging tasks, implementation challenges, and optimization problems that simulate real-world programming scenarios. Students will be evaluated on code correctness, efficiency, time complexity, space complexity, and elegance of solution. Mentors from leading tech companies will provide guidance throughout the event and share industry best practices. The competition features multiple rounds with increasing difficulty, allowing participants to advance based on their performance. Special award categories include Best Algorithm Implementation, Most Efficient Solution, Best Debugging Skills, and Most Creative Approach. This free event aims to help students showcase their individual coding abilities, build their personal technical portfolio, and connect with potential employers. All participants will receive certificates, with top performers earning special recognition and prizes. Don't miss this opportunity to challenge yourself, demonstrate your programming skills, and join a community of passionate individual coders!",
+        "organizing_department": "Department of Computer Science & Engineering",
         "organizers": [
-            "Dr. Anita Sharma - Innovation Program Director",
-            "Prof. Vikram Singh - Technology Challenge Coordinator",
-            "Ms. Riya Gupta - Student Innovation Mentor",
-            "Mr. Karan Patel - Industry Partnership Manager",
-            "Dr. Sonia Kumar - Design Thinking Specialist"
+            "Dr. Rajesh Mehta - Department Chair",
+            "Prof. Neha Singh - Competition Director",
+            "Dr. Amit Patel - Technical Challenge Designer",
+            "Ms. Priya Sharma - Industry Relations Lead",
+            "Mr. Arjun Reddy - Student Coordinator"
         ],
         "contacts": [
             {
-                "name": "Dr. Anita Sharma",
-                "contact": "anita.sharma@innovation.edu"
+                "name": "Prof. Neha Singh",
+                "contact": "neha.singh@techsummit.edu"
             },
             {
-                "name": "Challenge Coordinator - Prof. Vikram Singh",
-                "contact": "+91-99887-65432"
+                "name": "Event Helpdesk",
+                "contact": "+91-88765-43210"
             },
             {
-                "name": "Innovation Support Team",
-                "contact": "innovation@challenge.edu"
+                "name": "Registration Support",
+                "contact": "register@campustechsummit.com"
             }
         ],
-        "start_date": "2025-08-15",
+        "start_date": "2025-07-15",
         "start_time": "09:00",
-        "end_date": "2025-08-17",
+        "end_date": "2025-07-17",
         "end_time": "18:00",
-        "registration_start_date": "2025-07-01",
-        "registration_start_time": "00:01",
-        "registration_end_date": "2025-08-10",
+        "registration_start_date": "2025-06-01",
+        "registration_start_time": "10:00",
+        "registration_end_date": "2025-07-10",
         "registration_end_time": "23:59",
-        "certificate_end_date": "2025-09-30",
+        "certificate_end_date": "2025-08-31",
         "certificate_end_time": "23:59",
         "mode": "hybrid",
-        "venue": "Innovation Hub - Maker Spaces, Collaboration Labs, Presentation Halls, and Virtual Meeting Rooms",
-        "target_outcomes": "By the end of this Innovation Challenge, participants will be able to:\n• Apply design thinking methodologies to identify and solve real-world problems\n• Collaborate effectively in diverse teams to develop innovative solutions\n• Create functional prototypes using available tools and technologies\n• Conduct user research and validate solution concepts with target audiences\n• Develop compelling presentations and pitch ideas to stakeholders\n• Understand the innovation ecosystem and pathways from idea to implementation\n• Build networks with peers, mentors, and industry professionals\n• Gain experience in rapid prototyping and iterative development processes\n• Learn project management skills for innovation and product development\n• Develop critical thinking and problem-solving capabilities\n• Understand intellectual property basics and innovation protection\n• Explore entrepreneurship opportunities and startup development pathways",
-        "prerequisites": "Open to all students regardless of academic background. No specific technical skills required as teams should have diverse skill sets. Strong motivation to solve problems and willingness to collaborate in team environment. Basic communication skills and openness to learning new approaches.",
-        "what_to_bring": "Laptop or mobile device for research and development, notebook and writing materials for brainstorming, any specific skills or expertise to contribute to team, willingness to think creatively and take on challenges, comfortable clothing for hands-on prototyping activities, and enthusiasm for collaborative problem-solving and innovation.",
+        "venue": "University Computer Science Building - Individual Coding Labs and Virtual Competition Platform",
+        "target_outcomes": "By participating in the Campus Individual Coding Challenge, participants will be able to:\n• Enhance individual problem-solving abilities and algorithmic thinking\n• Develop efficient coding techniques under time constraints\n• Practice writing clean, efficient, and maintainable code\n• Strengthen personal coding style and approach to problems\n• Improve debugging and optimization techniques\n• Receive direct feedback from industry professionals on code quality\n• Build a portfolio of individual solutions to showcase to employers\n• Network with tech industry recruiters and engineering managers\n• Experience realistic development scenarios and constraints\n• Improve technical documentation and code explanation skills\n• Develop time management strategies for programming challenges\n• Gain exposure to industry tools, frameworks and best practices\n• Benchmark skills against peers in a competitive environment",
+        "prerequisites": "Open to all university students with basic programming knowledge. Participants should have experience with programming concepts and algorithms. Prior experience with at least one programming language (Java, Python, C++, JavaScript, etc.) is required. Participants will be categorized based on their experience level to ensure fair competition. Students should be prepared to work independently under time constraints.",
+        "what_to_bring": "Personal laptop with development environment pre-installed, power bank or charger, access to GitHub or other code repositories, USB drive for code backup, student ID card for registration verification, notebook and pen for algorithm design and planning, snacks and water bottle for extended coding sessions, and a positive attitude ready for individual problem-solving challenges.",
         "registration_type": "free",
-        "registration_mode": "team",
+        "registration_mode": "individual",
         "registration_fee": 0.0,
-        "fee_description": "This Innovation Challenge is completely free for all participants as part of our commitment to fostering student innovation and creativity. All teams receive access to mentorship sessions with industry experts, comprehensive resource library including templates, tools, and guides, prototyping materials and 3D printing access, software licenses and development tools, all meals and refreshments throughout the 3-day challenge, certificates of participation and achievement for all team members, networking opportunities with industry professionals and potential employers, access to innovation workshops and skill-building sessions, and follow-up support for teams interested in further developing their solutions. Top teams also receive special recognition, potential incubator program invitations, and ongoing mentorship opportunities with successful entrepreneurs and innovators.",
-        "max_participants": 120,
-        "min_participants": 30,
-        "team_size_min": 3,
-        "team_size_max": 5,
-        "certificate_template_path": "s:\\Projects\\UCG_v2\\Admin\\data\\technical_2.html",
+        "fee_description": "This is a completely free event sponsored by the Department of Computer Science and our industry partners. Participation includes access to all competition rounds, mentoring sessions, workshops, and networking activities. Participants will receive free meals and refreshments throughout the event, competition t-shirt, digital certificate of participation, access to exclusive learning resources and coding templates, and the opportunity to interview with sponsoring companies. Pre-registered participants will also receive special welcome kits with branded merchandise, technical resources, and sponsor giveaways.",
+        "max_participants": 300,
+        "min_participants": 50,
+        "certificate_template_path": "s:\\Projects\\UCG_v2\\Admin\\data\\technical_1.html",
         "asset_files": [
             "s:\\Projects\\UCG_v2\\Admin\\data\\sample_asset1.txt"
-        ]
+        ],
+        "registrations": []
     }
 }
