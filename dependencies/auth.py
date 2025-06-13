@@ -9,7 +9,7 @@ from typing import Optional
 
 async def get_current_student(request: Request) -> Student:
     """Get currently logged in student from session"""
-    print(f"[DEBUG] get_current_student called. Session keys: {list(request.session.keys())}")
+    # print(f"[DEBUG] get_current_student called. Session keys: {list(request.session.keys())}")
     
     student_data = request.session.get("student")
     if not student_data:
@@ -19,7 +19,7 @@ async def get_current_student(request: Request) -> Student:
             detail="Student not logged in"
         )
     
-    print(f"[DEBUG] Student data found in session. Keys: {list(student_data.keys())}")
+    # print(f"[DEBUG] Student data found in session. Keys: {list(student_data.keys())}")
     
     # Convert ISO datetime strings back to datetime objects
     for key, value in student_data.items():
