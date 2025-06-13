@@ -2,7 +2,8 @@
     "login_credentials": {
         "username": "SHIV9090",
         "password": "Shiv@9090"
-    },    "event_data": {
+    },
+    "event_data": {
         "event_id": "INNOVATION_CHALLENGE_2025",
         "event_name": "Student Innovation Challenge 2025",
         "event_type": "competition",

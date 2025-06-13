@@ -1,15 +1,28 @@
 import warnings
 import json
 import logging
+import sys
+import os
+from pathlib import Path
 from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
 from config.database import Database
 from utils.dynamic_event_scheduler import start_dynamic_scheduler, stop_dynamic_scheduler
 from utils.json_encoder import CustomJSONEncoder
 from utils.logger import setup_logger
+
+# Add project root and testing directory to Python path for global access
+PROJECT_ROOT = Path(__file__).parent.absolute()
+TESTING_DIR = PROJECT_ROOT / "scripts" / "testing"
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+if str(TESTING_DIR) not in sys.path:
+    sys.path.insert(0, str(TESTING_DIR))
 
 # Suppress bcrypt version warning globally
 warnings.filterwarnings("ignore", message=".*error reading bcrypt version.*")
@@ -23,14 +36,64 @@ app = FastAPI()
 # Configure JSON encoder for the entire application
 json._default_encoder = CustomJSONEncoder()
 
+# Asset Path Middleware for User-Friendly Paths
+class AssetPathMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware to handle user-friendly asset paths in certificate templates.
+    
+    Converts paths like:
+    - /logo/ksv.png → /static/uploads/assets/logo/ksv.png
+    - /signature/faculty/dept/file.jpg → /static/uploads/assets/signature/faculty/dept/file.jpg
+    """
+    
+    def __init__(self, app, uploads_dir: str = "static/uploads"):
+        super().__init__(app)
+        self.uploads_dir = Path(uploads_dir)
+    
+    async def dispatch(self, request: Request, call_next):
+        # Check if this is a request for an asset path
+        path = request.url.path
+        
+        # Handle logo paths: /logo/filename → /static/uploads/assets/logo/filename
+        if path.startswith("/logo/"):
+            filename = path[6:]  # Remove "/logo/"
+            asset_path = self.uploads_dir / "assets" / "logo" / filename
+            if asset_path.exists():
+                return FileResponse(asset_path)
+        
+        # Handle signature paths: /signature/... → /static/uploads/assets/signature/...
+        elif path.startswith("/signature/"):
+            signature_path = path[11:]  # Remove "/signature/"
+            asset_path = self.uploads_dir / "assets" / "signature" / signature_path
+            if asset_path.exists():
+                return FileResponse(asset_path)
+        
+        # Handle other asset paths: /assets/... → /static/uploads/assets/...
+        elif path.startswith("/assets/"):
+            asset_path_part = path[8:]  # Remove "/assets/"
+            asset_path = self.uploads_dir / "assets" / asset_path_part
+            if asset_path.exists():
+                return FileResponse(asset_path)
+        
+        # Continue with normal request processing
+        response = await call_next(request)
+        return response
+
 # Add session middleware for student authentication
 app.add_middleware(SessionMiddleware, secret_key="your-secret-key-change-in-production", max_age=3600)
+
+# Add asset path middleware for user-friendly certificate paths
+app.add_middleware(AssetPathMiddleware)
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Configure templates
 templates = Jinja2Templates(directory="templates")
+
+# Add asset context to templates for global access
+from utils.asset_context import get_template_globals
+templates.env.globals.update(get_template_globals())
 
 # Error handlers
 @app.exception_handler(HTTPException)
@@ -203,6 +266,12 @@ async def scheduler_health():
     from utils.dynamic_event_scheduler import get_scheduler_status
     status = await get_scheduler_status()
     return status
+
+# Test route for direct asset paths
+@app.get("/test-direct-paths")
+async def test_direct_paths(request: Request):
+    """Test page to verify direct HTML asset paths work"""
+    return templates.TemplateResponse("test_direct_paths.html", {"request": request})
 
 if __name__ == "__main__":
     import uvicorn
