@@ -21,6 +21,39 @@ router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 email_service = EmailService()
 
+# Template utility functions
+def format_datetime(dt, format_type="full"):
+    """Format datetime for templates"""
+    if not dt:
+        return "TBD"
+    
+    # Convert string to datetime if needed
+    if isinstance(dt, str):
+        try:
+            dt = datetime.fromisoformat(dt.replace('Z', '+00:00') if 'Z' in dt else dt)
+        except ValueError:
+            return dt
+    
+    if not isinstance(dt, datetime):
+        return str(dt)
+    
+    if format_type == "date_only":
+        return dt.strftime("%B %d, %Y")
+    elif format_type == "time_only":
+        return dt.strftime("%I:%M %p")
+    else:
+        return dt.strftime("%B %d, %Y at %I:%M %p")
+
+def format_venue(venue):
+    """Format venue for templates"""
+    if not venue:
+        return "TBD"
+    return venue
+
+# Register template filters
+templates.env.filters["format_datetime"] = format_datetime
+templates.env.filters["format_venue"] = format_venue
+
 
 async def validate_team_participants(enrollment_numbers: list) -> TeamValidationResult:
     """Validate team participants by checking if they exist in the students database"""
@@ -538,14 +571,25 @@ async def save_individual_registration(registration: RegistrationForm, event_id:
             "is_team_registration": False,
             "is_student_logged_in": True,
             "student_data": student.model_dump()
-        })
-
-    # Send registration confirmation email for free events
-    try:        await email_service.send_registration_confirmation(
+        })    # Send registration confirmation email for free events
+    try:        # Format start_datetime from separate date and time fields
+        start_date = event.get("start_date", "")
+        start_time = event.get("start_time", "")
+          # Ensure we have proper date/time values
+        if not start_date or start_date == "":
+            start_date = "Date to be announced" 
+            
+        # Format with validation
+        if start_date and start_date != "Date to be announced" and start_time:
+            start_datetime = f"{start_date} {start_time}"
+        else:
+            start_datetime = start_date
+        
+        await email_service.send_registration_confirmation(
             student_email=registration.email,
             student_name=registration.full_name,
             event_title=event.get("event_name", event_id),
-            start_datetime=event.get("start_datetime"),
+            start_datetime=start_datetime.strftime("%Y-%m-%d %H:%M AM/PM") if isinstance(start_datetime, datetime) else start_datetime,
             venue=event.get("venue"),
             registration_id=registration_id
         )
@@ -726,12 +770,24 @@ async def save_team_registration(team_registration: TeamRegistrationForm, event_
         
         # Send emails to team participants
         for participant in team_registration.team_participants:
-            if participant.email:  # Only send if email is available
+            if participant.email:  # Only send if email is available                # Format start_datetime from separate date and time fields
+                start_date = event.get("start_date", "")
+                start_time = event.get("start_time", "")
+                  # Ensure we have proper date/time values
+                if not start_date or start_date == "":
+                    start_date = "Date to be announced" 
+                    
+                # Format with validation
+                if start_date and start_date != "Date to be announced" and start_time:
+                    start_datetime = f"{start_date} {start_time}"
+                else:
+                    start_datetime = start_date
+                
                 await email_service.send_registration_confirmation(
                     student_email=participant.email,
                     student_name=participant.full_name,
                     event_title=event.get("event_name", event_id),
-                    start_datetime=event.get("start_datetime"),
+                    start_datetime=start_datetime,
                     venue=event.get("venue"),
                     registration_id=team_registration_id
                 )
@@ -822,11 +878,70 @@ async def validate_participant_api(enrollment: str, event_id: str = None, team_i
         print(f"Error in validate_participant_api: {str(e)}")
         return {"success": False, "message": f"Internal server error: {str(e)}"}
 
+@router.get("/api/validate-registration")
+async def validate_registration(request: Request, registration_id: str, event_id: str):
+    """API endpoint to validate a registration ID and return student details for auto-filling the attendance form"""
+    try:
+        # Get event details
+        event = await DatabaseOperations.find_one("events", {"event_id": event_id})
+        if not event:
+            return {"success": False, "message": "Event not found"}
+        
+        # Check if the registration exists for this event
+        registration_found = False
+        student_enrollment = None
+        
+        # Check in registrations dictionary
+        registrations = event.get("registrations", {})
+        if isinstance(registrations, dict):
+            for reg_id, enrolled_id in registrations.items():
+                if reg_id == registration_id:
+                    registration_found = True
+                    student_enrollment = enrolled_id
+                    break
+        
+        if not registration_found:
+            return {"success": False, "message": "Registration ID not found for this event"}
+        
+        if not student_enrollment:
+            return {"success": False, "message": "Student information not found for this registration"}
+        
+        # Get student details from database
+        student_data = await DatabaseOperations.find_one("students", {"enrollment_no": student_enrollment})
+        if not student_data:
+            return {"success": False, "message": "Student not found in system"}
+        
+        # Get participation details for this registration
+        event_participations = student_data.get('event_participations', {})
+        participation = event_participations.get(event_id, {})
+        registration_type = participation.get('registration_type', 'individual')
+        
+        # Prepare student response data
+        student_response = {
+            "full_name": student_data.get("full_name", ""),
+            "enrollment_no": student_data.get("enrollment_no", ""),
+            "email": student_data.get("email", ""),
+            "mobile_no": student_data.get("mobile_no", ""),
+            "department": student_data.get("department", ""),
+            "semester": student_data.get("semester", ""),
+            "registration_type": registration_type
+        }
+        
+        return {
+            "success": True, 
+            "message": "Registration validated successfully", 
+            "student": student_response
+        }
+        
+    except Exception as e:
+        print(f"Error in validate_registration: {str(e)}")
+        return {"success": False, "message": f"Error validating registration: {str(e)}"}
+
 @router.post("/events/{event_id}/payment/confirm")
 async def confirm_payment(request: Request, event_id: str, student: Student = Depends(require_student_login)):
     """Handle payment confirmation submission - Updated for new relational mapping system"""
     try:
-        # Get form data
+        # Get
         form_data = dict(await request.form())
         registration_id = form_data.get('registration_id')
         
@@ -1079,38 +1194,28 @@ async def cancel_team_registration(enrollment_no: str, event_id: str, participat
 
 async def cancel_entire_team(event_id: str, team_registration_id: str):
     """Cancel entire team registration"""
-    print(f"DEBUG: Starting team cancellation for event {event_id}, team {team_registration_id}")
-    
     # Get event data to find team details
     event_data = await DatabaseOperations.find_one("events", {"event_id": event_id})
     if not event_data:
-        print(f"DEBUG: Event {event_id} not found")
         return
     
     team_registrations = event_data.get('team_registrations', {})
     if team_registration_id not in team_registrations:
-        print(f"DEBUG: Team registration {team_registration_id} not found in event")
         return
     
     team_reg = team_registrations[team_registration_id]
     team_leader = team_reg.get('team_leader_enrollment')  # Using correct field name
     team_participants = team_reg.get('participants', [])  # Using correct field name
     
-    print(f"DEBUG: Team leader: {team_leader}")
-    print(f"DEBUG: Team participants: {team_participants}")
-    
     # Handle case where team_leader might be None
     if not team_leader:
-        print("DEBUG: Warning - team leader is None, skipping team leader cleanup")
         all_members = team_participants
     else:
         all_members = [team_leader] + team_participants
     
-    print(f"DEBUG: All members to clean: {all_members}")    
     # Remove all team members from student data
     for member_enrollment in all_members:
         if member_enrollment:  # Check if enrollment is not None
-            print(f"DEBUG: Removing participation for {member_enrollment}")
             await DatabaseOperations.update_one(
                 "students",
                 {"enrollment_no": member_enrollment},
@@ -1122,18 +1227,12 @@ async def cancel_entire_team(event_id: str, team_registration_id: str):
     registrations = event_data.get('registrations', {})
     registration_ids_to_remove = []
     
-    print(f"DEBUG: Checking registrations: {list(registrations.keys())}")
-    
     for reg_id, member_enrollment in registrations.items():
         if member_enrollment in all_members:
             registration_ids_to_remove.append(reg_id)
-            print(f"DEBUG: Found registration {reg_id} for member {member_enrollment}")
-    
-    print(f"DEBUG: Registration IDs to remove: {registration_ids_to_remove}")
     
     # Remove all individual registration mappings for team members
     for reg_id in registration_ids_to_remove:
-        print(f"DEBUG: Removing registration mapping {reg_id}")
         await DatabaseOperations.update_one(
             "events",
             {"event_id": event_id},
@@ -1141,14 +1240,11 @@ async def cancel_entire_team(event_id: str, team_registration_id: str):
         )
     
     # Remove team registration from event data (do this last)
-    print(f"DEBUG: Removing team registration {team_registration_id}")
     await DatabaseOperations.update_one(
         "events",
         {"event_id": event_id},
         {"$unset": {f"team_registrations.{team_registration_id}": ""}}
     )
-    
-    print(f"DEBUG: Team cancellation completed for {team_registration_id}")
 
 @router.get("/events/{event_id}/manage-team")
 async def manage_team_get(request: Request, event_id: str, student: Student = Depends(require_student_login)):
@@ -1359,8 +1455,8 @@ async def add_team_participant(event_id: str, team_registration_id: str, form_da
     # Check if student is already part of this team
     if enrollment_no in team_details.get('participants', []) or enrollment_no == team_details.get('team_leader_enrollment'):
         raise HTTPException(status_code=400, detail="This student is already part of the team")
-    
-    # Check if already registered for this event
+                
+        # Check if already registered for this event
     event_participations = existing_participant.get('event_participations', {})
     if event_id in event_participations:
         raise HTTPException(status_code=400, detail="Participant is already registered for this event")
@@ -1432,15 +1528,14 @@ async def remove_team_participant(event_id: str, team_registration_id: str, form
     # Check minimum team size
     if current_team_size <= min_team_size:
         raise HTTPException(status_code=400, detail=f"Team size cannot be less than the minimum of {min_team_size} participants")
-      # Get the participant's registration ID BEFORE removing event participation
+    
+    # Get the participant's registration ID BEFORE removing event participation
     student_data = await DatabaseOperations.find_one("students", {"enrollment_no": enrollment_no})
     registration_id = None
     if student_data:
         event_participations = student_data.get('event_participations', {})
         if event_id in event_participations:
             registration_id = event_participations[event_id].get('registration_id')
-    
-    print(f"DEBUG: Found registration ID {registration_id} for participant {enrollment_no}")
     
     # Remove from student's event participations
     await DatabaseOperations.update_one(
@@ -1451,14 +1546,11 @@ async def remove_team_participant(event_id: str, team_registration_id: str, form
     
     # Remove from event registrations mapping if registration ID was found
     if registration_id:
-        print(f"DEBUG: Removing registration mapping {registration_id}")
         await DatabaseOperations.update_one(
             "events",
             {"event_id": event_id},
             {"$unset": {f"registrations.{registration_id}": ""}}
         )
-    else:
-        print(f"DEBUG: Warning - No registration ID found for participant {enrollment_no}")
     
     # Remove participant from team registration in event data
     await DatabaseOperations.update_one(
@@ -1501,7 +1593,705 @@ async def update_team_participant(event_id: str, team_registration_id: str, form
         
         await DatabaseOperations.update_one(
             "students",
-            {"enrollment_no": enrollment_no},
-            {"$set": student_data_updates}
+            {"enrollment_no": enrollment_no},            {"$set": student_data_updates}
         )
 
+
+@router.get("/events/{event_id}/mark-attendance")
+async def show_attendance_form(request: Request, event_id: str, student: Student = Depends(require_student_login)):
+    """Display the attendance marking form for an event - requires student login"""
+    try:
+        # Get event details
+        event = await DatabaseOperations.find_one("events", {"event_id": event_id})
+        if not event:
+            raise HTTPException(status_code=404, detail="Event not found")
+        
+        # Check if the event is active/happening now
+        current_datetime = datetime.now()
+        event_start = None
+        event_end = None
+        
+        # Parse event start and end dates (handling both legacy and new formats)
+        if "start_datetime" in event:
+            try:
+                if isinstance(event["start_datetime"], str):
+                    event_start = datetime.fromisoformat(event["start_datetime"].replace('Z', '+00:00') if 'Z' in event["start_datetime"] else event["start_datetime"])
+                elif isinstance(event["start_datetime"], datetime):
+                    event_start = event["start_datetime"]
+            except (ValueError, TypeError):
+                event_start = None
+        elif "start_date" in event and "start_time" in event:
+            try:
+                event_start = datetime.strptime(f"{event['start_date']} {event['start_time']}", "%Y-%m-%d %H:%M")
+            except (ValueError, TypeError):
+                event_start = None
+                
+        if "end_datetime" in event:
+            try:
+                if isinstance(event["end_datetime"], str):
+                    event_end = datetime.fromisoformat(event["end_datetime"].replace('Z', '+00:00') if 'Z' in event["end_datetime"] else event["end_datetime"])
+                elif isinstance(event["end_datetime"], datetime):
+                    event_end = event["end_datetime"]
+            except (ValueError, TypeError):
+                event_end = None
+        elif "end_date" in event and "end_time" in event:
+            try:
+                event_end = datetime.strptime(f"{event['end_date']} {event['end_time']}", "%Y-%m-%d %H:%M")
+            except (ValueError, TypeError):
+                event_end = None
+        
+        # Check if the event is in progress or within allowed window for attendance
+        is_event_active = True  # Default to active for testing
+        attendance_window = timedelta(hours=1)  # Allow marking attendance 1 hour before and after event
+        
+        if event_start and event_end:
+            current_with_buffer = current_datetime - attendance_window
+            event_end_with_buffer = event_end + attendance_window
+            is_event_active = (current_with_buffer <= event_end) and (current_datetime <= event_end_with_buffer)
+        
+        # Check if the student is registered for this event
+        student_id = student.enrollment_no
+        is_registered = False
+        registration_id = None
+        
+        # Check in the registrations data of the event
+        registrations = event.get("registrations", {})
+        if isinstance(registrations, dict):
+            for reg_id, enrolled_id in registrations.items():
+                if enrolled_id == student_id:
+                    is_registered = True
+                    registration_id = reg_id
+                    break
+        elif isinstance(registrations, list):
+            for reg in registrations:
+                if isinstance(reg, dict) and reg.get("enrollment_no") == student_id:
+                    is_registered = True
+                    registration_id = reg.get("registration_id")
+                    break        # Check if attendance was already marked - method 1: check attendance collection
+        attendance_records = await DatabaseOperations.find_many("attendance", {
+            "event_id": event_id,
+            "enrollment_no": student_id
+        })
+        
+        # Convert the MongoDB cursor to a list of dictionaries
+        attendance_records_list = []
+        for record in attendance_records:
+            # Convert any datetime objects to strings
+            serialized_record = {}
+            for key, value in record.items():
+                if isinstance(value, datetime):
+                    serialized_record[key] = value.isoformat()
+                else:
+                    serialized_record[key] = value
+            attendance_records_list.append(serialized_record)
+          # Method 2: Check if attendance is marked in the event document
+        event_attendances = event.get("attendances", {})
+        if not attendance_records_list and isinstance(event_attendances, dict):
+            # Check if student's enrollment number exists in the attendance details
+            for att_id, att_details in event_attendances.items():
+                if isinstance(att_details, dict) and att_details.get("enrollment_no") == student_id:
+                    # First try to find the full attendance record from the attendance collection
+                    att_record = await DatabaseOperations.find_one("attendance", {"attendance_id": att_id})
+                    if att_record:
+                        # Convert datetime objects to strings
+                        serialized_record = {}
+                        for key, value in att_record.items():
+                            if isinstance(value, datetime):
+                                serialized_record[key] = value.isoformat()
+                            else:
+                                serialized_record[key] = value
+                        attendance_records_list.append(serialized_record)
+                    else:
+                        # If record not in attendance collection, use data from event document
+                        attendance_records_list.append({
+                            "attendance_id": att_id,
+                            "enrollment_no": att_details.get("enrollment_no"),
+                            "full_name": att_details.get("full_name"),
+                            "event_id": event_id,
+                            "attendance_marked_at": att_details.get("marked_at"),
+                            "attendance_status": att_details.get("status", "present")
+                        })
+        
+        attendance_already_marked = len(attendance_records_list) > 0
+          # Create a new dictionary with serialized values to prevent datetime serialization issues
+        serialized_event = {}
+        for key, value in event.items():
+            if isinstance(value, datetime):
+                serialized_event[key] = value.isoformat()
+            else:
+                serialized_event[key] = value
+                
+        # Add attendances field if it doesn't exist (for backward compatibility)
+        if "attendances" not in serialized_event:
+            serialized_event["attendances"] = {}
+        
+        # Add formatted datetime strings
+        if event_start:
+            serialized_event["formatted_start"] = event_start.strftime("%Y-%m-%d %H:%M")
+        if event_end:
+            serialized_event["formatted_end"] = event_end.strftime("%Y-%m-%d %H:%M")
+        
+        current_time_formatted = current_datetime.strftime("%Y-%m-%d %H:%M")
+        
+        # Serialize student data
+        serialized_student = student.model_dump()
+          # Check if attendance was already marked and redirect to success page if it was
+        if attendance_already_marked and len(attendance_records_list) > 0:
+            # Use the first attendance record
+            existing_attendance = attendance_records_list[0]
+            
+            # Return the attendance success template directly
+            return templates.TemplateResponse("client/attendance_success.html", {
+                "request": request,
+                "event": serialized_event,
+                "student": serialized_student,
+                "already_marked": True,
+                "attendance": existing_attendance,
+                "registration": {
+                    "registrar_id": registration_id,
+                    "full_name": student.full_name
+                },
+                "is_student_logged_in": True,
+                "student_data": serialized_student
+            })
+              # If student is not registered, redirect to not_registered page
+        if not is_registered:
+            return templates.TemplateResponse("client/not_registered.html", {
+                "request": request,
+                "event": serialized_event,
+                "student": serialized_student,
+                "is_student_logged_in": True,
+                "student_data": serialized_student
+            })
+        
+        # Prepare registration data if student is registered
+        registration_data = None
+        auto_filled = False
+        if is_registered:
+            # Get student's participation data for this event
+            student_doc = await DatabaseOperations.find_one("students", {"enrollment_no": student_id})
+            if student_doc and "event_participations" in student_doc and event_id in student_doc["event_participations"]:
+                participation = student_doc["event_participations"][event_id]
+                
+                # Create registration data object for template
+                registration_data = {
+                    "registrar_id": registration_id,
+                    "enrollment_no": student_id,
+                    "full_name": student.full_name,
+                    "email": student.email,
+                    "mobile_no": student.mobile_no,
+                    "department": student.department,
+                    "registration_type": participation.get("registration_type", "individual")
+                }
+                auto_filled = True
+        
+        return templates.TemplateResponse("client/mark_attendance.html", {
+            "request": request,
+            "event": serialized_event,
+            "student": serialized_student,
+            "is_registered": is_registered,
+            "registration_id": registration_id,
+            "registration": registration_data,  # Add registration data for auto-filling
+            "auto_filled": auto_filled,  # Flag to indicate auto-filled data
+            "is_event_active": is_event_active,
+            "attendance_already_marked": attendance_already_marked,
+            "attendance_records": attendance_records_list,
+            "current_time": current_time_formatted,
+            "is_student_logged_in": True,
+            "student_data": serialized_student
+        })
+        
+    except Exception as e:
+        print(f"Error in show_attendance_form: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/events/{event_id}/mark-attendance")
+async def submit_attendance(request: Request, event_id: str, student: Student = Depends(require_student_login)):
+    """Handle attendance form submission"""
+    try:
+        # Get form data
+        form_data = dict(await request.form())
+        
+        # Get event details
+        event = await DatabaseOperations.find_one("events", {"event_id": event_id})
+        if not event:
+            raise HTTPException(status_code=404, detail="Event not found")
+          # Create a serialized version of the event
+        serialized_event = {}
+        for key, value in event.items():
+            if isinstance(value, datetime):
+                serialized_event[key] = value.isoformat()
+            else:
+                serialized_event[key] = value
+                
+        # Add attendances field if it doesn't exist (for backward compatibility)
+        if "attendances" not in serialized_event:
+            serialized_event["attendances"] = {}
+        
+        # Check if the student is registered for this event
+        student_id = student.enrollment_no
+        is_registered = False
+        registration_id = form_data.get("registration_id")
+        
+        # If registration_id is provided in form, verify it exists for this event
+        if registration_id:
+            # Check in the registrations data of the event
+            registrations = event.get("registrations", {})
+            if isinstance(registrations, dict):
+                for reg_id, enrolled_id in registrations.items():
+                    if reg_id == registration_id:
+                        is_registered = True
+                        # Verify submitted enrollment matches the enrollment associated with this registration
+                        if enrolled_id != student_id:
+                            return templates.TemplateResponse("client/mark_attendance.html", {
+                                "request": request,
+                                "event": serialized_event,
+                                "student": student.model_dump(),
+                                "is_registered": False,
+                                "error": "Registration ID does not match your student account",
+                                "current_time": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                                "is_student_logged_in": True,
+                                "student_data": student.model_dump()
+                            }, status_code=400)
+                        break
+            elif isinstance(registrations, list):
+                for reg in registrations:
+                    if isinstance(reg, dict) and reg.get("registration_id") == registration_id:
+                        is_registered = True
+                        break        # If no registration_id provided, check if student is registered by enrollment
+        else:
+            # Check in the registrations data of the event
+            registrations = event.get("registrations", {})
+            if isinstance(registrations, dict):
+                for reg_id, enrolled_id in registrations.items():
+                    if enrolled_id == student_id:
+                        is_registered = True
+                        registration_id = reg_id
+                        break
+            elif isinstance(registrations, list):
+                for reg in registrations:
+                    if isinstance(reg, dict) and reg.get("enrollment_no") == student_id:
+                        is_registered = True
+                        registration_id = reg.get("registration_id")
+                        break
+        
+        # If student is not registered, redirect to not_registered page
+        if not is_registered:
+            return templates.TemplateResponse("client/not_registered.html", {
+                "request": request,
+                "event": serialized_event,
+                "student": student.model_dump(),
+                "is_student_logged_in": True,
+                "student_data": student.model_dump()
+            })
+          # Check if attendance was already marked - method 1: check attendance collection
+        existing_attendance = await DatabaseOperations.find_one("attendance", {
+            "event_id": event_id,
+            "enrollment_no": student_id
+        })
+          # Method 2: Check if attendance is marked in the event document
+        if not existing_attendance:
+            event_attendances = event.get("attendances", {})
+            if isinstance(event_attendances, dict):
+                # Check if student's enrollment number exists in the attendance details
+                for att_id, att_details in event_attendances.items():
+                    if isinstance(att_details, dict) and att_details.get("enrollment_no") == student_id:
+                        # First try to find the full attendance record from attendance collection
+                        att_record = await DatabaseOperations.find_one("attendance", {"attendance_id": att_id})
+                        if att_record:
+                            existing_attendance = att_record
+                        else:
+                            # If not found in attendance collection, create a record from event data
+                            existing_attendance = {
+                                "attendance_id": att_id,
+                                "enrollment_no": att_details.get("enrollment_no"),
+                                "full_name": att_details.get("full_name"),
+                                "event_id": event_id,
+                                "attendance_marked_at": att_details.get("marked_at"),
+                                "attendance_status": att_details.get("status", "present")
+                            }
+                        break
+        
+        if existing_attendance:
+            # Serialize the existing attendance record
+            serialized_attendance = {}
+            for key, value in existing_attendance.items():
+                if isinstance(value, datetime):
+                    serialized_attendance[key] = value.isoformat()
+                else:
+                    serialized_attendance[key] = value
+            
+            # Format attendance time if available
+            attendance_time = existing_attendance.get("attendance_marked_at")
+            if isinstance(attendance_time, datetime):
+                attendance_time_formatted = attendance_time.strftime("%Y-%m-%d %H:%M:%S")
+            elif isinstance(attendance_time, str):
+                try:
+                    # Try to parse as datetime if it's a string
+                    parsed_time = datetime.fromisoformat(attendance_time.replace('Z', '+00:00') if 'Z' in attendance_time else attendance_time)
+                    attendance_time_formatted = parsed_time.strftime("%Y-%m-%d %H:%M:%S")
+                except (ValueError, TypeError):
+                    attendance_time_formatted = attendance_time
+            else:
+                attendance_time_formatted = str(attendance_time) if attendance_time is not None else "Unknown"
+                
+            return templates.TemplateResponse("client/attendance_success.html", {
+                "request": request,
+                "event": serialized_event,
+                "student": student.model_dump(),
+                "already_marked": True,
+                "attendance": serialized_attendance,
+                "registration": {
+                    "registrar_id": registration_id,
+                    "full_name": student.full_name
+                },
+                "is_student_logged_in": True,
+                "student_data": student.model_dump()
+            })            
+        # Generate a new attendance ID with the required parameters
+        try:
+            attendance_id = generate_attendance_id(enrollment_no=student.enrollment_no, event_id=event_id)
+        except Exception as e:
+            print(f"Error generating attendance ID: {str(e)}")
+            # Fallback to a simple format if the ID generation fails
+            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+            attendance_id = f"ATT{student.enrollment_no[:4]}{timestamp[-6:]}"
+        
+        # Create attendance record
+        attendance_record = {
+            "attendance_id": attendance_id,
+            "registration_id": registration_id,
+            "event_id": event_id,
+            "enrollment_no": student.enrollment_no,
+            "full_name": student.full_name,
+            "email": student.email,
+            "mobile_no": student.mobile_no,
+            "department": student.department,
+            "semester": student.semester,
+            "event_name": event.get("event_name", ""),
+            "attendance_marked_at": datetime.now().isoformat(),
+            "marked_by": "Student Self-Service",
+            "attendance_status": "present"
+        }
+        
+        # Save attendance record to database
+        db = await Database.get_database()
+        result = await db["attendance"].insert_one(attendance_record)
+        
+        if not result.inserted_id:
+            raise HTTPException(status_code=500, detail="Failed to record attendance")
+              # Update student's attendance record in their profile
+        # Fetch the most recent student data to ensure we're working with current data
+        student_data = await DatabaseOperations.find_one("students", {"enrollment_no": student.enrollment_no})
+        if not student_data:
+            # If student data not found, use what we have in the model
+            student_data = student.model_dump()
+        
+        # Ensure event_participations exists in the student data
+        if "event_participations" not in student_data:
+            student_data["event_participations"] = {}
+        
+        # Update or create the participation record for this event
+        if event_id not in student_data["event_participations"]:
+            # Create a new participation record if one doesn't exist
+            student_data["event_participations"][event_id] = {
+                "registration_id": registration_id,
+                "registration_date": datetime.now().isoformat(),
+                "registration_type": "individual",  # Default to individual
+                "participation_status": "registered"
+            }
+        
+        # Add attendance information to the participation record
+        student_data["event_participations"][event_id]["attendance_id"] = attendance_id
+        student_data["event_participations"][event_id]["attendance_marked_at"] = attendance_record["attendance_marked_at"]
+        student_data["event_participations"][event_id]["attendance_status"] = "present"
+                
+        # Update the student record in the database
+        await DatabaseOperations.update_one(
+            "students",
+            {"enrollment_no": student.enrollment_no},
+            {"$set": {"event_participations": student_data["event_participations"]}}
+        )
+          # Also store attendance record in event document for easier lookup
+        # Create attendance details dictionary according to the model's expectation
+        attendance_details = {
+            "enrollment_no": student.enrollment_no,
+            "full_name": student.full_name,
+            "marked_at": attendance_record["attendance_marked_at"],
+            "status": "present"
+        }
+        
+        await DatabaseOperations.update_one(
+            "events",
+            {"event_id": event_id},
+            {"$set": {f"attendances.{attendance_id}": attendance_details}}
+        )
+        
+        # Update attendance count in event document
+        await DatabaseOperations.update_one(
+            "events",
+            {"event_id": event_id},
+            {"$inc": {"attendance_count": 1}}
+        )
+        
+        # Send attendance confirmation email
+        try:
+            # Format attendance date string properly from the ISO string
+            attendance_iso_date = attendance_record["attendance_marked_at"]
+            formatted_date = attendance_iso_date.split('T')[0] if 'T' in attendance_iso_date else attendance_iso_date[:10]
+            
+            await email_service.send_attendance_confirmation(
+                student_email=student.email,
+                student_name=student.full_name,
+                event_title=event.get("event_name", "Unknown Event"),
+                attendance_date=formatted_date,
+                event_venue=event.get("venue", "Not specified"),
+                attendance_id=attendance_id,
+                attendance_time=attendance_record["attendance_marked_at"]
+            )
+        except Exception as e:
+            print(f"Failed to send attendance confirmation email: {str(e)}")
+       # Return success response
+        return templates.TemplateResponse("client/attendance_success.html", {
+            "request": request,
+            "event": serialized_event,
+            "student": student.model_dump(),
+            "already_marked": False,
+            "attendance": attendance_record,
+            "registration": {
+                "registrar_id": registration_id,
+                "full_name": student.full_name
+            },
+            "is_student_logged_in": True,
+            "student_data": student.model_dump()
+        })
+        
+    except Exception as e:
+        print(f"Error in submit_attendance: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/events/{event_id}/attendance-stats")
+async def get_attendance_stats(request: Request, event_id: str, student: Student = Depends(require_student_login)):
+    """Get attendance statistics for an event"""
+    try:
+        # Only allow super admin and admin users to access this route
+        # Check if user is a super admin or has admin role
+        if student.role not in ["super_admin", "admin", "organizer"]:
+            raise HTTPException(status_code=403, detail="Unauthorized access")
+            
+        # Get event details
+        event = await DatabaseOperations.find_one("events", {"event_id": event_id})
+        if not event:
+            raise HTTPException(status_code=404, detail="Event not found")
+              # Get attendances from event document
+        attendances = event.get("attendances", {})
+        attendance_count = len(attendances) if attendances else 0
+        
+        # If there are attendances in the event document, add them to the attendance list
+        if attendances and isinstance(attendances, dict):
+            for att_id, att_details in attendances.items():
+                if isinstance(att_details, dict):
+                    # Add department to stats if not already there
+                    department = att_details.get("department", "Unknown")
+                    if department not in departments_stats:
+                        departments_stats[department] = 0
+                    departments_stats[department] += 1
+        
+        # Get total registrations count
+        registrations = event.get("registrations", {})
+        registration_count = len(registrations) if isinstance(registrations, dict) else 0
+        
+        # Calculate attendance percentage
+        attendance_percentage = 0
+        if registration_count > 0:
+            attendance_percentage = (attendance_count / registration_count) * 100
+            
+        # Get attendance records from attendance collection for more details
+        attendance_records = await DatabaseOperations.find_many("attendance", {"event_id": event_id})
+        attendance_list = []
+        departments_stats = {}
+        
+        # Process attendance records
+        async for record in attendance_records:
+            # Add to attendance list
+            attendance_list.append({
+                "attendance_id": record.get("attendance_id"),
+                "enrollment_no": record.get("enrollment_no"),
+                "full_name": record.get("full_name"),
+                "department": record.get("department"),
+                "marked_at": record.get("attendance_marked_at")
+            })
+            
+            # Update department statistics
+            department = record.get("department", "Unknown")
+            if department not in departments_stats:
+                departments_stats[department] = 0
+            departments_stats[department] += 1
+            
+        # Create stats response
+        stats = {
+            "event_id": event_id,
+            "event_name": event.get("event_name", ""),
+            "total_registrations": registration_count,
+            "total_attendance": attendance_count,
+            "attendance_percentage": round(attendance_percentage, 2),
+            "departments": departments_stats,
+            "attendance_list": attendance_list
+        }
+        
+        return stats
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error in get_attendance_stats: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/events/{event_id}/fix-attendances")
+async def fix_attendances(request: Request, event_id: str, student: Student = Depends(require_student_login)):
+    """Fix attendance records that might be in the old format"""
+    try:
+        # Check admin permissions
+        if student.role not in ["super_admin", "admin"]:
+            raise HTTPException(status_code=403, detail="Unauthorized access")
+            
+        # Get event details
+        event = await DatabaseOperations.find_one("events", {"event_id": event_id})
+        if not event:
+            raise HTTPException(status_code=404, detail="Event not found")
+        
+        # Check if attendances exist and need fixing
+        attendances = event.get("attendances", {})
+        fixed_count = 0
+        
+        if attendances:
+            fixed_attendances = {}
+            
+            # Go through each attendance record
+            for att_id, att_value in attendances.items():
+                if isinstance(att_value, str):
+                    # This is an old format record (attendance_id: enrollment_no)
+                    enrollment_no = att_value
+                    
+                    # Find student details
+                    student_data = await DatabaseOperations.find_one("students", {"enrollment_no": enrollment_no})
+                    
+                    if student_data:
+                        # Look for attendance record in the attendance collection
+                        att_record = await DatabaseOperations.find_one("attendance", {"attendance_id": att_id})
+                        
+                        if att_record:
+                            # Create attendance details from the record
+                            fixed_attendances[att_id] = {
+                                "enrollment_no": enrollment_no,
+                                "full_name": att_record.get("full_name", student_data.get("full_name", "Unknown")),
+                                "marked_at": att_record.get("attendance_marked_at", datetime.now().isoformat()),
+                                "status": att_record.get("attendance_status", "present")
+                            }
+                        else:
+                            # Create attendance details from student data
+                            fixed_attendances[att_id] = {
+                                "enrollment_no": enrollment_no,
+                                "full_name": student_data.get("full_name", "Unknown"),
+                                "marked_at": datetime.now().isoformat(),
+                                "status": "present"
+                            }
+                        
+                        fixed_count += 1
+                elif isinstance(att_value, dict):
+                    # This is already in the correct format
+                    fixed_attendances[att_id] = att_value
+            
+            # Update the event document with fixed attendances
+            if fixed_count > 0:
+                await DatabaseOperations.update_one(
+                    "events",
+                    {"event_id": event_id},
+                    {"$set": {"attendances": fixed_attendances}}
+                )
+        
+        return {
+            "success": True,
+            "message": f"Fixed {fixed_count} attendance records",
+            "event_id": event_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error in fix_attendances: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/admin/tools/fix-attendance-format/{event_id}")
+async def fix_attendance_format(request: Request, event_id: str, student: Student = Depends(require_student_login)):
+    """Utility function to fix attendance format for events with string values in attendances field"""
+    try:
+        # Check if user has admin privileges
+        if student.role not in ["super_admin", "admin"]:
+            raise HTTPException(status_code=403, detail="Unauthorized access")
+            
+        # Get event details
+        event = await DatabaseOperations.find_one("events", {"event_id": event_id})
+        if not event:
+            raise HTTPException(status_code=404, detail="Event not found")
+            
+        # Get attendances field
+        attendances = event.get("attendances", {})
+        if not attendances:
+            return {"status": "success", "message": "No attendances found in event"}
+            
+        updates_made = 0
+        
+        # Check each attendance record
+        for att_id, att_value in list(attendances.items()):  # Use list() to avoid dictionary size change during iteration
+            if isinstance(att_value, str):
+                # This is old format - convert to new format
+                enrollment_no = att_value
+                
+                # Find student details
+                student_data = await DatabaseOperations.find_one("students", {"enrollment_no": enrollment_no})
+                
+                if student_data:
+                    full_name = student_data.get("full_name", "Unknown")
+                else:
+                    full_name = "Unknown"
+                    
+                # Try to find attendance record in attendance collection
+                att_record = await DatabaseOperations.find_one("attendance", {"attendance_id": att_id})
+                marked_at = None
+                
+                if att_record:
+                    marked_at = att_record.get("attendance_marked_at")
+                
+                # If no marked_at found, use current time
+                if not marked_at:
+                    marked_at = datetime.now().isoformat()
+                    
+                # Create new attendance details dictionary
+                new_att_details = {
+                    "enrollment_no": enrollment_no,
+                    "full_name": full_name,
+                    "marked_at": marked_at,
+                    "status": "present"
+                }
+                
+                # Update in event document
+                await DatabaseOperations.update_one(
+                    "events",
+                    {"event_id": event_id},
+                    {"$set": {f"attendances.{att_id}": new_att_details}}
+                )
+                
+                updates_made += 1
+        
+        return {
+            "status": "success", 
+            "message": f"Fixed {updates_made} attendance records", 
+            "event_id": event_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error in fix_attendance_format: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))

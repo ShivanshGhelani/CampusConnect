@@ -8,14 +8,18 @@
 
 {% block content %}
 <div class="min-h-screen bg-gray-50 py-8">
-    <div class="max-w-4xl mx-auto px-4">
-        <!-- Header Section -->
+    <div class="max-w-4xl mx-auto px-4">        <!-- Header Section -->
         <div class="text-center mb-8">
             <div class="mx-auto mb-6 w-24 h-24 bg-green-100 rounded-full flex items-center justify-center">
                 <i class="fas fa-user-check text-green-600 text-4xl"></i>
             </div>
+            {% if already_marked %}
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">Attendance Already Recorded</h1>
+            <p class="text-lg text-gray-600">Your attendance was previously marked for this event</p>
+            {% else %}
             <h1 class="text-3xl font-bold text-gray-900 mb-2">Attendance Marked Successfully!</h1>
             <p class="text-lg text-gray-600">Your attendance has been recorded for this event</p>
+            {% endif %}
         </div>
 
         <!-- Attendance Details Card -->
@@ -93,16 +97,18 @@
                     </div>
                 </div>
             </div>
-        </div>
-
-        <!-- Important Notice -->
+        </div>        <!-- Important Notice -->
         <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
             <div class="flex items-start">
                 <i class="fas fa-info-circle text-blue-600 text-lg mt-1 mr-3 flex-shrink-0"></i>
                 <div>
                     <h4 class="font-semibold text-gray-900 mb-2">Important Notice</h4>
                     <p class="text-sm text-gray-700">
+                        {% if already_marked %}
+                        Your attendance was previously recorded in our system and cannot be marked again. This confirmation serves as proof of your participation in the event. Please save this information for future reference, especially for certificate generation.
+                        {% else %}
                         Your attendance has been successfully recorded in our system. This confirmation serves as proof of your participation in the event. Please save this information for future reference, especially for certificate generation.
+                        {% endif %}
                     </p>
                 </div>
             </div>

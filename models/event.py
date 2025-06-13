@@ -1,7 +1,7 @@
-from pydantic import BaseModel, Field
-from typing import Optional, List, Dict
+from typing import Dict, List, Optional, Any, Union
 from datetime import datetime
 from enum import Enum
+from pydantic import BaseModel, Field, field_validator
 
 class EventMainStatus(Enum):
     """Main event status categories"""
@@ -80,11 +80,10 @@ class Event(BaseModel):
             "payment_status": "complete/pending"  # for paid events
         }
     }
-    """)
-      # Attendance tracking
+    """)    # Attendance tracking
     # For individual events: attendance_id -> attendance details
     # For team events: team_name -> {member_enrollments: attendance_ids}
-    attendances: Dict[str, Dict] = Field(default={}, description="Individual attendances: attendance_id -> attendance details")
+    attendances: Dict[str, Any] = Field(default={}, description="Individual attendances: attendance_id -> attendance details")
     team_attendances: Dict[str, Dict] = Field(default={}, description="""
     Team attendances mapped by team_name:
     {
@@ -95,6 +94,30 @@ class Event(BaseModel):
         }
     }
     """)
+    
+    @field_validator('attendances')
+    @classmethod
+    def validate_attendances(cls, v):
+        """
+        Convert legacy string values to dictionary format
+        This handles backward compatibility with old data format
+        """
+        if not v:
+            return {}
+            
+        result = {}
+        for key, value in v.items():
+            if isinstance(value, str):
+                # Convert legacy format (attendance_id: enrollment_no) to dictionary
+                result[key] = {
+                    "enrollment_no": value,
+                    "marked_at": datetime.now().isoformat(),
+                    "status": "present"
+                }
+            else:
+                result[key] = value
+                
+        return result
     
     # Feedback tracking
     # For individual events: feedback_id -> enrollment_no  

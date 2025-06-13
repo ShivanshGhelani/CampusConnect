@@ -18,10 +18,9 @@
                         clip-rule="evenodd" />
                 </svg>
             </div>
-            <h1 class="text-2xl font-bold text-gray-900 mb-2">Mark Attendance</h1>
-            <p class="text-gray-600">{{ event.event_name }}</p>
+            <h1 class="text-2xl font-bold text-gray-900 mb-2">Mark Attendance</h1>            <p class="text-gray-600">{{ event.event_name }}</p>
             <p class="text-sm text-gray-500 mt-1">
-                {{ event.start_datetime.strftime("%B %d, %Y, %I:%M %p") if event.start_datetime else "TBD" }}
+                {{ event.formatted_start if event.formatted_start is defined else event.start_datetime if event.start_datetime else "Date to be announced" }}
             </p>
 
         </div>

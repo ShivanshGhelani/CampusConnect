@@ -285,6 +285,17 @@ async def scheduler_health():
     status = await get_scheduler_status()
     return status
 
+# Mount special routes for certificate assets with shortened paths
+@app.get("/logo/{filename:path}")
+async def serve_logo(filename: str):
+    """Serve logo files from the uploads/assets/logo directory"""
+    return RedirectResponse(url=f"/static/uploads/assets/logo/{filename}")
+
+@app.get("/signature/{path:path}")
+async def serve_signature(path: str):
+    """Serve signature files from the uploads/assets/signature directory"""
+    return RedirectResponse(url=f"/static/uploads/assets/signature/{path}")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

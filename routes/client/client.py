@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 # Suppress bcrypt version warning
 warnings.filterwarnings("ignore", message=".*error reading bcrypt version.*")
 
-router = APIRouter()
+router = APIRouter()  # Removed prefix="/client" since the parent router already has this prefix
 templates = Jinja2Templates(directory="templates")
 email_service = EmailService()
 
@@ -310,9 +310,36 @@ async def event_details(request: Request, event_id: str):
                           "certificate_start_date", "certificate_end_date"]:
             if isinstance(event_data.get(date_field), str):
                 event_data[date_field] = datetime.fromisoformat(event_data[date_field].replace('Z', '+00:00'))
-        
-        # Create Event model (status will be updated in get_event_timeline)
-        event = Event(**event_data)
+          # Create Event model (status will be updated in get_event_timeline)
+        try:
+            # First try with normalization of attendances
+            event = Event(**event_data)
+        except Exception as e:
+            print(f"Error creating Event model: {str(e)}")
+            # If there's a validation error, try to fix the attendances field
+            if "attendances" in event_data:
+                fixed_attendances = {}
+                for att_id, att_value in event_data["attendances"].items():
+                    if isinstance(att_value, str):
+                        # Convert string to dictionary
+                        fixed_attendances[att_id] = {
+                            "enrollment_no": att_value,
+                            "marked_at": datetime.now().isoformat(),
+                            "status": "present"
+                        }
+                    else:
+                        fixed_attendances[att_id] = att_value
+                event_data["attendances"] = fixed_attendances
+            
+            # Try again with fixed data
+            event = Event(**event_data)
+            
+            # Also update database with fixed data
+            await DatabaseOperations.update_one(
+                "events",
+                {"event_id": event_id},
+                {"$set": {"attendances": event_data["attendances"]}}
+            )
 
         # Get timeline (this also updates status)
         timeline = await EventStatusManager.get_event_timeline(event)
@@ -345,61 +372,28 @@ async def event_details(request: Request, event_id: str):
                 if hours > 0:
                     event_duration = f"{hours}h {minutes}m"
                 else:
-                    event_duration = f"{minutes} minutes"        # Get registration statistics
-        registration_stats = {            "total_registrations": 0,            "total_teams": 0,
-            "total_participants": 0,
+                    event_duration = f"{minutes} minutes"
+
+        # Get registration statistics
+        registration_stats = {
+            "total_registrations": 0,
             "available_spots": None,
             "waiting_list": 0
         }
 
         try:
-            # Get registrations directly from event data
-            registrations = event_data.get('registrations', [])
-            
-            # Handle different data structures for registrations
-            if isinstance(registrations, dict):
-                # If registrations is a dictionary, convert to list of values
-                registrations = list(registrations.values())
-            elif not isinstance(registrations, list):
-                registrations = []
-            
-            registration_stats["total_registrations"] = len(registrations)
-            
-            # Check if this is a team-based event
-            is_team_event = event_data.get('registration_mode', '').lower() == 'team'
-            
-            if is_team_event:
-                # For team events, count unique teams from the registrations
-                unique_teams = set()
-                total_participants = 0
+            # Use event-specific database for registrations
+            event_collection = await Database.get_event_collection(event_id)
+            if event_collection is not None:
+                cursor = event_collection.find({})
+                registrations = await cursor.to_list(length=None)
+                registration_stats["total_registrations"] = len(registrations)
                 
-                for registration in registrations:
-                    # Each registration in team events should have team information
-                    team_id = registration.get('team_registration_id') or registration.get('team_id') if isinstance(registration, dict) else None
-                    team_name = registration.get('team_name') if isinstance(registration, dict) else None
-                    
-                    if team_id:
-                        unique_teams.add(team_id)
-                    elif team_name:
-                        unique_teams.add(team_name)
-                    
-                    # Count total participants
-                    total_participants += 1
-                
-                registration_stats["total_teams"] = len(unique_teams)
-                registration_stats["total_participants"] = total_participants
-            else:
-                # For individual events, count each registration as one participant
-                registration_stats["total_participants"] = len(registrations)
-            
-            # Calculate available spots if there's a limit
-            if event_data.get('registration_limit'):
-                is_team_event = event_data.get('registration_mode', '').lower() == 'team'
-                current_count = registration_stats["total_teams"] if is_team_event else registration_stats["total_participants"]
-                registration_stats["available_spots"] = max(0, event_data['registration_limit'] - current_count)
-                if current_count > event_data['registration_limit']:
-                    registration_stats["waiting_list"] = current_count - event_data['registration_limit']
-                    
+                # Calculate available spots if there's a limit
+                if event_data.get('registration_limit'):
+                    registration_stats["available_spots"] = max(0, event_data['registration_limit'] - registration_stats["total_registrations"])
+                    if registration_stats["total_registrations"] > event_data['registration_limit']:
+                        registration_stats["waiting_list"] = registration_stats["total_registrations"] - event_data['registration_limit']
         except Exception as e:
             print(f"Could not fetch registration stats: {e}")
 
@@ -438,16 +432,16 @@ async def event_details(request: Request, event_id: str):
                     'role': None,
                     'email': email,
                     'phone': phone
-                })        # Add timeline, contacts and other details to event data
-        is_team_event = event_data.get('registration_mode', '').lower() == 'team'
+                })
+
+        # Add timeline, contacts and other details to event data
         event_data.update({
             'event_contacts': event_contacts,
             'timeline': timeline,
             'available_forms': available_forms,
             'status': event.status,
             'sub_status': event.sub_status,
-            'is_team_event': is_team_event,
-        })# Convert datetime objects to ISO format strings for template
+        })        # Convert datetime objects to ISO format strings for template
         serialized_event_data = {}
         for key, value in event_data.items():
             if isinstance(value, datetime):
@@ -502,58 +496,16 @@ async def authenticate_student(enrollment_no: str, password: str) -> Student:
 
 # Student Login Routes
 @router.get("/login")
-async def login_page(request: Request):
-    """Show unified login page (student and admin)"""
-    
-    # Check if student is already logged in
-    try:
-        student = await get_current_student_optional(request)
-        if student:
-            # Student is already logged in, redirect to dashboard
-            return RedirectResponse(url="/client/dashboard", status_code=302)
-    except:
-        pass  # Student not logged in, continue
-    
-    # Check if admin is already logged in
-    try:
-        from routes.auth import get_current_admin
-        admin = await get_current_admin(request)
-        if admin:
-            # Admin is already logged in, redirect based on role
-            from models.admin_user import AdminRole
-            if admin.role == AdminRole.SUPER_ADMIN:
-                return RedirectResponse(url="/admin/dashboard", status_code=302)
-            elif admin.role == AdminRole.EXECUTIVE_ADMIN:
-                return RedirectResponse(url="/admin/events/create", status_code=302)
-            elif admin.role == AdminRole.EVENT_ADMIN:
-                return RedirectResponse(url="/admin/events", status_code=302)
-            elif admin.role == AdminRole.CONTENT_ADMIN:
-                return RedirectResponse(url="/admin/events", status_code=302)
-            else:
-                return RedirectResponse(url="/admin/dashboard", status_code=302)
-    except:
-        pass  # Admin not logged in, continue
-      # Get the tab parameter to determine which tab should be active
-    active_tab = request.query_params.get("tab", "student")  # default to student tab
-    
+async def student_login_page(request: Request):
+    """Show student login page"""
     template_context = await get_template_context(request)
-    response = templates.TemplateResponse(
-        "auth/login.html",
+    return templates.TemplateResponse(
+        "client/student_login.html",
         {
             "request": request,
-            "active_tab": active_tab,
             **template_context
         }
     )
-    
-    # Add comprehensive cache control headers to prevent browser caching
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0, private"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "0"
-    response.headers["Last-Modified"] = "0"
-    response.headers["ETag"] = ""
-    
-    return response
 
 @router.post("/login")
 async def student_login(request: Request):
@@ -563,34 +515,39 @@ async def student_login(request: Request):
     password = form_data.get("password")
     redirect_url = form_data.get("redirect", "/client/dashboard")
     
-    # Validate required fields
+    print(f"[DEBUG] Login attempt for: {enrollment_no} with redirect to: {redirect_url}")
+      # Validate required fields
     if not all([enrollment_no, password]):
+        print("[DEBUG] Missing enrollment or password")
         template_context = await get_template_context(request)
         return templates.TemplateResponse(
-            "auth/login.html",
+            "client/student_login.html",
             {
                 "request": request,
-                "active_tab": "student",
                 "error": "Both enrollment number and password are required",
                 "form_data": form_data,
                 **template_context
             },
             status_code=400
         )
-      # Authenticate student
+    
+    # Authenticate student
     student = await authenticate_student(enrollment_no, password)
     if not student:
+        print(f"[DEBUG] Authentication failed for {enrollment_no}")
         template_context = await get_template_context(request)
         return templates.TemplateResponse(
-            "auth/login.html",
+            "client/student_login.html",
             {
                 "request": request,
-                "active_tab": "student",
                 "error": "Invalid enrollment number or password. Please try again.",
                 "form_data": form_data,
-                **template_context            },
+                **template_context
+            },
             status_code=401
         )
+    
+    print(f"[DEBUG] Authentication successful for {enrollment_no}")
     
     # Update last login time
     await DatabaseOperations.update_one(
@@ -608,17 +565,18 @@ async def student_login(request: Request):
             student_data[key] = str(value)
       # Store student in session
     request.session["student"] = student_data
-    request.session["student_enrollment"] = enrollment_no    
-    # Use status code 303 (See Other) for redirect after successful login
+    request.session["student_enrollment"] = enrollment_no
+    
+    print(f"[DEBUG] Session data set. Keys in session: {list(request.session.keys())}")
+    print(f"[DEBUG] Redirecting to {redirect_url}")
+      # Use status code 303 (See Other) for redirect after successful login
     # This ensures the browser doesn't use cache for the login page when navigating back
     response = RedirectResponse(url=redirect_url, status_code=303)
     
-    # Add comprehensive cache control headers to prevent caching login page
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0, private"
+    # Add cache control headers to prevent caching login page
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
-    response.headers["Last-Modified"] = "0"
-    response.headers["ETag"] = ""
     
     return response
 
@@ -631,21 +589,24 @@ async def student_logout(request: Request):
     # Create a response that redirects to events page
     response = RedirectResponse(url="/client/events", status_code=303)
     
-    # Add comprehensive cache control headers to prevent caching
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0, private"
+    # Add cache control headers to prevent caching
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
-    response.headers["Last-Modified"] = "0"
-    response.headers["ETag"] = ""
     
     return response
 
 @router.get("/dashboard")
 async def student_dashboard(request: Request):
-    """Student dashboard showing their registrations and event history"""    
+    """Student dashboard showing their registrations and event history"""
+    print(f"[DEBUG] Dashboard access attempt. Keys in session: {list(request.session.keys())}")
+    print(f"[DEBUG] Student enrollment in session: {request.session.get('student_enrollment')}")
+    
     try:
         student = await get_current_student(request)
+        print(f"[DEBUG] Student successfully retrieved from session: {student.enrollment_no}")
     except HTTPException as e:
+        print(f"[DEBUG] Error retrieving student from session: {str(e)}")
         return RedirectResponse(url="/client/login", status_code=302)
     
     # Handle flash messages from URL parameters
@@ -726,12 +687,14 @@ async def student_dashboard(request: Request):
         elif isinstance(created_at, datetime):
             # If it's already a datetime, ensure it's naive
             created_at = created_at.replace(tzinfo=None)
-        serialized_student["created_at"] = created_at    # Convert other datetime fields to ISO format for template
+        serialized_student["created_at"] = created_at
+
+    # Convert other datetime fields to ISO format for template
     for key, value in serialized_student.items():
         if key != "created_at" and isinstance(value, datetime):
             serialized_student[key] = value.isoformat()
     
-    response = templates.TemplateResponse(
+    return templates.TemplateResponse(
         "client/dashboard.html",
         {
             "request": request,
@@ -741,12 +704,6 @@ async def student_dashboard(request: Request):
             "flash_messages": flash_messages
         }
     )
-    
-    # Add cache control headers for dashboard page
-    response.headers["Cache-Control"] = "no-cache, must-revalidate, max-age=0"
-    response.headers["Pragma"] = "no-cache"
-    
-    return response
 
 # Student Profile Routes
 @router.get("/profile/edit")
@@ -935,7 +892,7 @@ async def student_register_page(request: Request):
     """Show student registration page"""
     template_context = await get_template_context(request)
     return templates.TemplateResponse(
-        "auth/register.html",
+        "client/register.html",
         {
             "request": request,
             **template_context
@@ -1012,7 +969,7 @@ async def student_register(request: Request):
         if errors:
             template_context = await get_template_context(request)
             return templates.TemplateResponse(
-                "auth/register.html",
+                "client/register.html",
                 {
                     "request": request,
                     "error": "; ".join(errors),
@@ -1042,7 +999,7 @@ async def student_register(request: Request):
         if errors:
             template_context = await get_template_context(request)
             return templates.TemplateResponse(
-                "auth/register.html",
+                "client/register.html",
                 {
                     "request": request,
                     "error": "; ".join(errors),
@@ -1075,7 +1032,7 @@ async def student_register(request: Request):
         if result:
             template_context = await get_template_context(request)
             return templates.TemplateResponse(
-                "auth/register.html",
+                "client/register.html",
                 {
                     "request": request,
                     "success": "Account created successfully! You can now login with your credentials.",
@@ -1085,7 +1042,7 @@ async def student_register(request: Request):
         else:
             template_context = await get_template_context(request)
             return templates.TemplateResponse(
-                "auth/register.html",
+                "client/register.html",
                 {
                     "request": request,
                     "error": "Failed to create account. Please try again.",
@@ -1098,7 +1055,7 @@ async def student_register(request: Request):
         print(f"Registration error: {e}")
         template_context = await get_template_context(request)
         return templates.TemplateResponse(
-            "auth/register.html",
+            "client/register.html",
             {
                 "request": request,
                 "error": "An error occurred during registration. Please try again.",
@@ -1383,21 +1340,29 @@ async def validate_registration_api(request: Request, registration_id: str, even
 async def debug_auth_route(request: Request):
     """Debug endpoint to check authentication state"""
     
+    print("=== DEBUG AUTH ENDPOINT ===")
+    print(f"Session keys: {list(request.session.keys())}")
+    print(f"Session data: {dict(request.session)}")
+    
     # Test our auth function
     try:
         student = await get_current_student_optional(request)
+        print(f"get_current_student_optional result: {student}")
         is_logged_in_auth = student is not None
         student_data_auth = student.model_dump() if student else None
     except Exception as e:
+        print(f"Error with get_current_student_optional: {e}")
         is_logged_in_auth = False
         student_data_auth = None
     
     # Test template context utility
     try:
         template_context = await get_template_context(request)
+        print(f"Template context: {template_context}")
         is_logged_in_template = template_context.get("is_student_logged_in", False)
         student_data_template = template_context.get("student_data")
     except Exception as e:
+        print(f"Error with get_template_context: {e}")
         is_logged_in_template = False
         student_data_template = None
     
@@ -1623,58 +1588,8 @@ async def get_certificate_template(event_id: str, current_student: Student = Dep
         logger.error(f"Error loading certificate template: {str(e)}")
         return {"success": False, "message": f"Error loading certificate template: {str(e)}"}
 
-# Authentication Status API
-@router.get("/api/auth/status")
-async def check_auth_status(request: Request):
-    """API endpoint to check if user is already authenticated"""
-    try:
-        # Check if student is logged in
-        student = await get_current_student_optional(request)
-        if student:
-            return {
-                "authenticated": True,
-                "user_type": "student",
-                "redirect_url": "/client/dashboard"
-            }
-        
-        # Check if admin is logged in
-        try:
-            from routes.auth import get_current_admin
-            admin = await get_current_admin(request)
-            if admin:
-                from models.admin_user import AdminRole
-                # Determine redirect URL based on admin role
-                if admin.role == AdminRole.SUPER_ADMIN:
-                    redirect_url = "/admin/dashboard"
-                elif admin.role == AdminRole.EXECUTIVE_ADMIN:
-                    redirect_url = "/admin/events/create"
-                elif admin.role == AdminRole.EVENT_ADMIN:
-                    redirect_url = "/admin/events"
-                elif admin.role == AdminRole.CONTENT_ADMIN:
-                    redirect_url = "/admin/events"
-                else:
-                    redirect_url = "/admin/dashboard"
-                
-                return {
-                    "authenticated": True,
-                    "user_type": "admin",
-                    "redirect_url": redirect_url
-                }
-        except:
-            pass
-        
-        # No authentication found
-        return {
-            "authenticated": False,
-            "user_type": None,
-            "redirect_url": None
-        }
-    except Exception as e:
-        logger.error(f"Error checking auth status: {e}")
-        return {
-            "authenticated": False,
-            "user_type": None,
-            "redirect_url": None
-        }
-
-# Student Login Routes
+# Test endpoint to verify API routing
+@router.get("/test-api")
+async def test_api():
+    """Simple test endpoint to verify API routing works"""
+    return {"success": True, "message": "API routing is working"}

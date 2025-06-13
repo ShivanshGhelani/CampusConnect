@@ -90,10 +90,10 @@ def cert_asset_path(path: str) -> str:
     Converts user-friendly short paths to full asset URLs.
     
     This function handles the common patterns that users use when creating templates:
-    - /logo/filename.ext → /static/uploads/assets/logo/filename.ext
-    - /signature/role/department/filename.ext → /static/uploads/assets/signature/role/department/filename.ext
-    - /signature/principal/filename.ext → /static/uploads/assets/signature/principal/filename.ext
-    - /assets/... → /static/uploads/assets/...
+    - /logo/filename.ext → '/static/uploads/assets/logo/filename.ext'
+    - /signature/role/department/filename.ext → '/static/uploads/assets/signature/role/department/filename.ext'
+    - /signature/principal/filename.ext → '/static/uploads/assets/signature/principal/filename.ext'
+    - /assets/... → '/static/uploads/assets/...'
     
     Args:
         path: User-friendly asset path starting with /
@@ -108,6 +108,9 @@ def cert_asset_path(path: str) -> str:
         cert_asset_path('/signature/principal/gargi.png')
         → '/static/uploads/assets/signature/principal/gargi.png'
     """
+    # Compatibility fix for direct asset URLs in templates
+    # These start with /logo/, /signature/, etc. and need to be properly mapped
+    
     # Remove leading slash for processing
     clean_path = path.lstrip('/')
     

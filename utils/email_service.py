@@ -187,13 +187,12 @@ class EmailService:
         return await loop.run_in_executor(
             self.executor, 
             self._send_email_sync, 
-            to_email, 
-            subject, 
+            to_email,            subject, 
             html_content, 
             text_content,
             attachments
         )
-
+        
     def render_template(self, template_name: str, **kwargs) -> str:
         """Render email template with provided context"""
         try:
@@ -201,27 +200,29 @@ class EmailService:
             return template.render(**kwargs)
         except Exception as e:
             logger.error(f"Failed to render template {template_name}: {str(e)}")
-            return f"<html><body><h1>Email Content</h1><p>Error rendering template: {str(e)}</p></body></html>"
-
+            return f"<html><body><h1>Email Content</h1><p>Error rendering template: {str(e)}</p></body></html>"    
     async def send_registration_confirmation(
         self, 
         student_email: str, 
         student_name: str, 
         event_title: str, 
         start_datetime: str, 
-        venue: str,
+        event_venue: str,
         registration_id: Optional[str] = None
     ) -> bool:
-        """Send registration confirmation email"""
+        """Send registration confirmation email"""        
         try:
             subject = f"Registration Confirmed - {event_title}"
+            
+            # Use a default date if not provided
+            event_date = start_datetime if start_datetime else "Date to be announced"
             
             html_content = self.render_template(
                 'registration_confirmation.html',
                 student_name=student_name,
                 event_title=event_title,
-                event_date=start_datetime,
-                event_venue=venue,
+                event_date=event_date,  # Keep event_date for template compatibility
+                event_venue=event_venue if event_venue else "Venue to be announced",
                 registration_id=registration_id
             )
             
@@ -246,8 +247,7 @@ class EmailService:
             
             html_content = self.render_template(
                 'payment_confirmation.html',
-                student_name=student_name,
-                event_title=event_title,
+                student_name=student_name,                event_title=event_title,
                 amount=amount,
                 payment_id=payment_id,
                 event_date=event_date
@@ -258,25 +258,40 @@ class EmailService:
         except Exception as e:
             logger.error(f"Failed to send payment confirmation: {str(e)}")
             return False
-
+            
     async def send_attendance_confirmation(
         self, 
         student_email: str, 
         student_name: str, 
         event_title: str, 
         attendance_date: str,
-        event_venue: Optional[str] = None
+        event_venue: Optional[str] = None,
+        attendance_id: Optional[str] = None,
+        attendance_time: Optional[str] = None
     ) -> bool:
         """Send attendance confirmation email"""
         try:
             subject = f"Attendance Confirmed - {event_title}"
+            
+            # Format attendance time if provided
+            formatted_time = None
+            if attendance_time:
+                if isinstance(attendance_time, str):
+                    # Try to extract time from ISO format
+                    if 'T' in attendance_time:
+                        time_part = attendance_time.split('T')[1][:5]  # Get HH:MM
+                        formatted_time = time_part
+                else:
+                    formatted_time = attendance_time.strftime("%H:%M") if hasattr(attendance_time, 'strftime') else str(attendance_time)
             
             html_content = self.render_template(
                 'attendance_confirmation.html',
                 student_name=student_name,
                 event_title=event_title,
                 attendance_date=attendance_date,
-                event_venue=event_venue
+                event_venue=event_venue,
+                attendance_id=attendance_id,
+                attendance_time=formatted_time
             )
             
             return await self.send_email_async(student_email, subject, html_content)

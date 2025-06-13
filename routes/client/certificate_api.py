@@ -279,3 +279,31 @@ async def get_email_queue_stats(current_student: dict = Depends(get_current_stud
     except Exception as e:
         logger.error(f"Error getting email queue stats: {str(e)}")
         return {"success": False, "message": f"Error getting stats: {str(e)}"}
+
+@router.get("/api/certificate-debug/{event_id}/{enrollment_no}")
+async def debug_certificate(
+    request: Request, 
+    event_id: str, 
+    enrollment_no: str,
+    student: Student = Depends(require_student_login)
+):
+    """Debug endpoint for certificate generation issues"""
+    # Only admin users can access this endpoint
+    if student.role not in ["super_admin", "admin"]:
+        raise HTTPException(status_code=403, detail="Unauthorized access")
+        
+    try:
+        from utils.js_certificate_generator import debug_team_certificate_data
+        
+        # Get debug data
+        debug_data = await debug_team_certificate_data(event_id, enrollment_no)
+        return {
+            "success": True,
+            "debug_data": debug_data
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }

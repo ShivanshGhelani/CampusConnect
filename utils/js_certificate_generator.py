@@ -58,13 +58,15 @@ async def get_certificate_data_for_js(event_id: str, enrollment_no: str) -> Tupl
             
             if not event_data:
                 return False, "Event not found", None
-            
-            # Check if student is registered and attended
+              # Check if student is registered and attended
             event_participations = student_data.get('event_participations', {})
             if event_id not in event_participations:
                 return False, "Student not registered for this event", None
             
             participation = event_participations[event_id]
+            
+            # Log participation data for debugging
+            logger.debug(f"Event participation data for student {enrollment_no}, event {event_id}: {participation}")
             
             if not participation.get('attendance_id'):
                 return False, "Student must have attended the event", None
@@ -91,14 +93,29 @@ async def get_certificate_data_for_js(event_id: str, enrollment_no: str) -> Tupl
                 "enrollment_no": enrollment_no,
                 "event_id": event_id
             }
-            
-            # Add team name if team-based event
+              # Add team name if team-based event
             if is_team_based:
+                # First try to get team name from participation data
                 student_data_in_participation = participation.get('student_data', {})
                 team_name = student_data_in_participation.get('team_name')
+                
+                # If not found in student data, get it from the event document
+                if not team_name:
+                    # Get team registration ID from student participation
+                    team_registration_id = participation.get('team_registration_id')
+                    if team_registration_id:
+                        # Get team details from event document
+                        team_registrations = event_data.get('team_registrations', {})
+                        team_data = team_registrations.get(team_registration_id, {})
+                        team_name = team_data.get('team_name')
+                
                 if team_name:
                     certificate_data["team_name"] = team_name
                 else:
+                    # For debugging, log the team ID and registration type
+                    logger.warning(f"Team name not found for event: {event_id}, student: {enrollment_no}, " +
+                                  f"team_id: {participation.get('team_registration_id')}, " +
+                                  f"registration_type: {participation.get('registration_type')}")
                     return False, "Team name not found for team-based event", None
             
             return True, "Certificate data retrieved successfully", certificate_data
@@ -583,3 +600,69 @@ async def cleanup_old_temp_files(max_age_hours: int = 24) -> int:
     except Exception as e:
         logger.error(f"Error cleaning up old temp files: {str(e)}")
         return 0
+
+async def debug_team_certificate_data(event_id: str, enrollment_no: str) -> Dict[str, Any]:
+    """
+    Debug function to gather all relevant data for troubleshooting team certificate issues
+    
+    Args:
+        event_id: Event ID
+        enrollment_no: Student enrollment number
+    
+    Returns:
+        Dictionary with all relevant data for debugging
+    """
+    debug_data = {
+        "event_id": event_id,
+        "enrollment_no": enrollment_no,
+        "timestamp": datetime.now().isoformat()
+    }
+    
+    try:
+        # Get student data
+        student_data = await DatabaseOperations.find_one("students", {"enrollment_no": enrollment_no})
+        if student_data:
+            debug_data["student_found"] = True
+            debug_data["student_name"] = student_data.get("full_name")
+            
+            # Get participation data
+            event_participations = student_data.get("event_participations", {})
+            if event_id in event_participations:
+                participation = event_participations[event_id]
+                debug_data["participation_found"] = True
+                debug_data["participation_data"] = participation
+                debug_data["registration_type"] = participation.get("registration_type")
+                debug_data["team_registration_id"] = participation.get("team_registration_id")
+                debug_data["has_attendance"] = bool(participation.get("attendance_id"))
+                debug_data["has_feedback"] = bool(participation.get("feedback_id"))
+            else:
+                debug_data["participation_found"] = False
+        else:
+            debug_data["student_found"] = False
+        
+        # Get event data
+        event_data = await DatabaseOperations.find_one("events", {"event_id": event_id})
+        if event_data:
+            debug_data["event_found"] = True
+            debug_data["event_name"] = event_data.get("event_name")
+            debug_data["is_team_based"] = event_data.get("registration_mode") == "team"
+            
+            # Get team data
+            team_registration_id = debug_data.get("team_registration_id")
+            if team_registration_id:
+                team_registrations = event_data.get("team_registrations", {})
+                if team_registration_id in team_registrations:
+                    team_data = team_registrations[team_registration_id]
+                    debug_data["team_found"] = True
+                    debug_data["team_name"] = team_data.get("team_name")
+                    debug_data["team_leader"] = team_data.get("team_leader_enrollment")
+                    debug_data["team_participants"] = team_data.get("participants", [])
+                else:
+                    debug_data["team_found"] = False
+        else:
+            debug_data["event_found"] = False
+    
+    except Exception as e:
+        debug_data["error"] = str(e)
+    
+    return debug_data
