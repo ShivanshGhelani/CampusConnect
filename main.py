@@ -54,11 +54,72 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         else:
             # For admin routes, redirect to admin login
             return RedirectResponse(url="/auth/login", status_code=302)
-    return templates.TemplateResponse(
+    
+    # Prepare enhanced error context
+    from datetime import datetime
+    error_context = {
+        "request": request,
+        "status_code": exc.status_code,
+        "detail": exc.detail,
+        "current_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "request_path": request.url.path,
+        "request_method": request.method
+    }
+    
+    # Add specific error messages based on status code
+    if exc.status_code == 404:
+        if "/client/" in request.url.path:
+            error_context["user_friendly_message"] = "The page or event you're looking for doesn't exist."
+        else:
+            error_context["user_friendly_message"] = "The requested resource was not found."
+    elif exc.status_code == 403:
+        error_context["user_friendly_message"] = "You don't have permission to access this resource."
+    elif exc.status_code >= 500:
+        error_context["user_friendly_message"] = "We're experiencing technical difficulties. Please try again later."
+    elif exc.status_code >= 400 and exc.status_code < 500:
+        error_context["user_friendly_message"] = "There was an issue with your request. Please check and try again."
+    
+    response = templates.TemplateResponse(
         "error.html",
-        {"request": request, "status_code": exc.status_code, "detail": exc.detail},
+        error_context,
         status_code=exc.status_code,
     )
+    
+    # Add cache control headers to prevent error page caching
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    
+    return response
+
+@app.exception_handler(500)
+async def internal_server_error_handler(request: Request, exc):
+    """Handle 500 Internal Server Errors"""
+    from datetime import datetime
+    logger.error(f"Internal Server Error: {str(exc)} on {request.url.path}")
+    
+    error_context = {
+        "request": request,
+        "status_code": 500,
+        "detail": "Internal server error occurred",
+        "current_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "request_path": request.url.path,
+        "request_method": request.method,
+        "user_friendly_message": "We're experiencing technical difficulties. Our team has been notified."
+    }
+    
+    response = templates.TemplateResponse(
+        "error.html",
+        error_context,
+        status_code=500,
+    )
+    
+    # Add cache control headers
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    
+    return response
 
 # Include routes
 from routes.admin import router as admin_router

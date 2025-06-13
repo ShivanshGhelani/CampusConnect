@@ -2,6 +2,11 @@
 
 {% block title %}Student Login - CampusConnect{% endblock %}
 
+{% block extra_head %}
+<!-- Auth Protection Module -->
+<script src="/static/js/auth-protection.js"></script>
+{% endblock %}
+
 {% block content %}
 <div class="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 py-12 px-4 sm:px-6 lg:px-8">
     <div class="max-w-md w-full mx-auto space-y-8">        <!-- Header Section -->
@@ -262,12 +267,26 @@ document.getElementById('admin-tab').addEventListener('click', () => switchMode(
 
 // Initialize the correct tab based on server-side active_tab
 document.addEventListener('DOMContentLoaded', function() {
-    const activeTab = '{{ active_tab or "student" }}';
-    if (activeTab === 'admin') {
-        switchMode('admin');
-    } else {
-        switchMode('student');
-    }
+    // Initialize auth protection for login page
+    authProtection.init('student', 'login');
+    
+    // Check if user is already authenticated
+    authProtection.checkAuthStatus().then(authData => {
+        if (authData.authenticated && authData.redirect_url) {
+            // User is already authenticated, redirect immediately
+            console.log('User already authenticated, redirecting to:', authData.redirect_url);
+            window.location.replace(authData.redirect_url);
+            return;
+        }
+        
+        // User is not authenticated, continue with normal login page setup
+        const activeTab = '{{ active_tab or "student" }}';
+        if (activeTab === 'admin') {
+            switchMode('admin');
+        } else {
+            switchMode('student');
+        }
+    });
 });
 
 // Auto-format enrollment number

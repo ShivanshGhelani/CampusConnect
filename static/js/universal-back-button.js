@@ -115,34 +115,32 @@ class UniversalBackButton {
         const existingButton = document.getElementById('universal-back-button-container');
         if (existingButton) {
             existingButton.remove();
-        }
-
-        // Create a clean floating back button in bottom-left corner
+        }        // Create a clean floating back button in top-left area
         const backButtonContainer = document.createElement('div');
         backButtonContainer.id = 'universal-back-button-container';
         
-        // Position it in the bottom-left corner for clean access
+        // Position it in the top-left area where navigation is expected
         backButtonContainer.style.cssText = `
             position: fixed;
-            bottom: 30px;
-            left: 30px;
-            z-index: 50;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
         `;
         
         backButtonContainer.innerHTML = `
             <button 
                 id="universal-back-button" 
-                class="inline-flex items-center space-x-2 bg-seafoam-500 hover:bg-seafoam-600 text-white rounded-lg px-4 py-3 shadow-lg hover:shadow-xl transition-all duration-200"
+                class="inline-flex items-center space-x-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 rounded-lg px-3 py-2 shadow-md hover:shadow-lg transition-all duration-200"
                 title="Go back to previous page"
             >
                 <i class="fas fa-arrow-left text-sm"></i>
-                <span class="text-sm font-medium">Back</span>
+                <span class="text-sm font-medium hidden sm:inline">Back</span>
             </button>
         `;
 
         // Add to body
         document.body.appendChild(backButtonContainer);
-        console.log('Universal Back Button: Added as bottom-left floating button');
+        console.log('Universal Back Button: Added as top-left navigation button');
         
         // Add click handler
         const backButton = document.getElementById('universal-back-button');

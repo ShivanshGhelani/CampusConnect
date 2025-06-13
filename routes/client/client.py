@@ -345,11 +345,9 @@ async def event_details(request: Request, event_id: str):
                 if hours > 0:
                     event_duration = f"{hours}h {minutes}m"
                 else:
-                    event_duration = f"{minutes} minutes"
-
-        # Get registration statistics
-        registration_stats = {
-            "total_registrations": 0,
+                    event_duration = f"{minutes} minutes"        # Get registration statistics
+        registration_stats = {            "total_registrations": 0,            "total_teams": 0,
+            "total_participants": 0,
             "available_spots": None,
             "waiting_list": 0
         }
@@ -357,20 +355,93 @@ async def event_details(request: Request, event_id: str):
         try:
             # Use event-specific database for registrations
             event_collection = await Database.get_event_collection(event_id)
+            print(f"[DEBUG] Event ID: {event_id}")
+            print(f"[DEBUG] Event collection retrieved: {event_collection is not None}")
+            
             if event_collection is not None:
                 cursor = event_collection.find({})
                 registrations = await cursor.to_list(length=None)
+                print(f"[DEBUG] Raw registrations found: {len(registrations)}")
+                print(f"[DEBUG] First few registrations: {registrations[:2] if registrations else 'None'}")
+                
                 registration_stats["total_registrations"] = len(registrations)
+                
+                # Check if this is a team-based event
+                is_team_event = event_data.get('registration_mode', '').lower() == 'team'
+                print(f"[DEBUG] Is team event: {is_team_event}")
+                print(f"[DEBUG] Registration mode: {event_data.get('registration_mode')}")
+                
+                if is_team_event:
+                    # For team events, count unique teams from the registrations
+                    unique_teams = set()
+                    total_participants = 0
+                    
+                    print(f"[DEBUG] Team event - processing {len(registrations)} registrations")
+                    for registration in registrations:
+                        # Each registration in team events should have team information
+                        team_id = registration.get('team_registration_id') or registration.get('team_id')
+                        team_name = registration.get('team_name')
+                        
+                        if team_id:
+                            unique_teams.add(team_id)
+                            print(f"[DEBUG] Added team ID: {team_id}")
+                        elif team_name:
+                            unique_teams.add(team_name)
+                            print(f"[DEBUG] Added team name: {team_name}")
+                        
+                        # Count total participants
+                        total_participants += 1
+                    registration_stats["total_teams"] = len(unique_teams)
+                    registration_stats["total_participants"] = total_participants
+                    print(f"[DEBUG] Team event stats - Teams: {len(unique_teams)}, Participants: {total_participants}")
+                else:
+                    # For individual events, count each registration as one participant
+                    registration_stats["total_participants"] = len(registrations)
+                    print(f"[DEBUG] Individual event stats - Participants: {len(registrations)}")
+            else:
+                print(f"[DEBUG] No event collection found for event_id: {event_id}")
+                # Try to check if registrations exist in main collections
+                try:
+                    registrations_count = await DatabaseOperations.count_documents("registrations", {"event_id": event_id})
+                    print(f"[DEBUG] Registrations in main collection: {registrations_count}")
+                    
+                    # If registrations exist in main collection, use that
+                    if registrations_count > 0:
+                        registrations = await DatabaseOperations.find_many("registrations", {"event_id": event_id})
+                        print(f"[DEBUG] Found {len(registrations)} registrations in main collection")
+                        
+                        registration_stats["total_registrations"] = len(registrations)
+                        is_team_event = event_data.get('registration_mode', '').lower() == 'team'
+                        
+                        if is_team_event:
+                            unique_teams = set()
+                            for registration in registrations:
+                                team_id = registration.get('team_registration_id') or registration.get('team_id')
+                                team_name = registration.get('team_name')
+                                if team_id:
+                                    unique_teams.add(team_id)
+                                elif team_name:
+                                    unique_teams.add(team_name)
+                            
+                            registration_stats["total_teams"] = len(unique_teams)
+                            registration_stats["total_participants"] = len(registrations)
+                            print(f"[DEBUG] Team event stats from main collection - Teams: {len(unique_teams)}, Participants: {len(registrations)}")
+                        else:
+                            registration_stats["total_participants"] = len(registrations)
+                            print(f"[DEBUG] Individual event stats from main collection - Participants: {len(registrations)}")
+                        
+                except Exception as e:
+                    print(f"[DEBUG] Error checking main registrations collection: {e}")
+                
                 
                 # Calculate available spots if there's a limit
                 if event_data.get('registration_limit'):
-                    registration_stats["available_spots"] = max(0, event_data['registration_limit'] - registration_stats["total_registrations"])
-                    if registration_stats["total_registrations"] > event_data['registration_limit']:
-                        registration_stats["waiting_list"] = registration_stats["total_registrations"] - event_data['registration_limit']
+                    current_count = registration_stats["total_teams"] if is_team_event else registration_stats["total_participants"]
+                    registration_stats["available_spots"] = max(0, event_data['registration_limit'] - current_count)
+                    if current_count > event_data['registration_limit']:
+                        registration_stats["waiting_list"] = current_count - event_data['registration_limit']
         except Exception as e:
-            print(f"Could not fetch registration stats: {e}")
-
-        # Check if registration is possible (FIXED: compare with .value)
+            print(f"Could not fetch registration stats: {e}")# Check if registration is possible (FIXED: compare with .value)
         can_register = (
             event.sub_status == EventSubStatus.REGISTRATION_OPEN.value and
             (not event_data.get('registration_limit') or registration_stats["available_spots"] > 0)
@@ -405,16 +476,16 @@ async def event_details(request: Request, event_id: str):
                     'role': None,
                     'email': email,
                     'phone': phone
-                })
-
-        # Add timeline, contacts and other details to event data
+                })        # Add timeline, contacts and other details to event data
+        is_team_event = event_data.get('registration_mode', '').lower() == 'team'
         event_data.update({
             'event_contacts': event_contacts,
             'timeline': timeline,
             'available_forms': available_forms,
             'status': event.status,
             'sub_status': event.sub_status,
-        })        # Convert datetime objects to ISO format strings for template
+            'is_team_event': is_team_event,
+        })# Convert datetime objects to ISO format strings for template
         serialized_event_data = {}
         for key, value in event_data.items():
             if isinstance(value, datetime):
@@ -471,11 +542,40 @@ async def authenticate_student(enrollment_no: str, password: str) -> Student:
 @router.get("/login")
 async def login_page(request: Request):
     """Show unified login page (student and admin)"""
-    # Get the tab parameter to determine which tab should be active
+    
+    # Check if student is already logged in
+    try:
+        student = await get_current_student_optional(request)
+        if student:
+            # Student is already logged in, redirect to dashboard
+            return RedirectResponse(url="/client/dashboard", status_code=302)
+    except:
+        pass  # Student not logged in, continue
+    
+    # Check if admin is already logged in
+    try:
+        from routes.auth import get_current_admin
+        admin = await get_current_admin(request)
+        if admin:
+            # Admin is already logged in, redirect based on role
+            from models.admin_user import AdminRole
+            if admin.role == AdminRole.SUPER_ADMIN:
+                return RedirectResponse(url="/admin/dashboard", status_code=302)
+            elif admin.role == AdminRole.EXECUTIVE_ADMIN:
+                return RedirectResponse(url="/admin/events/create", status_code=302)
+            elif admin.role == AdminRole.EVENT_ADMIN:
+                return RedirectResponse(url="/admin/events", status_code=302)
+            elif admin.role == AdminRole.CONTENT_ADMIN:
+                return RedirectResponse(url="/admin/events", status_code=302)
+            else:
+                return RedirectResponse(url="/admin/dashboard", status_code=302)
+    except:
+        pass  # Admin not logged in, continue
+      # Get the tab parameter to determine which tab should be active
     active_tab = request.query_params.get("tab", "student")  # default to student tab
     
     template_context = await get_template_context(request)
-    return templates.TemplateResponse(
+    response = templates.TemplateResponse(
         "auth/login.html",
         {
             "request": request,
@@ -483,6 +583,15 @@ async def login_page(request: Request):
             **template_context
         }
     )
+    
+    # Add comprehensive cache control headers to prevent browser caching
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0, private"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    response.headers["Last-Modified"] = "0"
+    response.headers["ETag"] = ""
+    
+    return response
 
 @router.post("/login")
 async def student_login(request: Request):
@@ -547,15 +656,16 @@ async def student_login(request: Request):
     request.session["student_enrollment"] = enrollment_no
     
     print(f"[DEBUG] Session data set. Keys in session: {list(request.session.keys())}")
-    print(f"[DEBUG] Redirecting to {redirect_url}")
-      # Use status code 303 (See Other) for redirect after successful login
+    print(f"[DEBUG] Redirecting to {redirect_url}")    # Use status code 303 (See Other) for redirect after successful login
     # This ensures the browser doesn't use cache for the login page when navigating back
     response = RedirectResponse(url=redirect_url, status_code=303)
     
-    # Add cache control headers to prevent caching login page
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    # Add comprehensive cache control headers to prevent caching login page
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0, private"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
+    response.headers["Last-Modified"] = "0"
+    response.headers["ETag"] = ""
     
     return response
 
@@ -568,10 +678,12 @@ async def student_logout(request: Request):
     # Create a response that redirects to events page
     response = RedirectResponse(url="/client/events", status_code=303)
     
-    # Add cache control headers to prevent caching
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    # Add comprehensive cache control headers to prevent caching
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0, private"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
+    response.headers["Last-Modified"] = "0"
+    response.headers["ETag"] = ""
     
     return response
 
@@ -666,14 +778,12 @@ async def student_dashboard(request: Request):
         elif isinstance(created_at, datetime):
             # If it's already a datetime, ensure it's naive
             created_at = created_at.replace(tzinfo=None)
-        serialized_student["created_at"] = created_at
-
-    # Convert other datetime fields to ISO format for template
+        serialized_student["created_at"] = created_at    # Convert other datetime fields to ISO format for template
     for key, value in serialized_student.items():
         if key != "created_at" and isinstance(value, datetime):
             serialized_student[key] = value.isoformat()
     
-    return templates.TemplateResponse(
+    response = templates.TemplateResponse(
         "client/dashboard.html",
         {
             "request": request,
@@ -683,6 +793,12 @@ async def student_dashboard(request: Request):
             "flash_messages": flash_messages
         }
     )
+    
+    # Add cache control headers for dashboard page
+    response.headers["Cache-Control"] = "no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    
+    return response
 
 # Student Profile Routes
 @router.get("/profile/edit")
@@ -1567,8 +1683,58 @@ async def get_certificate_template(event_id: str, current_student: Student = Dep
         logger.error(f"Error loading certificate template: {str(e)}")
         return {"success": False, "message": f"Error loading certificate template: {str(e)}"}
 
-# Test endpoint to verify API routing
-@router.get("/test-api")
-async def test_api():
-    """Simple test endpoint to verify API routing works"""
-    return {"success": True, "message": "API routing is working"}
+# Authentication Status API
+@router.get("/api/auth/status")
+async def check_auth_status(request: Request):
+    """API endpoint to check if user is already authenticated"""
+    try:
+        # Check if student is logged in
+        student = await get_current_student_optional(request)
+        if student:
+            return {
+                "authenticated": True,
+                "user_type": "student",
+                "redirect_url": "/client/dashboard"
+            }
+        
+        # Check if admin is logged in
+        try:
+            from routes.auth import get_current_admin
+            admin = await get_current_admin(request)
+            if admin:
+                from models.admin_user import AdminRole
+                # Determine redirect URL based on admin role
+                if admin.role == AdminRole.SUPER_ADMIN:
+                    redirect_url = "/admin/dashboard"
+                elif admin.role == AdminRole.EXECUTIVE_ADMIN:
+                    redirect_url = "/admin/events/create"
+                elif admin.role == AdminRole.EVENT_ADMIN:
+                    redirect_url = "/admin/events"
+                elif admin.role == AdminRole.CONTENT_ADMIN:
+                    redirect_url = "/admin/events"
+                else:
+                    redirect_url = "/admin/dashboard"
+                
+                return {
+                    "authenticated": True,
+                    "user_type": "admin",
+                    "redirect_url": redirect_url
+                }
+        except:
+            pass
+        
+        # No authentication found
+        return {
+            "authenticated": False,
+            "user_type": None,
+            "redirect_url": None
+        }
+    except Exception as e:
+        logger.error(f"Error checking auth status: {e}")
+        return {
+            "authenticated": False,
+            "user_type": None,
+            "redirect_url": None
+        }
+
+# Student Login Routes

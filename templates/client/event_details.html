@@ -1214,11 +1214,13 @@
               <span class="text-sm font-medium text-gray-600">Fee</span>
               <span class="text-sm font-semibold text-green-600">₹{{ event.registration_fee }}</span>
             </div>
-            {% endif %}
-
-            <!-- Participants Range -->
+            {% endif %}            <!-- Participants Range -->
             <div class="flex justify-between items-center py-2 border-b border-gray-100">
-              <span class="text-sm font-medium text-gray-600">Participants</span>
+              {% if event.registration_mode and event.registration_mode.lower() == 'team' %}
+                <span class="text-sm font-medium text-gray-600">Team Size</span>
+              {% else %}
+                <span class="text-sm font-medium text-gray-600">Participants</span>
+              {% endif %}
               <span class="text-sm font-semibold text-gray-800">
                 {% if event.min_participants or event.max_participants %}
                 {% if event.min_participants and event.max_participants %}
@@ -1232,13 +1234,34 @@
                 No limit specified
                 {% endif %}
               </span>
-            </div>
-            <!-- Current Registrations -->
+            </div>            <!-- Current Registrations -->
             {% if registration_stats and registration_stats.total_registrations is defined %}
             <div class="flex justify-between items-center py-2 border-b border-gray-100">
               <span class="text-sm font-medium text-gray-600">Registered</span>
-              <span class="text-sm font-semibold text-blue-600">{{ registration_stats.total_registrations }}
-                participants</span>
+              {% if event.registration_mode and event.registration_mode.lower() == 'team' %}
+                <div class="text-right">
+                  <span class="text-sm font-semibold text-blue-600">
+                    {% if registration_stats.total_teams is defined %}
+                      {{ registration_stats.total_teams }}
+                    {% else %}
+                      0
+                    {% endif %}
+                    teams
+                  </span>
+                  {% if registration_stats.total_participants is defined and registration_stats.total_participants > 0 %}
+                    <div class="text-xs text-gray-500">{{ registration_stats.total_participants }} total participants</div>
+                  {% endif %}
+                </div>
+              {% else %}
+                <span class="text-sm font-semibold text-blue-600">
+                  {% if registration_stats.total_participants is defined %}
+                    {{ registration_stats.total_participants }}
+                  {% else %}
+                    {{ registration_stats.total_registrations or 0 }}
+                  {% endif %}
+                  participants
+                </span>
+              {% endif %}
             </div>
             {% endif %}
             <!-- Fee Details -->

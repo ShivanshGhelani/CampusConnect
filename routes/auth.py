@@ -199,13 +199,14 @@ async def admin_logout(request: Request):
     """Handle admin logout"""
     # Clear all session data
     request.session.clear()
-    
-    # Create a response that redirects to unified login with admin tab selected
+      # Create a response that redirects to unified login with admin tab selected
     response = RedirectResponse(url="/client/login?tab=admin", status_code=302)
     
-    # Add cache control headers to prevent caching
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    # Add comprehensive cache control headers to prevent caching
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0, private"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
+    response.headers["Last-Modified"] = "0"
+    response.headers["ETag"] = ""
     
     return response
