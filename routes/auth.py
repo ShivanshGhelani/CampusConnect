@@ -124,7 +124,7 @@ async def refresh_admin_session(request: Request) -> AdminUser:
 
 @router.get("/login")  # Now this will be /auth/login
 async def admin_login_page(request: Request):
-    """Show admin login page"""
+    """Show admin login page - redirect to unified login with admin tab selected"""
     # Check if admin is already logged in with valid session
     try:
         admin = await get_current_admin(request)
@@ -141,13 +141,8 @@ async def admin_login_page(request: Request):
         else:
             return RedirectResponse(url="/admin/dashboard", status_code=302)
     except HTTPException:
-        # Not logged in or session expired, show login page
-        pass
-    
-    return templates.TemplateResponse(
-        "auth/admin_login.html",
-        {"request": request}
-    )
+        # Not logged in or session expired, redirect to unified login with admin tab
+        return RedirectResponse(url="/client/login?tab=admin", status_code=302)
 
 @router.post("/login")  # Now this will be /auth/login
 async def admin_login(request: Request):
@@ -155,29 +150,14 @@ async def admin_login(request: Request):
     form_data = await request.form()
     username = form_data.get("username")
     password = form_data.get("password")
-    
-    # Validate required fields
+      # Validate required fields
     if not all([username, password]):
-        return templates.TemplateResponse(
-            "auth/admin_login.html",
-            {
-                "request": request,
-                "error": "Both username and password are required"
-            },
-            status_code=400
-        )
+        return RedirectResponse(url="/client/login?tab=admin&error=Both username and password are required", status_code=302)
     
     # Authenticate admin
     admin = await authenticate_admin(username, password)
     if not admin:
-        return templates.TemplateResponse(
-            "auth/admin_login.html",
-            {
-                "request": request,
-                "error": "Invalid username or password"
-            },
-            status_code=401
-        )
+        return RedirectResponse(url="/client/login?tab=admin&error=Invalid username or password", status_code=302)
       # Update last login time
     await DatabaseOperations.update_one(
         "users",
@@ -220,8 +200,8 @@ async def admin_logout(request: Request):
     # Clear all session data
     request.session.clear()
     
-    # Create a response that redirects to login
-    response = RedirectResponse(url="/auth/login", status_code=302)
+    # Create a response that redirects to unified login with admin tab selected
+    response = RedirectResponse(url="/client/login?tab=admin", status_code=302)
     
     # Add cache control headers to prevent caching
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
