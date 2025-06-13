@@ -960,12 +960,80 @@ async function convertCanvasToPDF(canvas, certificateElement) {
     console.warn('PDF libraries not working, downloaded as PNG instead');
 }
 
-// Send email notification (optional)
+// Send email notification (only once per student per event)
 async function sendEmailNotification(canvas) {
     try {
-        const imgData = canvas.toDataURL('image/png', 1.0);
+        console.log('🔔 Attempting to send certificate email notification...');
+        
+        // Create proper PDF data for email
+        let pdfBase64Data = null;
         const fileName = `certificate_${certificateData.participantName.replace(/[^a-zA-Z0-9]/g, '_')}_${certificateData.eventName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
-          const response = await fetch('/client/api/send-certificate-email', {
+        
+        // Try to create PDF using jsPDF first
+        if (window.jsPDF) {
+            try {
+                const imgData = canvas.toDataURL('image/png', 1.0);
+                const { jsPDF } = window.jsPDF;
+                const pdf = new jsPDF({
+                    orientation: 'landscape',
+                    unit: 'px',
+                    format: [canvas.width, canvas.height]
+                });
+                
+                pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+                  // Get PDF as base64 string
+                const pdfOutput = pdf.output('datauristring'); // Returns "data:application/pdf;base64,..."
+                pdfBase64Data = pdfOutput.split(',')[1]; // Remove the data URI prefix
+                console.log('✅ Created PDF using jsPDF for email:', {
+                    size: pdfBase64Data.length,
+                    prefix: pdfOutput.substring(0, 50) + '...'
+                });
+            } catch (jsPDFError) {
+                console.warn('jsPDF failed for email, trying PDF-lib:', jsPDFError);
+            }
+        }
+        
+        // Fallback: Try PDF-lib if jsPDF failed
+        if (!pdfBase64Data && window.PDFLib) {
+            try {
+                const imgData = canvas.toDataURL('image/png', 1.0);
+                const { PDFDocument } = window.PDFLib;
+                const pdfDoc = await PDFDocument.create();
+                
+                // Add page with canvas dimensions
+                const page = pdfDoc.addPage([canvas.width, canvas.height]);
+                
+                // Convert canvas to PNG bytes
+                const pngImageBytes = await fetch(imgData).then(res => res.arrayBuffer());
+                const pngImage = await pdfDoc.embedPng(pngImageBytes);
+                
+                // Draw the image
+                page.drawImage(pngImage, {
+                    x: 0,
+                    y: 0,
+                    width: canvas.width,
+                    height: canvas.height,
+                });
+                  // Get PDF bytes and convert to base64
+                const pdfBytes = await pdfDoc.save();
+                pdfBase64Data = btoa(String.fromCharCode(...new Uint8Array(pdfBytes)));
+                console.log('✅ Created PDF using PDF-lib for email:', {
+                    size: pdfBase64Data.length,
+                    bytes: pdfBytes.length
+                });
+            } catch (pdfLibError) {
+                console.warn('PDF-lib failed for email:', pdfLibError);
+            }
+        }
+        
+        // If no PDF library worked, skip email
+        if (!pdfBase64Data) {
+            console.warn('📧 Could not create PDF for email - PDF libraries not available');
+            showStatus('Certificate downloaded! (Email requires PDF libraries)', 'success');
+            return;
+        }
+        
+        const response = await fetch('/client/api/send-certificate-email', {
             method: 'POST',
             credentials: 'include',
             headers: {
@@ -974,19 +1042,39 @@ async function sendEmailNotification(canvas) {
             body: JSON.stringify({
                 event_id: certificateData.eventId,
                 enrollment_no: certificateData.enrollmentNo,
-                pdf_base64: imgData.split(',')[1], // Remove data:image/png;base64, prefix
+                pdf_base64: pdfBase64Data, // Now sending actual PDF data
                 file_name: fileName
             })
         });
         
-        const result = await response.json();
-        if (result.success) {
-            console.log('Email notification sent successfully');
+        if (response.status === 404) {
+            console.warn('📧 Email API endpoint not found (404). Email feature may be disabled.');
+            return;
+        }
+        
+        const result = await response.json();        if (result.success) {
+            console.log('✅ Certificate email queued successfully');
+            if (result.message && result.message.includes('already sent')) {
+                showStatus('Certificate downloaded! (Email was already sent previously)', 'success');
+            } else if (result.message && result.message.includes('queued')) {
+                showStatus('Certificate downloaded! Email is being sent in the background.', 'success');
+            } else {
+                showStatus('Certificate downloaded and email sent to your inbox!', 'success');
+            }
         } else {
-            console.warn('Email notification failed:', result.message);
+            console.log('📧 Email notification status:', result.message);
+            // Handle different email scenarios with appropriate messaging
+            if (result.message && result.message.includes('already sent')) {
+                console.log('📧 Email already sent for this event - showing download success only');
+                showStatus('Certificate downloaded successfully! (Email was already sent)', 'success');
+            } else {
+                console.warn('📧 Email notification failed:', result.message);
+                showStatus('Certificate downloaded! (Email notification failed)', 'success');
+            }
         }
     } catch (error) {
-        console.warn('Failed to send email notification:', error);
+        console.warn('📧 Failed to send email notification:', error);
+        showStatus('Certificate downloaded! (Email notification unavailable)', 'success');
     }
 }
 

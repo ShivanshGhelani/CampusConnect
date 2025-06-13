@@ -4,7 +4,7 @@ from utils.db_operations import DatabaseOperations
 from models.student import Student
 from dependencies.auth import require_student_login
 
-router = APIRouter(prefix="/client")
+router = APIRouter()
 
 @router.get("/api/validate-registration")
 async def validate_registration_api(registration_id: str, event_id: str, student: Student = Depends(require_student_login)):

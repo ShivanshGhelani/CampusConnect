@@ -11,6 +11,7 @@ class EventParticipation(BaseModel):
     attendance_id: Optional[str] = Field(default=None, description="Generated attendance ID when marked present")
     feedback_id: Optional[str] = Field(default=None, description="Generated feedback ID when feedback is submitted")
     certificate_id: Optional[str] = Field(default=None, description="Generated certificate ID when certificate is issued")
+    certificate_email_sent: bool = Field(default=False, description="Track if certificate email was sent to prevent duplicate emails")
     
     # Payment tracking for paid events
     payment_id: Optional[str] = Field(default=None, description="Payment ID for paid events")

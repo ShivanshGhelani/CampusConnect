@@ -13,7 +13,7 @@ from utils.event_status_manager import EventStatusManager
 from models.event import EventSubStatus
 from utils.id_generator import generate_feedback_id
 
-router = APIRouter(prefix="/client")
+router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 email_service = EmailService()
 

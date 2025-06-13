@@ -116,7 +116,7 @@ async def send_certificate_email_from_js(
 ) -> Tuple[bool, str]:
     """
     Send certificate email with PDF attachment from JavaScript-generated certificate
-    Supports concurrent email sending with proper file cleanup
+    Implements one-time email logic to prevent duplicate emails per student per event
     
     Args:
         event_id: Event ID
@@ -142,14 +142,27 @@ async def send_certificate_email_from_js(
             if not event_data:
                 return False, "Event not found"
             
+            # Check if email has already been sent for this student and event
+            event_participations = student_data.get("event_participations", {})
+            participation = event_participations.get(event_id, {})
+            
+            if participation.get("certificate_email_sent", False):
+                return True, "Certificate email already sent. Download completed successfully."
+            
             student_email = student_data.get("email")
             if not student_email:
                 return False, "Student email not found"
-            
-            # Create temporary PDF file
+              # Create temporary PDF file
             try:
                 # Decode base64 PDF data
                 pdf_data = base64.b64decode(pdf_base64)
+                
+                # Validate that we have actual PDF data
+                if not pdf_data.startswith(b'%PDF'):
+                    logger.error(f"Invalid PDF data received - does not start with PDF header")
+                    return False, "Invalid PDF data received"
+                
+                logger.info(f"PDF data validation: {len(pdf_data)} bytes, starts with PDF header: {pdf_data[:10]}")
                 
                 # Create temporary file using the naming convention: student_full_name[0]_eventname[0]
                 safe_file_name = generate_certificate_file_name(
@@ -161,6 +174,20 @@ async def send_certificate_email_from_js(
                 with NamedTemporaryFile(delete=False, suffix='.pdf', prefix=f'{safe_file_name}_') as temp_file:
                     temp_file.write(pdf_data)
                     temp_file_path = temp_file.name
+                
+                logger.info(f"Created temporary PDF file: {temp_file_path} ({len(pdf_data)} bytes)")
+                
+                # Verify the temporary file is a valid PDF
+                try:
+                    with open(temp_file_path, 'rb') as verify_file:
+                        header = verify_file.read(10)
+                        if not header.startswith(b'%PDF'):
+                            logger.error(f"Temporary PDF file validation failed - invalid header: {header}")
+                            return False, "Created PDF file is invalid"
+                    logger.info("Temporary PDF file validation successful")
+                except Exception as verify_error:
+                    logger.error(f"PDF file verification failed: {str(verify_error)}")
+                    return False, f"PDF file verification failed: {str(verify_error)}"
                 
                 # Send email with attachment using thread pool for I/O operation
                 email_service = EmailService()
@@ -175,7 +202,14 @@ async def send_certificate_email_from_js(
                 )
                 
                 if success:
-                    return True, "Certificate email sent successfully"
+                    # Mark email as sent in the database
+                    await DatabaseOperations.update_one(
+                        "students",
+                        {"enrollment_no": enrollment_no},
+                        {"$set": {f"event_participations.{event_id}.certificate_email_sent": True}}
+                    )
+                    logger.info(f"Certificate email sent and marked for student {enrollment_no} for event {event_id}")
+                    return True, "Certificate email sent successfully! You will receive it shortly."
                 else:
                     return False, "Failed to send certificate email"
                     

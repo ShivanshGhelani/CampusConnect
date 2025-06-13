@@ -13,7 +13,7 @@ from utils.db_operations import DatabaseOperations
 # Configure logging
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api")
+router = APIRouter()
 
 @router.post("/certificate-data")
 async def get_certificate_data_api(request: Request, student: Student = Depends(require_student_login)):
@@ -45,9 +45,10 @@ async def get_certificate_data_api(request: Request, student: Student = Depends(
 
 @router.post("/send-certificate-email")
 async def send_certificate_email_api(request: Request, student: Student = Depends(require_student_login)):
-    """API endpoint to send certificate email from JavaScript-generated PDF"""
+    """API endpoint to send certificate email from JavaScript-generated PDF (only once per student per event)"""
     try:
-        from utils.js_certificate_generator import send_certificate_email_from_js
+        from utils.email_queue import certificate_email_queue
+        from utils.db_operations import DatabaseOperations
         
         data = await request.json()
         event_id = data.get("event_id")
@@ -62,9 +63,39 @@ async def send_certificate_email_api(request: Request, student: Student = Depend
         if student.enrollment_no != enrollment_no:
             return {"success": False, "message": "Unauthorized: You can only send certificates for your own enrollment"}
         
-        success, message = await send_certificate_email_from_js(event_id, enrollment_no, pdf_base64, file_name)
+        # Check if email has already been sent for this student and event
+        student_doc = await DatabaseOperations.find_one("students", {"enrollment_no": enrollment_no})
+        if not student_doc:
+            return {"success": False, "message": "Student not found"}
         
-        return {"success": success, "message": message}
+        participations = student_doc.get("event_participations", {})
+        participation = participations.get(event_id, {})
+        
+        if participation.get("certificate_email_sent", False):
+            logger.info(f"Certificate email already sent for student {enrollment_no} and event {event_id}")
+            return {"success": True, "message": "Certificate email has already been sent for this event"}
+        
+        # Get event data for email
+        event_doc = await DatabaseOperations.find_one("events", {"event_id": event_id})
+        if not event_doc:
+            return {"success": False, "message": "Event not found"}
+        
+        # Add email task to queue (non-blocking)
+        success = await certificate_email_queue.add_certificate_email(
+            event_id=event_id,
+            enrollment_no=enrollment_no,
+            student_name=student_doc.get("full_name", ""),
+            student_email=student_doc.get("email", ""),
+            event_title=event_doc.get("event_name", ""),
+            pdf_base64=pdf_base64,
+            file_name=file_name
+        )
+        
+        if success:
+            logger.info(f"Certificate email queued for student {enrollment_no} and event {event_id}")
+            return {"success": True, "message": "Certificate email queued successfully! You will receive it shortly."}
+        else:
+            return {"success": False, "message": "Failed to queue certificate email. Please try again."}
         
     except Exception as e:
         logger.error(f"Error in send_certificate_email_api: {str(e)}")
@@ -237,3 +268,14 @@ async def test_certificate_template(event_id: str):
         
     except Exception as e:
         return {"success": False, "message": f"Error: {str(e)}"}
+
+@router.get("/email-queue-stats")
+async def get_email_queue_stats(current_student: dict = Depends(get_current_student)):
+    """Get email queue statistics (for debugging/monitoring)"""
+    try:
+        from utils.email_queue import certificate_email_queue
+        stats = certificate_email_queue.get_stats()
+        return {"success": True, "stats": stats}
+    except Exception as e:
+        logger.error(f"Error getting email queue stats: {str(e)}")
+        return {"success": False, "message": f"Error getting stats: {str(e)}"}

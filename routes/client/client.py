@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 # Suppress bcrypt version warning
 warnings.filterwarnings("ignore", message=".*error reading bcrypt version.*")
 
-router = APIRouter(prefix="/client")
+router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 email_service = EmailService()
 
