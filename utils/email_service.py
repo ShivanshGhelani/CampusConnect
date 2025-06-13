@@ -12,6 +12,8 @@ import logging
 from datetime import datetime
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+import threading
+import time
 from config.settings import get_settings
 
 # Set up logging
@@ -38,76 +40,146 @@ class EmailService:
             # Thread pool for async email sending
             self.executor = ThreadPoolExecutor(max_workers=3)
             
+            # Connection management
+            self._connection = None
+            self._connection_lock = threading.Lock()
+            self._last_activity = None
+            self.connection_timeout = 300  # 5 minutes timeout
+            self.max_retries = 3
+            
             logger.info(f"EmailService initialized with SMTP server: {self.smtp_server}:{self.smtp_port}")
             
         except Exception as e:
             logger.error(f"Failed to initialize EmailService: {str(e)}")
             raise
 
-    def _send_email_sync(self, to_email: str, subject: str, html_content: str, text_content: Optional[str] = None, attachments: Optional[List[str]] = None) -> bool:
-        """Synchronous email sending method with attachment support"""
+    def _get_connection(self):
+        """Get or create SMTP connection with connection pooling"""
+        with self._connection_lock:
+            current_time = time.time()
+            
+            # Check if connection exists and is still valid
+            if (self._connection and 
+                self._last_activity and 
+                (current_time - self._last_activity) < self.connection_timeout):
+                try:
+                    # Test connection with NOOP command
+                    self._connection.noop()
+                    logger.debug("Reusing existing SMTP connection")
+                    return self._connection
+                except Exception as e:
+                    logger.warning(f"Existing connection invalid: {str(e)}")
+                    self._close_connection()
+            
+            # Create new connection
+            return self._create_new_connection()
+    
+    def _create_new_connection(self):
+        """Create a new SMTP connection"""
         try:
-            # Create message
-            message = MIMEMultipart("mixed")
-            message["Subject"] = subject
-            message["From"] = self.from_email
-            message["To"] = to_email
-
-            # Create alternative container for text and HTML content
-            msg_alternative = MIMEMultipart("alternative")
-
-            # Add text content if provided
-            if text_content:
-                text_part = MIMEText(text_content, "plain")
-                msg_alternative.attach(text_part)
-
-            # Add HTML content
-            html_part = MIMEText(html_content, "html")
-            msg_alternative.attach(html_part)
-
-            # Attach the alternative container to the main message
-            message.attach(msg_alternative)
-
-            # Add attachments if provided
-            if attachments:
-                for attachment_path in attachments:
-                    if os.path.exists(attachment_path):
-                        with open(attachment_path, "rb") as attachment:
-                            part = MIMEBase('application', 'octet-stream')
-                            part.set_payload(attachment.read())
-                        
-                        encoders.encode_base64(part)
-                        
-                        # Get filename from path
-                        filename = os.path.basename(attachment_path)
-                        part.add_header(
-                            'Content-Disposition',
-                            f'attachment; filename= {filename}',
-                        )
-                        message.attach(part)
-                        logger.info(f"Added attachment: {filename}")
-
-            # Create secure connection and send email
+            logger.info(f"Creating new SMTP connection to {self.smtp_server}:{self.smtp_port}")
+            
             context = ssl.create_default_context()
-            logger.info(f"Attempting to connect to SMTP server {self.smtp_server}:{self.smtp_port}")
-            logger.info(f"Using email credentials - User: {self.email_user}")
+            connection = smtplib.SMTP(self.smtp_server, self.smtp_port)
             
-            with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
-                logger.info("SMTP connection established, starting TLS")
-                server.starttls(context=context)
-                
-                logger.info("TLS started, attempting login")
-                server.login(self.email_user, self.email_password)
-                
-                logger.info("Login successful, sending email")
-                server.sendmail(self.from_email, to_email, message.as_string())
+            logger.debug("SMTP connection established, starting TLS")
+            connection.starttls(context=context)
             
-            logger.info(f"Email sent successfully to {to_email}")
-            return True
+            logger.debug("TLS started, attempting login")
+            connection.login(self.email_user, self.email_password)
+            
+            self._connection = connection
+            self._last_activity = time.time()
+            
+            logger.info("SMTP connection and authentication successful")
+            return connection
             
         except Exception as e:
-            logger.error(f"Failed to send email to {to_email}: {str(e)}")
-            return False
+            logger.error(f"Failed to create SMTP connection: {str(e)}")
+            raise
+    
+    def _close_connection(self):
+        """Close the current SMTP connection"""
+        if self._connection:
+            try:
+                self._connection.quit()
+                logger.debug("SMTP connection closed")
+            except:
+                pass  # Connection might already be closed
+            finally:
+                self._connection = None
+                self._last_activity = None
+    
+    def _send_email_sync(self, to_email: str, subject: str, html_content: str, text_content: Optional[str] = None, attachments: Optional[List[str]] = None) -> bool:
+        """Synchronous email sending method with connection reuse and retry logic"""
+        for attempt in range(self.max_retries):
+            try:
+                # Create message
+                message = MIMEMultipart("mixed")
+                message["Subject"] = subject
+                message["From"] = self.from_email
+                message["To"] = to_email
+
+                # Create alternative container for text and HTML content
+                msg_alternative = MIMEMultipart("alternative")
+
+                # Add text content if provided
+                if text_content:
+                    text_part = MIMEText(text_content, "plain")
+                    msg_alternative.attach(text_part)
+
+                # Add HTML content
+                html_part = MIMEText(html_content, "html")
+                msg_alternative.attach(html_part)
+
+                # Attach the alternative container to the main message
+                message.attach(msg_alternative)
+
+                # Add attachments if provided
+                if attachments:
+                    for attachment_path in attachments:
+                        if os.path.exists(attachment_path):
+                            with open(attachment_path, "rb") as attachment:
+                                part = MIMEBase('application', 'octet-stream')
+                                part.set_payload(attachment.read())
+                            
+                            encoders.encode_base64(part)
+                            
+                            # Get filename from path
+                            filename = os.path.basename(attachment_path)
+                            part.add_header(
+                                'Content-Disposition',
+                                f'attachment; filename= {filename}',
+                            )
+                            message.attach(part)
+                            logger.debug(f"Added attachment: {filename}")
+
+                # Get connection and send email
+                connection = self._get_connection()
+                connection.sendmail(self.from_email, to_email, message.as_string())
+                
+                # Update last activity time
+                with self._connection_lock:
+                    self._last_activity = time.time()
+                
+                logger.info(f"Email sent successfully to {to_email} (attempt {attempt + 1})")
+                return True
+                
+            except Exception as e:
+                logger.warning(f"Failed to send email to {to_email} (attempt {attempt + 1}): {str(e)}")
+                
+                # Close connection on error to force reconnection
+                with self._connection_lock:
+                    self._close_connection()
+                
+                if attempt == self.max_retries - 1:
+                    logger.error(f"Failed to send email to {to_email} after {self.max_retries} attempts")
+                    return False
+                else:
+                    # Wait before retrying
+                    time.sleep(2 ** attempt)  # Exponential backoff
+        
+        return False
 
     async def send_email_async(self, to_email: str, subject: str, html_content: str, text_content: Optional[str] = None, attachments: Optional[List[str]] = None) -> bool:
         """Asynchronous email sending method with attachment support"""
@@ -343,7 +415,149 @@ class EmailService:
             logger.error(f"Failed to send bulk emails: {str(e)}")
             return [False] * len(email_tasks)
 
+    async def send_welcome_email(
+        self, 
+        student_email: str, 
+        student_name: str, 
+        enrollment_no: str,
+        department: str,
+        semester: int,
+        created_at: str,
+        platform_url: str = "https://your-platform-url.com"
+    ) -> bool:
+        """Send welcome email after account creation"""
+        try:
+            subject = f"Welcome to CampusConnect - {student_name}!"
+            
+            html_content = self.render_template(
+                'welcome_account_created.html',
+                student_name=student_name,
+                enrollment_no=enrollment_no,
+                email=student_email,
+                department=department,
+                semester=semester,
+                created_at=created_at,
+                platform_url=platform_url
+            )
+            
+            return await self.send_email_async(student_email, subject, html_content)
+            
+        except Exception as e:
+            logger.error(f"Failed to send welcome email: {str(e)}")
+            return False
+
+    async def send_team_registration_confirmation(
+        self, 
+        team_members: List[dict],
+        event_title: str, 
+        event_date: str, 
+        event_venue: str,
+        team_name: str,
+        team_registration_id: str,
+        event_url: Optional[str] = None,
+        payment_required: bool = False,
+        payment_amount: Optional[float] = None
+    ) -> bool:
+        """Send team registration confirmation to all team members"""
+        try:
+            subject = f"Team Registration Confirmed - {event_title}"
+            
+            # Send email to all team members
+            email_tasks = []
+            for member in team_members:
+                html_content = self.render_template(
+                    'team_registration_confirmation.html',
+                    team_name=team_name,
+                    event_title=event_title,
+                    event_date=event_date,
+                    event_venue=event_venue,
+                    team_registration_id=team_registration_id,
+                    team_members=team_members,
+                    event_url=event_url,
+                    payment_required=payment_required,
+                    payment_amount=payment_amount
+                )
+                
+                task = self.send_email_async(member['email'], subject, html_content)
+                email_tasks.append(task)
+            
+            results = await asyncio.gather(*email_tasks, return_exceptions=True)
+            success_count = sum(1 for result in results if isinstance(result, bool) and result)
+            
+            logger.info(f"Team registration emails sent: {success_count}/{len(team_members)} successful")
+            return success_count > 0
+            
+        except Exception as e:
+            logger.error(f"Failed to send team registration confirmation: {str(e)}")
+            return False
+
+    async def send_event_reminder_bulk(
+        self, 
+        registered_students: List[dict],
+        event_title: str, 
+        event_date: str, 
+        event_venue: str,
+        reminder_type: str = "upcoming"
+    ) -> List[bool]:
+        """Send event reminders to all registered students for an event"""
+        try:
+            email_tasks = []
+            for student in registered_students:
+                task = self.send_event_reminder(
+                    student['email'],
+                    student['full_name'],
+                    event_title,
+                    event_date,
+                    event_venue,
+                    reminder_type
+                )
+                email_tasks.append(task)
+            
+            if email_tasks:
+                results = await asyncio.gather(*email_tasks, return_exceptions=True)
+                success_results = [isinstance(result, bool) and result for result in results]
+                
+                success_count = sum(success_results)
+                logger.info(f"Event reminder emails sent: {success_count}/{len(registered_students)} successful")
+                
+                return success_results
+            return []
+            
+        except Exception as e:
+            logger.error(f"Failed to send bulk event reminders: {str(e)}")
+            return [False] * len(registered_students)
+
+    def close_connection(self):
+        """Manually close the SMTP connection"""
+        with self._connection_lock:
+            self._close_connection()
+            logger.info("SMTP connection manually closed")
+    
+    def is_connected(self) -> bool:
+        """Check if there's an active SMTP connection"""
+        with self._connection_lock:
+            if not self._connection:
+                return False
+            try:
+                self._connection.noop()
+                return True
+            except:
+                self._close_connection()
+                return False
+    
+    def get_connection_stats(self) -> dict:
+        """Get connection statistics"""
+        with self._connection_lock:
+            return {
+                "is_connected": self.is_connected(),
+                "last_activity": self._last_activity,
+                "connection_timeout": self.connection_timeout,
+                "max_retries": self.max_retries
+            }
+
     def __del__(self):
-        """Clean up the thread pool executor"""
+        """Clean up the thread pool executor and SMTP connection"""
+        if hasattr(self, '_connection'):
+            self._close_connection()
         if hasattr(self, 'executor'):
             self.executor.shutdown(wait=False)

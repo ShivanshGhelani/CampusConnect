@@ -689,15 +689,44 @@ async def save_team_registration(team_registration: TeamRegistrationForm, event_
             "student_data": student.model_dump()
         })    # Send registration confirmation emails for free team events
     try:
-        # Send email to team leader
-        await email_service.send_registration_confirmation(
-            student_email=team_registration.email,
-            student_name=team_registration.full_name,
+        # Prepare team member data for email
+        team_members_for_email = [
+            {
+                'full_name': team_registration.full_name,
+                'enrollment_no': team_registration.enrollment_no,
+                'email': team_registration.email,
+                'department': team_registration.department,
+                'role': 'Team Leader'
+            }
+        ]
+        
+        # Add participants to team members list
+        for participant in valid_participants:
+            team_members_for_email.append({
+                'full_name': participant['full_name'],
+                'enrollment_no': participant['enrollment_no'],
+                'email': participant['email'],
+                'department': participant['department'],
+                'role': 'Team Member'
+            })
+        
+        # Send team registration confirmation to all team members
+        await email_service.send_team_registration_confirmation(
+            team_members=team_members_for_email,
             event_title=event.get("event_name", event_id),
-            event_date=event.get("start_datetime"),
-            event_venue=event.get("venue"),
-            registration_id=team_registration_id
+            event_date=event.get("start_datetime", "TBD"),
+            event_venue=event.get("venue", "TBD"),
+            team_name=team_registration.team_name,
+            team_registration_id=team_registration_id,
+            event_url=f"{request.base_url}client/events/{event_id}",
+            payment_required=False,
+            payment_amount=None
         )
+        print(f"Team registration confirmation emails sent for team: {team_registration.team_name}")
+        
+    except Exception as e:
+        print(f"Failed to send team registration confirmation emails: {str(e)}")
+        # Continue with the response even if email fails
           # Send emails to team participants
         for participant in team_registration.team_participants:
             if participant.email:  # Only send if email is available
