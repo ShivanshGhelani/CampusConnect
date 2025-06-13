@@ -469,13 +469,17 @@ async def authenticate_student(enrollment_no: str, password: str) -> Student:
 
 # Student Login Routes
 @router.get("/login")
-async def student_login_page(request: Request):
-    """Show student login page"""
+async def login_page(request: Request):
+    """Show unified login page (student and admin)"""
+    # Get the tab parameter to determine which tab should be active
+    active_tab = request.query_params.get("tab", "student")  # default to student tab
+    
     template_context = await get_template_context(request)
     return templates.TemplateResponse(
-        "client/student_login.html",
+        "auth/login.html",
         {
             "request": request,
+            "active_tab": active_tab,
             **template_context
         }
     )
@@ -494,9 +498,10 @@ async def student_login(request: Request):
         print("[DEBUG] Missing enrollment or password")
         template_context = await get_template_context(request)
         return templates.TemplateResponse(
-            "client/student_login.html",
+            "auth/login.html",
             {
                 "request": request,
+                "active_tab": "student",
                 "error": "Both enrollment number and password are required",
                 "form_data": form_data,
                 **template_context
@@ -507,12 +512,13 @@ async def student_login(request: Request):
     # Authenticate student
     student = await authenticate_student(enrollment_no, password)
     if not student:
-        print(f"[DEBUG] Authentication failed for {enrollment_no}")
+        print(f"[DEBUG] Authentication failed for {enrollment_no}")        
         template_context = await get_template_context(request)
         return templates.TemplateResponse(
-            "client/student_login.html",
+            "auth/login.html",
             {
                 "request": request,
+                "active_tab": "student",
                 "error": "Invalid enrollment number or password. Please try again.",
                 "form_data": form_data,
                 **template_context
@@ -865,7 +871,7 @@ async def student_register_page(request: Request):
     """Show student registration page"""
     template_context = await get_template_context(request)
     return templates.TemplateResponse(
-        "client/register.html",
+        "auth/register.html",
         {
             "request": request,
             **template_context
@@ -942,7 +948,7 @@ async def student_register(request: Request):
         if errors:
             template_context = await get_template_context(request)
             return templates.TemplateResponse(
-                "client/register.html",
+                "auth/register.html",
                 {
                     "request": request,
                     "error": "; ".join(errors),
@@ -972,7 +978,7 @@ async def student_register(request: Request):
         if errors:
             template_context = await get_template_context(request)
             return templates.TemplateResponse(
-                "client/register.html",
+                "auth/register.html",
                 {
                     "request": request,
                     "error": "; ".join(errors),
@@ -1005,7 +1011,7 @@ async def student_register(request: Request):
         if result:
             template_context = await get_template_context(request)
             return templates.TemplateResponse(
-                "client/register.html",
+                "auth/register.html",
                 {
                     "request": request,
                     "success": "Account created successfully! You can now login with your credentials.",
@@ -1015,7 +1021,7 @@ async def student_register(request: Request):
         else:
             template_context = await get_template_context(request)
             return templates.TemplateResponse(
-                "client/register.html",
+                "auth/register.html",
                 {
                     "request": request,
                     "error": "Failed to create account. Please try again.",
@@ -1028,7 +1034,7 @@ async def student_register(request: Request):
         print(f"Registration error: {e}")
         template_context = await get_template_context(request)
         return templates.TemplateResponse(
-            "client/register.html",
+            "auth/register.html",
             {
                 "request": request,
                 "error": "An error occurred during registration. Please try again.",
