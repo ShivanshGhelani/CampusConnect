@@ -353,95 +353,57 @@ async def event_details(request: Request, event_id: str):
         }
 
         try:
-            # Use event-specific database for registrations
-            event_collection = await Database.get_event_collection(event_id)
-            print(f"[DEBUG] Event ID: {event_id}")
-            print(f"[DEBUG] Event collection retrieved: {event_collection is not None}")
+            # Get registrations directly from event data
+            registrations = event_data.get('registrations', [])
             
-            if event_collection is not None:
-                cursor = event_collection.find({})
-                registrations = await cursor.to_list(length=None)
-                print(f"[DEBUG] Raw registrations found: {len(registrations)}")
-                print(f"[DEBUG] First few registrations: {registrations[:2] if registrations else 'None'}")
+            # Handle different data structures for registrations
+            if isinstance(registrations, dict):
+                # If registrations is a dictionary, convert to list of values
+                registrations = list(registrations.values())
+            elif not isinstance(registrations, list):
+                registrations = []
+            
+            registration_stats["total_registrations"] = len(registrations)
+            
+            # Check if this is a team-based event
+            is_team_event = event_data.get('registration_mode', '').lower() == 'team'
+            
+            if is_team_event:
+                # For team events, count unique teams from the registrations
+                unique_teams = set()
+                total_participants = 0
                 
-                registration_stats["total_registrations"] = len(registrations)
-                
-                # Check if this is a team-based event
-                is_team_event = event_data.get('registration_mode', '').lower() == 'team'
-                print(f"[DEBUG] Is team event: {is_team_event}")
-                print(f"[DEBUG] Registration mode: {event_data.get('registration_mode')}")
-                
-                if is_team_event:
-                    # For team events, count unique teams from the registrations
-                    unique_teams = set()
-                    total_participants = 0
+                for registration in registrations:
+                    # Each registration in team events should have team information
+                    team_id = registration.get('team_registration_id') or registration.get('team_id') if isinstance(registration, dict) else None
+                    team_name = registration.get('team_name') if isinstance(registration, dict) else None
                     
-                    print(f"[DEBUG] Team event - processing {len(registrations)} registrations")
-                    for registration in registrations:
-                        # Each registration in team events should have team information
-                        team_id = registration.get('team_registration_id') or registration.get('team_id')
-                        team_name = registration.get('team_name')
-                        
-                        if team_id:
-                            unique_teams.add(team_id)
-                            print(f"[DEBUG] Added team ID: {team_id}")
-                        elif team_name:
-                            unique_teams.add(team_name)
-                            print(f"[DEBUG] Added team name: {team_name}")
-                        
-                        # Count total participants
-                        total_participants += 1
-                    registration_stats["total_teams"] = len(unique_teams)
-                    registration_stats["total_participants"] = total_participants
-                    print(f"[DEBUG] Team event stats - Teams: {len(unique_teams)}, Participants: {total_participants}")
-                else:
-                    # For individual events, count each registration as one participant
-                    registration_stats["total_participants"] = len(registrations)
-                    print(f"[DEBUG] Individual event stats - Participants: {len(registrations)}")
+                    if team_id:
+                        unique_teams.add(team_id)
+                    elif team_name:
+                        unique_teams.add(team_name)
+                    
+                    # Count total participants
+                    total_participants += 1
+                
+                registration_stats["total_teams"] = len(unique_teams)
+                registration_stats["total_participants"] = total_participants
             else:
-                print(f"[DEBUG] No event collection found for event_id: {event_id}")
-                # Try to check if registrations exist in main collections
-                try:
-                    registrations_count = await DatabaseOperations.count_documents("registrations", {"event_id": event_id})
-                    print(f"[DEBUG] Registrations in main collection: {registrations_count}")
+                # For individual events, count each registration as one participant
+                registration_stats["total_participants"] = len(registrations)
+            
+            # Calculate available spots if there's a limit
+            if event_data.get('registration_limit'):
+                is_team_event = event_data.get('registration_mode', '').lower() == 'team'
+                current_count = registration_stats["total_teams"] if is_team_event else registration_stats["total_participants"]
+                registration_stats["available_spots"] = max(0, event_data['registration_limit'] - current_count)
+                if current_count > event_data['registration_limit']:
+                    registration_stats["waiting_list"] = current_count - event_data['registration_limit']
                     
-                    # If registrations exist in main collection, use that
-                    if registrations_count > 0:
-                        registrations = await DatabaseOperations.find_many("registrations", {"event_id": event_id})
-                        print(f"[DEBUG] Found {len(registrations)} registrations in main collection")
-                        
-                        registration_stats["total_registrations"] = len(registrations)
-                        is_team_event = event_data.get('registration_mode', '').lower() == 'team'
-                        
-                        if is_team_event:
-                            unique_teams = set()
-                            for registration in registrations:
-                                team_id = registration.get('team_registration_id') or registration.get('team_id')
-                                team_name = registration.get('team_name')
-                                if team_id:
-                                    unique_teams.add(team_id)
-                                elif team_name:
-                                    unique_teams.add(team_name)
-                            
-                            registration_stats["total_teams"] = len(unique_teams)
-                            registration_stats["total_participants"] = len(registrations)
-                            print(f"[DEBUG] Team event stats from main collection - Teams: {len(unique_teams)}, Participants: {len(registrations)}")
-                        else:
-                            registration_stats["total_participants"] = len(registrations)
-                            print(f"[DEBUG] Individual event stats from main collection - Participants: {len(registrations)}")
-                        
-                except Exception as e:
-                    print(f"[DEBUG] Error checking main registrations collection: {e}")
-                
-                
-                # Calculate available spots if there's a limit
-                if event_data.get('registration_limit'):
-                    current_count = registration_stats["total_teams"] if is_team_event else registration_stats["total_participants"]
-                    registration_stats["available_spots"] = max(0, event_data['registration_limit'] - current_count)
-                    if current_count > event_data['registration_limit']:
-                        registration_stats["waiting_list"] = current_count - event_data['registration_limit']
         except Exception as e:
-            print(f"Could not fetch registration stats: {e}")# Check if registration is possible (FIXED: compare with .value)
+            print(f"Could not fetch registration stats: {e}")
+
+        # Check if registration is possible (FIXED: compare with .value)
         can_register = (
             event.sub_status == EventSubStatus.REGISTRATION_OPEN.value and
             (not event_data.get('registration_limit') or registration_stats["available_spots"] > 0)
@@ -601,10 +563,8 @@ async def student_login(request: Request):
     password = form_data.get("password")
     redirect_url = form_data.get("redirect", "/client/dashboard")
     
-    print(f"[DEBUG] Login attempt for: {enrollment_no} with redirect to: {redirect_url}")
-      # Validate required fields
+    # Validate required fields
     if not all([enrollment_no, password]):
-        print("[DEBUG] Missing enrollment or password")
         template_context = await get_template_context(request)
         return templates.TemplateResponse(
             "auth/login.html",
@@ -617,11 +577,9 @@ async def student_login(request: Request):
             },
             status_code=400
         )
-    
-    # Authenticate student
+      # Authenticate student
     student = await authenticate_student(enrollment_no, password)
     if not student:
-        print(f"[DEBUG] Authentication failed for {enrollment_no}")        
         template_context = await get_template_context(request)
         return templates.TemplateResponse(
             "auth/login.html",
@@ -630,12 +588,9 @@ async def student_login(request: Request):
                 "active_tab": "student",
                 "error": "Invalid enrollment number or password. Please try again.",
                 "form_data": form_data,
-                **template_context
-            },
+                **template_context            },
             status_code=401
         )
-    
-    print(f"[DEBUG] Authentication successful for {enrollment_no}")
     
     # Update last login time
     await DatabaseOperations.update_one(
@@ -653,10 +608,8 @@ async def student_login(request: Request):
             student_data[key] = str(value)
       # Store student in session
     request.session["student"] = student_data
-    request.session["student_enrollment"] = enrollment_no
-    
-    print(f"[DEBUG] Session data set. Keys in session: {list(request.session.keys())}")
-    print(f"[DEBUG] Redirecting to {redirect_url}")    # Use status code 303 (See Other) for redirect after successful login
+    request.session["student_enrollment"] = enrollment_no    
+    # Use status code 303 (See Other) for redirect after successful login
     # This ensures the browser doesn't use cache for the login page when navigating back
     response = RedirectResponse(url=redirect_url, status_code=303)
     
@@ -689,15 +642,10 @@ async def student_logout(request: Request):
 
 @router.get("/dashboard")
 async def student_dashboard(request: Request):
-    """Student dashboard showing their registrations and event history"""
-    print(f"[DEBUG] Dashboard access attempt. Keys in session: {list(request.session.keys())}")
-    print(f"[DEBUG] Student enrollment in session: {request.session.get('student_enrollment')}")
-    
+    """Student dashboard showing their registrations and event history"""    
     try:
         student = await get_current_student(request)
-        print(f"[DEBUG] Student successfully retrieved from session: {student.enrollment_no}")
     except HTTPException as e:
-        print(f"[DEBUG] Error retrieving student from session: {str(e)}")
         return RedirectResponse(url="/client/login", status_code=302)
     
     # Handle flash messages from URL parameters
@@ -1435,29 +1383,21 @@ async def validate_registration_api(request: Request, registration_id: str, even
 async def debug_auth_route(request: Request):
     """Debug endpoint to check authentication state"""
     
-    print("=== DEBUG AUTH ENDPOINT ===")
-    print(f"Session keys: {list(request.session.keys())}")
-    print(f"Session data: {dict(request.session)}")
-    
     # Test our auth function
     try:
         student = await get_current_student_optional(request)
-        print(f"get_current_student_optional result: {student}")
         is_logged_in_auth = student is not None
         student_data_auth = student.model_dump() if student else None
     except Exception as e:
-        print(f"Error with get_current_student_optional: {e}")
         is_logged_in_auth = False
         student_data_auth = None
     
     # Test template context utility
     try:
         template_context = await get_template_context(request)
-        print(f"Template context: {template_context}")
         is_logged_in_template = template_context.get("is_student_logged_in", False)
         student_data_template = template_context.get("student_data")
     except Exception as e:
-        print(f"Error with get_template_context: {e}")
         is_logged_in_template = False
         student_data_template = None
     
