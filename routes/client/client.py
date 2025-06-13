@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 # Suppress bcrypt version warning
 warnings.filterwarnings("ignore", message=".*error reading bcrypt version.*")
 
-router = APIRouter()
+router = APIRouter(prefix="/client")
 templates = Jinja2Templates(directory="templates")
 email_service = EmailService()
 
@@ -999,30 +999,16 @@ async def student_register(request: Request):
             "created_at": datetime.utcnow(),
             "last_login": None
         }
-          # Save to database
+        
+        # Save to database
         result = await DatabaseOperations.insert_one("students", student_data)
         if result:
-            # Send welcome email after successful account creation
-            try:
-                await email_service.send_welcome_email(
-                    student_email=email,
-                    student_name=full_name,
-                    enrollment_no=enrollment_no,
-                    department=department or "Not specified",
-                    semester=int(semester) if semester else 0,
-                    created_at=datetime.utcnow().strftime("%B %d, %Y at %I:%M %p"),
-                    platform_url=str(request.base_url).rstrip('/')
-                )
-                logger.info(f"Welcome email sent to {email}")
-            except Exception as e:
-                logger.error(f"Failed to send welcome email to {email}: {str(e)}")
-            
             template_context = await get_template_context(request)
             return templates.TemplateResponse(
                 "client/register.html",
                 {
                     "request": request,
-                    "success": "Account created successfully! A welcome email has been sent to your email address. You can now login with your credentials.",
+                    "success": "Account created successfully! You can now login with your credentials.",
                     **template_context
                 }
             )
