@@ -13,7 +13,7 @@ async def get_current_student(request: Request) -> Student:
     
     student_data = request.session.get("student")
     if not student_data:
-        print("[DEBUG] No student data found in session")
+        # print("[DEBUG] No student data found in session")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Student not logged in"
