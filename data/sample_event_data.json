@@ -52,7 +52,7 @@
         "fee_description": "This is a completely free event sponsored by the Department of Computer Science and our industry partners. Participation includes access to all competition rounds, mentoring sessions, workshops, and networking activities. Participants will receive free meals and refreshments throughout the event, competition t-shirt, digital certificate of participation, access to exclusive learning resources and coding templates, and the opportunity to interview with sponsoring companies. Pre-registered participants will also receive special welcome kits with branded merchandise, technical resources, and sponsor giveaways.",
         "max_participants": 300,
         "min_participants": 50,
-        "certificate_template_path": "s:\\Projects\\UCG_v2\\Admin\\data\\technical_1.html",
+        "certificate_template_path": "s:\\Projects\\UCG_v2\\Admin\\data\\individual.html",
         "asset_files": [
             "s:\\Projects\\UCG_v2\\Admin\\data\\sample_asset1.txt"
         ],

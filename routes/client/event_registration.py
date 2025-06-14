@@ -17,7 +17,7 @@ from utils.template_context import get_template_context
 from utils.id_generator import generate_registration_id, generate_team_registration_id, generate_attendance_id, generate_feedback_id, generate_certificate_id
 from dependencies.auth import require_student_login
 
-router = APIRouter(prefix="/client")
+router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 email_service = EmailService()
 
