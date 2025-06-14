@@ -1,60 +1,62 @@
 {
     "login_credentials": {
-        "username": "SHIV9090",
-        "password": "Shiv@9090"
-    },
-    "event_data": {
-        "event_id": "INDIVIDUAL_CODE_CHALLENGE_2025",
-        "event_name": "Campus Individual Coding Challenge 2025",
+        "username": "NIL299",
+        "password": "nilam@299t"
+    },    "event_data": {
+        "event_id": "TEAM_HACKATHON_2025",
+        "event_name": "Campus Team Hackathon Challenge 2025",
         "event_type": "competition",
-        "short_description": "An exciting individual coding competition where students can showcase their programming talent and problem-solving skills through a series of technical challenges.",
-        "detailed_description": "Welcome to the Campus Individual Coding Challenge 2025, the premier solo programming competition for university students! This intensive event brings together passionate coders, algorithmic thinkers, and tech enthusiasts to demonstrate their individual programming prowess in a supportive yet competitive environment. Each participant will tackle a series of challenging coding problems that test their knowledge of algorithms, data structures, optimization techniques, and creative problem-solving. The competition offers challenges across multiple difficulty levels from beginner to advanced, ensuring every student can find appropriate problems to solve. Participants will work on algorithmic puzzles, debugging tasks, implementation challenges, and optimization problems that simulate real-world programming scenarios. Students will be evaluated on code correctness, efficiency, time complexity, space complexity, and elegance of solution. Mentors from leading tech companies will provide guidance throughout the event and share industry best practices. The competition features multiple rounds with increasing difficulty, allowing participants to advance based on their performance. Special award categories include Best Algorithm Implementation, Most Efficient Solution, Best Debugging Skills, and Most Creative Approach. This free event aims to help students showcase their individual coding abilities, build their personal technical portfolio, and connect with potential employers. All participants will receive certificates, with top performers earning special recognition and prizes. Don't miss this opportunity to challenge yourself, demonstrate your programming skills, and join a community of passionate individual coders!",
+        "short_description": "An exciting team-based hackathon where groups of students collaborate to develop innovative software solutions and applications within 48 hours.",
+        "detailed_description": "Welcome to the Campus Team Hackathon Challenge 2025, the ultimate collaborative programming experience for university students! This intensive 48-hour event brings together teams of passionate developers, designers, and innovators to create groundbreaking software solutions. Teams of 2-5 members will work together to design, develop, and deploy complete applications or solutions addressing real-world challenges. The hackathon provides multiple problem statements ranging from social impact solutions, sustainability projects, educational technology, healthcare innovations, to cutting-edge AI/ML applications. Each team will have access to mentors from leading tech companies, cloud computing resources, development tools, and APIs from sponsor organizations. Teams will be evaluated on innovation, technical implementation, user experience design, business viability, and presentation quality. The event features workshops on modern development frameworks, design thinking sessions, and networking opportunities with industry professionals. Special award categories include Best Innovation, Most Impactful Solution, Best Technical Implementation, People's Choice Award, and Best Beginner Team. This completely free event includes all meals, snacks, accommodation support for outstation participants, development resources, and networking opportunities. All participants receive certificates and swag, while winning teams earn cash prizes, internship opportunities, and startup incubation support. Join us for an unforgettable weekend of coding, creativity, and collaboration!",
         "organizing_department": "Department of Computer Science & Engineering",
         "organizers": [
             "Dr. Rajesh Mehta - Department Chair",
-            "Prof. Neha Singh - Competition Director",
-            "Dr. Amit Patel - Technical Challenge Designer",
-            "Ms. Priya Sharma - Industry Relations Lead",
-            "Mr. Arjun Reddy - Student Coordinator"
+            "Prof. Anita Kumar - Hackathon Director",
+            "Dr. Vikash Gupta - Technical Mentor Lead",
+            "Ms. Shreya Patel - Industry Partnerships",
+            "Mr. Rohit Singh - Student Team Coordinator"
         ],
         "contacts": [
             {
-                "name": "Prof. Neha Singh",
-                "contact": "neha.singh@techsummit.edu"
+                "name": "Prof. Anita Kumar",
+                "contact": "anita.kumar@techsummit.edu"
             },
             {
-                "name": "Event Helpdesk",
-                "contact": "+91-88765-43210"
+                "name": "Hackathon Helpdesk",
+                "contact": "+91-88765-54321"
             },
             {
-                "name": "Registration Support",
-                "contact": "register@campustechsummit.com"
+                "name": "Team Registration Support",
+                "contact": "teams@campushackathon.com"
             }
         ],
-        "start_date": "2025-07-15",
-        "start_time": "09:00",
-        "end_date": "2025-07-17",
+        "start_date": "2025-08-15",
+        "start_time": "18:00",
+        "end_date": "2025-08-17",
         "end_time": "18:00",
-        "registration_start_date": "2025-06-01",
+        "registration_start_date": "2025-06-15",
         "registration_start_time": "10:00",
-        "registration_end_date": "2025-07-10",
+        "registration_end_date": "2025-08-10",
         "registration_end_time": "23:59",
-        "certificate_end_date": "2025-08-31",
+        "certificate_end_date": "2025-09-30",
         "certificate_end_time": "23:59",
         "mode": "hybrid",
-        "venue": "University Computer Science Building - Individual Coding Labs and Virtual Competition Platform",
-        "target_outcomes": "By participating in the Campus Individual Coding Challenge, participants will be able to:\n• Enhance individual problem-solving abilities and algorithmic thinking\n• Develop efficient coding techniques under time constraints\n• Practice writing clean, efficient, and maintainable code\n• Strengthen personal coding style and approach to problems\n• Improve debugging and optimization techniques\n• Receive direct feedback from industry professionals on code quality\n• Build a portfolio of individual solutions to showcase to employers\n• Network with tech industry recruiters and engineering managers\n• Experience realistic development scenarios and constraints\n• Improve technical documentation and code explanation skills\n• Develop time management strategies for programming challenges\n• Gain exposure to industry tools, frameworks and best practices\n• Benchmark skills against peers in a competitive environment",
-        "prerequisites": "Open to all university students with basic programming knowledge. Participants should have experience with programming concepts and algorithms. Prior experience with at least one programming language (Java, Python, C++, JavaScript, etc.) is required. Participants will be categorized based on their experience level to ensure fair competition. Students should be prepared to work independently under time constraints.",
-        "what_to_bring": "Personal laptop with development environment pre-installed, power bank or charger, access to GitHub or other code repositories, USB drive for code backup, student ID card for registration verification, notebook and pen for algorithm design and planning, snacks and water bottle for extended coding sessions, and a positive attitude ready for individual problem-solving challenges.",
+        "venue": "University Innovation Hub - Team Collaboration Spaces and Virtual Development Platform",
+        "target_outcomes": "By participating in the Campus Team Hackathon Challenge, participants will be able to:\n• Develop strong collaborative programming and project management skills\n• Learn agile development methodologies and rapid prototyping techniques\n• Gain experience in full-stack development and system design\n• Practice effective team communication and task delegation\n• Build innovative solutions addressing real-world problems\n• Receive mentorship from industry experts and successful entrepreneurs\n• Create portfolio projects demonstrating technical and teamwork abilities\n• Network with potential co-founders, teammates, and industry professionals\n• Experience startup-like development environments and constraints\n• Improve presentation and pitching skills for technical solutions\n• Learn modern development tools, frameworks, and cloud technologies\n• Gain exposure to emerging technologies like AI/ML, blockchain, and IoT\n• Develop problem-solving approaches for complex technical challenges",
+        "prerequisites": "Open to all university students with programming experience. Teams should have diverse skills including development, design, and project management. At least one team member should have solid programming experience in modern languages (Python, JavaScript, Java, etc.). Teams are encouraged to include members with different skill sets such as frontend development, backend development, UI/UX design, data science, or business analysis. No previous hackathon experience required, but enthusiasm for rapid development and learning is essential.",
+        "what_to_bring": "Personal laptops for all team members with development environments set up, phone chargers and power banks, extension cords for team workspace, sleeping bags and pillows for overnight stays, personal hygiene items and change of clothes, notebooks and whiteboards for planning and design, student ID cards for all team members, team collaboration tools accounts (Slack, Trello, etc.), and energy drinks and snacks for late-night coding sessions.",
         "registration_type": "free",
-        "registration_mode": "individual",
+        "registration_mode": "team",
         "registration_fee": 0.0,
-        "fee_description": "This is a completely free event sponsored by the Department of Computer Science and our industry partners. Participation includes access to all competition rounds, mentoring sessions, workshops, and networking activities. Participants will receive free meals and refreshments throughout the event, competition t-shirt, digital certificate of participation, access to exclusive learning resources and coding templates, and the opportunity to interview with sponsoring companies. Pre-registered participants will also receive special welcome kits with branded merchandise, technical resources, and sponsor giveaways.",
-        "max_participants": 300,
-        "min_participants": 50,
-        "certificate_template_path": "s:\\Projects\\UCG_v2\\Admin\\data\\individual.html",
+        "team_size_min": 2,
+        "team_size_max": 5,
+        "fee_description": "This hackathon is completely FREE for all participants, sponsored by the Department of Computer Science and our industry partners. Registration includes access to all 48 hours of the event, dedicated team workspaces, high-speed internet and power outlets, all meals and refreshments (breakfast, lunch, dinner, and late-night snacks), mentorship sessions with industry experts, access to premium development tools and cloud credits, networking sessions with sponsors and alumni, hackathon t-shirts and swag bags for all team members, accommodation support for outstation teams, and certificates for all participants. Winning teams receive additional prizes including cash rewards, internship opportunities, startup incubation support, and direct recruitment opportunities with sponsor companies.",
+        "max_participants": 200,
+        "min_participants": 20,
+        "certificate_template_path": "s:\\Projects\\UCG_v2\\Admin\\data\\team.html",
         "asset_files": [
-            "s:\\Projects\\UCG_v2\\Admin\\data\\sample_asset1.txt"
+            "s:\\Projects\\UCG_v2\\Admin\\data\\hackathon_resources.zip",
+            "s:\\Projects\\UCG_v2\\Admin\\data\\api_documentation.pdf"
         ],
         "registrations": []
     }

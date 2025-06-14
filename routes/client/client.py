@@ -1642,18 +1642,36 @@ async def mark_attendance_form(request: Request, event_id: str, student: Student
                     "is_student_logged_in": True
                 },
                 status_code=403
-            )
-          # Check if attendance already marked
+            )        # Check if attendance already marked
         if participation.get('attendance_id'):
+            # Create registration data for the confirmation template
+            registration_for_template = {
+                "registrar_id": participation.get('registration_id', ''),
+                "full_name": student_data.get('full_name', ''),
+                "enrollment_no": student_data.get('enrollment_no', ''),
+                "email": student_data.get('email', ''),
+                "mobile_no": student_data.get('mobile_no', ''),
+                "department": student_data.get('department', ''),
+                "semester": student_data.get('semester', ''),
+                "registration_type": participation.get('registration_type', 'individual')
+            }
+            
+            # Create attendance object
+            attendance_data = {
+                "attendance_id": participation.get('attendance_id'),
+                "attendance_marked_at": participation.get('attendance_marked_at') or participation.get('registration_date')
+            }
+            
             return templates.TemplateResponse(
-                "client/attendance_confirm.html",
+                "client/attendance_confirmation.html",
                 {
                     "request": request,
                     "event": event,
                     "student": student,
                     "student_data": student.model_dump(),
                     "participation": participation,
-                    "attendance_id": participation.get('attendance_id'),
+                    "registration": registration_for_template,
+                    "attendance": attendance_data,
                     "is_student_logged_in": True
                 }
             )# Get registration data for auto-filling form
@@ -1688,8 +1706,7 @@ async def mark_attendance_form(request: Request, event_id: str, student: Student
                 "student_data": student.model_dump(),
                 "participation": participation,
                 "registration": registration_for_template,
-                "auto_filled": auto_filled,
-                "is_student_logged_in": True
+                "auto_filled": auto_filled,                "is_student_logged_in": True
             }
         )
     
@@ -1700,7 +1717,6 @@ async def mark_attendance_form(request: Request, event_id: str, student: Student
             {
                 "request": request,
                 "error": "An error occurred while loading the attendance form",
-                "student": student,
                 "status_code": 500
             },
             status_code=500
@@ -1882,6 +1898,24 @@ async def attendance_success(request: Request, event_id: str, attendance_id: str
         if not participation or participation.get('attendance_id') != attendance_id:
             raise HTTPException(status_code=404, detail="Attendance record not found")
         
+        # Create registration data for the template
+        registration_for_template = {
+            "registrar_id": participation.get('registration_id', ''),
+            "full_name": student_data.get('full_name', ''),
+            "enrollment_no": student_data.get('enrollment_no', ''),
+            "email": student_data.get('email', ''),
+            "mobile_no": student_data.get('mobile_no', ''),
+            "department": student_data.get('department', ''),
+            "semester": student_data.get('semester', ''),
+            "registration_type": participation.get('registration_type', 'individual')
+        }
+        
+        # Create attendance object
+        attendance_data = {
+            "attendance_id": participation.get('attendance_id'),
+            "attendance_marked_at": participation.get('attendance_marked_at') or participation.get('registration_date')
+        }
+        
         return templates.TemplateResponse(
             "client/attendance_success.html",
             {
@@ -1890,7 +1924,9 @@ async def attendance_success(request: Request, event_id: str, attendance_id: str
                 "student": student,
                 "student_data": student.model_dump(),
                 "participation": participation,
-                "attendance_id": attendance_id,
+                "registration": registration_for_template,
+                "attendance": attendance_data,
+                "already_marked": False,  # This is for new attendance marking
                 "is_student_logged_in": True
             }
         )
