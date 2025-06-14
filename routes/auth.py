@@ -140,8 +140,7 @@ async def admin_login_page(request: Request):
             return RedirectResponse(url="/admin/events", status_code=302)
         else:
             return RedirectResponse(url="/admin/dashboard", status_code=302)
-    except HTTPException:
-        # Not logged in or session expired, redirect to unified login with admin tab
+    except HTTPException:        # Not logged in or session expired, redirect to unified login with admin tab
         return RedirectResponse(url="/client/login?tab=admin", status_code=302)
 
 @router.post("/login")  # Now this will be /auth/login
@@ -149,8 +148,7 @@ async def admin_login(request: Request):
     """Handle admin login"""
     form_data = await request.form()
     username = form_data.get("username")
-    password = form_data.get("password")
-      # Validate required fields
+    password = form_data.get("password")    # Validate required fields
     if not all([username, password]):
         return RedirectResponse(url="/client/login?tab=admin&error=Both username and password are required", status_code=302)
     
@@ -198,8 +196,7 @@ async def admin_login(request: Request):
 async def admin_logout(request: Request):
     """Handle admin logout"""
     # Clear all session data
-    request.session.clear()
-      # Create a response that redirects to unified login with admin tab selected
+    request.session.clear()    # Create a response that redirects to unified login page with admin tab
     response = RedirectResponse(url="/client/login?tab=admin", status_code=302)
     
     # Add comprehensive cache control headers to prevent caching
@@ -210,3 +207,23 @@ async def admin_logout(request: Request):
     response.headers["ETag"] = ""
     
     return response
+
+@router.get("/api/status")
+async def admin_auth_status(request: Request):
+    """API endpoint to check if admin is authenticated"""
+    try:
+        # Check if admin session exists and is valid
+        admin = await get_current_admin(request)
+        return {
+            "authenticated": True,
+            "admin": {
+                "username": admin.username,
+                "fullname": admin.fullname,
+                "role": admin.role.value if admin.role else None
+            },
+            "redirect_url": "/admin/dashboard"
+        }
+    except HTTPException:
+        return {"authenticated": False}
+    except Exception as e:
+        return {"authenticated": False, "error": str(e)}

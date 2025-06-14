@@ -5,7 +5,7 @@
 
 class AuthProtection {
     constructor() {
-        this.authStatusEndpoint = '/client/api/auth/status';
+        this.authStatusEndpoint = null; // Will be set based on user type
         this.checkInterval = 30000; // Check every 30 seconds
         this.initialized = false;
     }
@@ -21,6 +21,12 @@ class AuthProtection {
         this.userType = userType;
         this.currentPage = currentPage;
         this.initialized = true;
+          // Set the correct auth status endpoint based on user type
+        if (userType === 'admin') {
+            this.authStatusEndpoint = '/auth/api/status';
+        } else {
+            this.authStatusEndpoint = '/client/api/auth/status';
+        }
         
         this.setupHistoryProtection();
         this.setupEventListeners();
@@ -231,14 +237,12 @@ class AuthProtection {
             console.log('Auth status check failed:', error);
             return { authenticated: false };
         }
-    }
-
-    /**
+    }    /**
      * Redirect to appropriate login page
      */
     redirectToLogin() {
         if (this.userType === 'admin') {
-            window.location.replace('/client/login?tab=admin');
+            window.location.replace('/admin/auth/login');
         } else {
             window.location.replace('/client/login');
         }

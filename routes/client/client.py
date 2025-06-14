@@ -499,10 +499,13 @@ async def authenticate_student(enrollment_no: str, password: str) -> Student:
 async def student_login_page(request: Request):
     """Show student login page"""
     template_context = await get_template_context(request)
+    # Check if admin tab is requested via query parameter
+    tab = request.query_params.get("tab", "student")
     return templates.TemplateResponse(
-        "client/student_login.html",
+        "auth/login.html",
         {
             "request": request,
+            "active_tab": tab,
             **template_context
         }
     )
@@ -515,33 +518,33 @@ async def student_login(request: Request):
     password = form_data.get("password")
     redirect_url = form_data.get("redirect", "/client/dashboard")
     
-    print(f"[DEBUG] Login attempt for: {enrollment_no} with redirect to: {redirect_url}")
-      # Validate required fields
+    print(f"[DEBUG] Login attempt for: {enrollment_no} with redirect to: {redirect_url}")    # Validate required fields
     if not all([enrollment_no, password]):
         print("[DEBUG] Missing enrollment or password")
         template_context = await get_template_context(request)
         return templates.TemplateResponse(
-            "client/student_login.html",
+            "auth/login.html",
             {
                 "request": request,
                 "error": "Both enrollment number and password are required",
                 "form_data": form_data,
+                "active_tab": "student",
                 **template_context
             },
             status_code=400
         )
-    
-    # Authenticate student
+      # Authenticate student
     student = await authenticate_student(enrollment_no, password)
     if not student:
         print(f"[DEBUG] Authentication failed for {enrollment_no}")
         template_context = await get_template_context(request)
         return templates.TemplateResponse(
-            "client/student_login.html",
+            "auth/login.html",
             {
                 "request": request,
                 "error": "Invalid enrollment number or password. Please try again.",
                 "form_data": form_data,
+                "active_tab": "student",
                 **template_context
             },
             status_code=401
@@ -892,7 +895,7 @@ async def student_register_page(request: Request):
     """Show student registration page"""
     template_context = await get_template_context(request)
     return templates.TemplateResponse(
-        "client/register.html",
+        "auth/register.html",
         {
             "request": request,
             **template_context
@@ -964,12 +967,11 @@ async def student_register(request: Request):
                 elif age > 100:
                     errors.append("Please enter a valid date of birth")
             except ValueError:
-                errors.append("Please enter a valid date of birth")
-        
+                errors.append("Please enter a valid date of birth")        
         if errors:
             template_context = await get_template_context(request)
             return templates.TemplateResponse(
-                "client/register.html",
+                "auth/register.html",
                 {
                     "request": request,
                     "error": "; ".join(errors),
@@ -987,8 +989,7 @@ async def student_register(request: Request):
                 {"email": email},
                 {"mobile_no": mobile_no}
             ]}
-        )
-        
+        )        
         if existing_student:
             if existing_student.get("enrollment_no") == enrollment_no:
                 errors.append("Student with this enrollment number already exists")
@@ -999,7 +1000,7 @@ async def student_register(request: Request):
         if errors:
             template_context = await get_template_context(request)
             return templates.TemplateResponse(
-                "client/register.html",
+                "auth/register.html",
                 {
                     "request": request,
                     "error": "; ".join(errors),
@@ -1032,7 +1033,7 @@ async def student_register(request: Request):
         if result:
             template_context = await get_template_context(request)
             return templates.TemplateResponse(
-                "client/register.html",
+                "auth/register.html",
                 {
                     "request": request,
                     "success": "Account created successfully! You can now login with your credentials.",
@@ -1042,20 +1043,20 @@ async def student_register(request: Request):
         else:
             template_context = await get_template_context(request)
             return templates.TemplateResponse(
-                "client/register.html",
+                "auth/register.html",
                 {
                     "request": request,
                     "error": "Failed to create account. Please try again.",
                     "form_data": form_data,
                     **template_context
-                },                status_code=500
+                },status_code=500
             )
             
     except Exception as e:
         print(f"Registration error: {e}")
         template_context = await get_template_context(request)
         return templates.TemplateResponse(
-            "client/register.html",
+            "auth/register.html",
             {
                 "request": request,
                 "error": "An error occurred during registration. Please try again.",
@@ -1593,3 +1594,22 @@ async def get_certificate_template(event_id: str, current_student: Student = Dep
 async def test_api():
     """Simple test endpoint to verify API routing works"""
     return {"success": True, "message": "API routing is working"}
+
+@router.get("/api/auth/status")
+async def auth_status(request: Request, student: Student = Depends(get_current_student_optional)):
+    """API endpoint to check if student is authenticated"""
+    try:
+        if student:
+            return {
+                "authenticated": True,
+                "student": {
+                    "enrollment_no": student.enrollment_no,
+                    "full_name": student.full_name,
+                    "email": student.email
+                }
+            }
+        else:
+            return {"authenticated": False}
+    except Exception as e:
+        logger.error(f"Error in auth status: {str(e)}")
+        return {"authenticated": False, "error": str(e)}
